@@ -212,7 +212,7 @@ func NewLoggingMessageNotification(
 
 // NewPromptMessage
 // Helper function to create a new PromptMessage
-func NewPromptMessage(role Role, content Content) PromptMessage {
+func NewPromptMessage(role Role, content any) PromptMessage {
 	return PromptMessage{
 		Role:    role,
 		Content: content,
@@ -692,19 +692,39 @@ func ParseGetPromptResult(rawMessage *json.RawMessage) (*GetPromptResult, error)
 			}
 
 			// Extract content
-			contentMap, ok := messageMap["content"].(map[string]any)
-			if !ok {
-				return nil, fmt.Errorf("content is not an object")
-			}
+			var content any
 
-			// Process content
-			content, err := ParseContent(contentMap)
-			if err != nil {
-				return nil, err
+			if contentMap, ok := messageMap["content"].(map[string]any); ok {
+				// Single content object
+				c, err := ParseContent(contentMap)
+				if err != nil {
+					return nil, err
+				}
+				content = c
+			} else if contentArray, ok := messageMap["content"].([]any); ok {
+				// Array of content objects
+				var contents []Content
+				for _, item := range contentArray {
+					itemMap, ok := item.(map[string]any)
+					if !ok {
+						return nil, fmt.Errorf("content item is not an object")
+					}
+					c, err := ParseContent(itemMap)
+					if err != nil {
+						return nil, err
+					}
+					contents = append(contents, c)
+				}
+				content = contents
+			} else if contentStr, ok := messageMap["content"].(string); ok {
+				// String content (simplified text)
+				content = NewTextContent(contentStr)
+			} else {
+				return nil, fmt.Errorf("content is not an object, array or string")
 			}
 
 			// Append processed message
-			result.Messages = append(result.Messages, NewPromptMessage(Role(roleStr), content))
+			result.Messages = append(result.Messages, PromptMessage{Role: Role(roleStr), Content: content})
 
 		}
 	}

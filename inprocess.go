@@ -16,10 +16,9 @@ func NewInProcessClientWithSamplingHandler(server *MCPServer, handler SamplingHa
 	serverHandler := &inProcessSamplingHandlerWrapper{handler: handler}
 
 	inProcessTransport := NewInProcessTransportWithOptions(server,
-		WithSamplingHandler(serverHandler))
+		WithInProcessSamplingHandler(serverHandler))
 
-	client := NewClient(inProcessTransport)
-	samplingHandler = handler
+	client := NewClient(inProcessTransport, WithSamplingHandler(handler))
 
 	return client, nil
 }

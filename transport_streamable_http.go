@@ -78,8 +78,8 @@ func WithLogger(logger util.Logger) StreamableHTTPCOption {
 	return WithHTTPLogger(logger)
 }
 
-// WithSession creates a client with a pre-configured session
-func WithSession(sessionID string) StreamableHTTPCOption {
+// WithHTTPSession creates a client with a pre-configured session
+func WithHTTPSession(sessionID string) StreamableHTTPCOption {
 	return func(sc *StreamableHTTP) {
 		sc.sessionID.Store(sessionID)
 	}

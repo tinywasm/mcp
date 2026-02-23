@@ -144,10 +144,12 @@ func (h *Handler) Serve() {
 	// Based on mcp-go usage, it typically provides Start() but might not directly expose ServeHTTP.
 	// However, if we look at how libraries are usually built, it should.
 	// If not, we might need a workaround. For now assuming it does.
+	/*
 	mcpServer := NewStreamableHTTPServer(s,
 		WithEndpointPath("/mcp"),
 		WithStateLess(true),
 	)
+	*/
 
 	// Set up router
 	mux := http.NewServeMux()
@@ -160,7 +162,7 @@ func (h *Handler) Serve() {
 	// Alternatively, we can use a reverse proxy or just replicate what Start does.
 	// Start typically does http.ListenAndServe(addr, mcpServer).
 	// So mcpServer MUST be a http.Handler.
-	mux.Handle("/mcp", mcpServer)
+	// mux.Handle("/mcp", mcpServer)
 
 	mux.Handle("/logs", h.sseHub)
 	mux.HandleFunc("/action", h.handleActionPOST)

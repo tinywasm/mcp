@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 )
 
-// Client implements the MCP 
+// Client implements the MCP client.
 type Client struct {
 	transport Interface
 
@@ -28,14 +28,14 @@ type Client struct {
 
 type ClientOption func(*Client)
 
-// WithClientCapabilities sets the client capabilities for the 
+// WithClientCapabilities sets the client capabilities for the client.
 func WithClientCapabilities(capabilities ClientCapabilities) ClientOption {
 	return func(c *Client) {
 		c.clientCapabilities = capabilities
 	}
 }
 
-// WithSamplingHandler sets the sampling handler for the 
+// WithSamplingHandler sets the sampling handler for the client.
 // When set, the client will declare sampling capability during initialization.
 func WithSamplingHandler(handler SamplingHandler) ClientOption {
 	return func(c *Client) {
@@ -43,7 +43,7 @@ func WithSamplingHandler(handler SamplingHandler) ClientOption {
 	}
 }
 
-// WithRootsHandler sets the roots handler for the 
+// WithRootsHandler sets the roots handler for the client.
 // WithRootsHandler returns a ClientOption that sets the client's RootsHandler.
 // When provided, the client will declare the roots capability (ListChanged) during initialization.
 func WithRootsHandler(handler RootsHandler) ClientOption {
@@ -52,7 +52,7 @@ func WithRootsHandler(handler RootsHandler) ClientOption {
 	}
 }
 
-// WithElicitationHandler sets the elicitation handler for the 
+// WithElicitationHandler sets the elicitation handler for the client.
 // When set, the client will declare elicitation capability during initialization.
 func WithElicitationHandler(handler ElicitationHandler) ClientOption {
 	return func(c *Client) {
@@ -61,13 +61,13 @@ func WithElicitationHandler(handler ElicitationHandler) ClientOption {
 }
 
 // WithSession assumes a MCP Session has already been initialized
-func WithSession() ClientOption {
+func WithInitializedSession() ClientOption {
 	return func(c *Client) {
 		c.initialized = true
 	}
 }
 
-// NewClient creates a new MCP client with the given 
+// NewClient creates a new MCP client with the given transport.
 // Usage:
 //
 //	stdio := NewStdio("./mcp_server", nil, "xxx")
@@ -87,20 +87,20 @@ func NewClient(transport Interface, options ...ClientOption) *Client {
 	return client
 }
 
-// Start initiates the connection to the 
-// Must be called before using the 
+// Start initiates the connection to the server.
+// Must be called before using the client.
 func (c *Client) Start(ctx context.Context) error {
 	if c.transport == nil {
 		return fmt.Errorf("transport is nil")
 	}
 
 	// Start is idempotent - transports handle being called multiple times
-	err := c.Start(ctx)
+	err := c.transport.Start(ctx)
 	if err != nil {
 		return err
 	}
 
-	c.SetNotificationHandler(func(notification JSONRPCNotification) {
+	c.transport.SetNotificationHandler(func(notification JSONRPCNotification) {
 		c.notifyMu.RLock()
 		defer c.notifyMu.RUnlock()
 		for _, handler := range c.notifications {
@@ -109,16 +109,16 @@ func (c *Client) Start(ctx context.Context) error {
 	})
 
 	// Set up request handler for bidirectional communication (e.g., sampling)
-	if bidirectional, ok := c.(BidirectionalInterface); ok {
+	if bidirectional, ok := c.transport.(BidirectionalInterface); ok {
 		bidirectional.SetRequestHandler(c.handleIncomingRequest)
 	}
 
 	return nil
 }
 
-// Close shuts down the client and closes the 
+// Close shuts down the client and closes the transport.
 func (c *Client) Close() error {
-	return c.Close()
+	return c.transport.Close()
 }
 
 // OnNotification registers a handler function to be called when notifications are received.
@@ -137,7 +137,7 @@ func (c *Client) OnConnectionLost(handler func(error)) {
 	type connectionLostSetter interface {
 		SetConnectionLostHandler(func(error))
 	}
-	if setter, ok := c.(connectionLostSetter); ok {
+	if setter, ok := c.transport.(connectionLostSetter); ok {
 		setter.SetConnectionLostHandler(handler)
 	}
 }
@@ -159,24 +159,36 @@ func (c *Client) sendRequest(
 	request := JSONRPCRequest{
 		JSONRPC: JSONRPC_VERSION,
 		ID:      NewRequestId(id),
-		Method:  method,
 		Params:  params,
 		Header:  header,
+		Request: Request{
+			Method: method,
+		},
 	}
 
-	response, err := c.SendRequest(ctx, request)
+	response, err := c.transport.SendRequest(ctx, request)
 	if err != nil {
 		return nil, NewError(err)
 	}
 
 	if response.Error != nil {
-		return nil, response.Error.AsError()
+		return nil, &jsonRPCError{
+			code:    response.Error.Code,
+			message: response.Error.Message,
+			data:    response.Error.Data,
+		}
 	}
 
-	return &response.Result, nil
+	// Marshal the result back to JSON to return RawMessage
+	bytes, err := json.Marshal(response.Result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal result: %w", err)
+	}
+	raw := json.RawMessage(bytes)
+	return &raw, nil
 }
 
-// Initialize negotiates with the 
+// Initialize negotiates with the server.
 // Must be called after Start, and before any request methods.
 func (c *Client) Initialize(
 	ctx context.Context,
@@ -235,7 +247,7 @@ func (c *Client) Initialize(
 	c.protocolVersion = result.ProtocolVersion
 
 	// Set protocol version on HTTP transports
-	if httpConn, ok := c.(HTTPConnection); ok {
+	if httpConn, ok := c.transport.(HTTPConnection); ok {
 		httpConn.SetProtocolVersion(result.ProtocolVersion)
 	}
 
@@ -247,7 +259,7 @@ func (c *Client) Initialize(
 		},
 	}
 
-	err = c.SendNotification(ctx, notification)
+	err = c.transport.SendNotification(ctx, notification)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to send initialized notification: %w",
@@ -486,7 +498,7 @@ func (c *Client) Complete(
 	return &result, nil
 }
 
-// RootListChanges sends a roots list-changed notification to the 
+// RootListChanges sends a roots list-changed notification to the server.
 func (c *Client) RootListChanges(
 	ctx context.Context,
 ) error {
@@ -498,7 +510,7 @@ func (c *Client) RootListChanges(
 		},
 	}
 
-	err := c.SendNotification(ctx, notification)
+	err := c.transport.SendNotification(ctx, notification)
 	if err != nil {
 		return fmt.Errorf(
 			"failed to send root list change notification: %w",
@@ -508,7 +520,7 @@ func (c *Client) RootListChanges(
 	return nil
 }
 
-// handleIncomingRequest processes incoming requests from the 
+// handleIncomingRequest processes incoming requests from the server.
 // This is the main entry point for server-to-client requests like sampling and elicitation.
 func (c *Client) handleIncomingRequest(ctx context.Context, request JSONRPCRequest) (*JSONRPCResponse, error) {
 	switch request.Method {
@@ -579,7 +591,7 @@ func (c *Client) handleSamplingRequestTransport(ctx context.Context, request JSO
 	// Create the transport response
 	response := NewJSONRPCResultResponse(request.ID, json.RawMessage(resultBytes))
 
-	return response, nil
+	return &response, nil
 }
 
 // handleListRootsRequestTransport handles list roots requests at the transport level.
@@ -610,7 +622,7 @@ func (c *Client) handleListRootsRequestTransport(ctx context.Context, request JS
 	// Create the transport response
 	response := NewJSONRPCResultResponse(request.ID, json.RawMessage(resultBytes))
 
-	return response, nil
+	return &response, nil
 }
 
 // handleElicitationRequestTransport handles elicitation requests at the transport level.
@@ -658,12 +670,13 @@ func (c *Client) handleElicitationRequestTransport(ctx context.Context, request 
 	// Create the transport response
 	response := NewJSONRPCResultResponse(request.ID, resultBytes)
 
-	return response, nil
+	return &response, nil
 }
 
 func (c *Client) handlePingRequestTransport(ctx context.Context, request JSONRPCRequest) (*JSONRPCResponse, error) {
 	b, _ := json.Marshal(&EmptyResult{})
-	return NewJSONRPCResultResponse(request.ID, b), nil
+	response := NewJSONRPCResultResponse(request.ID, b)
+	return &response, nil
 }
 
 func listByPage[T any](
@@ -673,7 +686,7 @@ func listByPage[T any](
 	header http.Header,
 	method string,
 ) (*T, error) {
-	response, err := sendRequest(ctx, method, request.Params, header)
+	response, err := client.sendRequest(ctx, method, request.Params, header)
 	if err != nil {
 		return nil, err
 	}
@@ -702,16 +715,35 @@ func (c *Client) GetClientCapabilities() ClientCapabilities {
 	return c.clientCapabilities
 }
 
-// GetSessionId returns the session ID of the 
+// GetSessionId returns the session ID of the client.
 // If the transport does not support sessions, it returns an empty string.
 func (c *Client) GetSessionId() string {
 	if c.transport == nil {
 		return ""
 	}
-	return c.GetSessionId()
+	return c.transport.GetSessionId()
 }
 
 // IsInitialized returns true if the client has been initialized.
 func (c *Client) IsInitialized() bool {
 	return c.initialized
+}
+
+// UnsupportedProtocolVersionError is returned when the server suggests a protocol version that is not supported by the client.
+type UnsupportedProtocolVersionError struct {
+	Version string
+}
+
+func (e UnsupportedProtocolVersionError) Error() string {
+	return fmt.Sprintf("unsupported protocol version: %s", e.Version)
+}
+
+type jsonRPCError struct {
+	code    int
+	message string
+	data    any
+}
+
+func (e *jsonRPCError) Error() string {
+	return fmt.Sprintf("JSON-RPC error %d: %s", e.code, e.message)
 }

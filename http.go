@@ -14,7 +14,7 @@ func NewStreamableHttpClient(baseURL string, options ...StreamableHTTPCOption) (
 	clientOptions := make([]ClientOption, 0)
 	sessionID := trans.GetSessionId()
 	if sessionID != "" {
-		clientOptions = append(clientOptions, WithSession())
+		clientOptions = append(clientOptions, WithInitializedSession())
 	}
 	return NewClient(trans, clientOptions...), nil
 }
