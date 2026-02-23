@@ -1,0 +1,407 @@
+diff --git a/client.go b/client.go
+index f278e05..b641d37 100644
+--- a/client.go
++++ b/client.go
+@@ -10,7 +10,7 @@ import (
+ 	"sync/atomic"
+ )
+ 
+-// Client implements the MCP 
++// Client implements the MCP
+ type Client struct {
+ 	transport Interface
+ 
+@@ -28,14 +28,14 @@ type Client struct {
+ 
+ type ClientOption func(*Client)
+ 
+-// WithClientCapabilities sets the client capabilities for the 
++// WithClientCapabilities sets the client capabilities for the
+ func WithClientCapabilities(capabilities ClientCapabilities) ClientOption {
+ 	return func(c *Client) {
+ 		c.clientCapabilities = capabilities
+ 	}
+ }
+ 
+-// WithSamplingHandler sets the sampling handler for the 
++// WithSamplingHandler sets the sampling handler for the
+ // When set, the client will declare sampling capability during initialization.
+ func WithSamplingHandler(handler SamplingHandler) ClientOption {
+ 	return func(c *Client) {
+@@ -43,7 +43,7 @@ func WithSamplingHandler(handler SamplingHandler) ClientOption {
+ 	}
+ }
+ 
+-// WithRootsHandler sets the roots handler for the 
++// WithRootsHandler sets the roots handler for the
+ // WithRootsHandler returns a ClientOption that sets the client's RootsHandler.
+ // When provided, the client will declare the roots capability (ListChanged) during initialization.
+ func WithRootsHandler(handler RootsHandler) ClientOption {
+@@ -52,7 +52,7 @@ func WithRootsHandler(handler RootsHandler) ClientOption {
+ 	}
+ }
+ 
+-// WithElicitationHandler sets the elicitation handler for the 
++// WithElicitationHandler sets the elicitation handler for the
+ // When set, the client will declare elicitation capability during initialization.
+ func WithElicitationHandler(handler ElicitationHandler) ClientOption {
+ 	return func(c *Client) {
+@@ -67,7 +67,7 @@ func WithSession() ClientOption {
+ 	}
+ }
+ 
+-// NewClient creates a new MCP client with the given 
++// NewClient creates a new MCP client with the given
+ // Usage:
+ //
+ //	stdio := NewStdio("./mcp_server", nil, "xxx")
+@@ -87,15 +87,15 @@ func NewClient(transport Interface, options ...ClientOption) *Client {
+ 	return client
+ }
+ 
+-// Start initiates the connection to the 
+-// Must be called before using the 
++// Start initiates the connection to the transport.
++// Must be called before using the client.
+ func (c *Client) Start(ctx context.Context) error {
+ 	if c.transport == nil {
+ 		return fmt.Errorf("transport is nil")
+ 	}
+ 
+ 	// Start is idempotent - transports handle being called multiple times
+-	err := c.Start(ctx)
++	err := c.transport.Start(ctx)
+ 	if err != nil {
+ 		return err
+ 	}
+@@ -109,16 +109,16 @@ func (c *Client) Start(ctx context.Context) error {
+ 	})
+ 
+ 	// Set up request handler for bidirectional communication (e.g., sampling)
+-	if bidirectional, ok := c.(BidirectionalInterface); ok {
++	if bidirectional, ok := c.transport.(BidirectionalInterface); ok {
+ 		bidirectional.SetRequestHandler(c.handleIncomingRequest)
+ 	}
+ 
+ 	return nil
+ }
+ 
+-// Close shuts down the client and closes the 
++// Close shuts down the client and closes the
+ func (c *Client) Close() error {
+-	return c.Close()
++	return c.transport.Close()
+ }
+ 
+ // OnNotification registers a handler function to be called when notifications are received.
+@@ -137,7 +137,7 @@ func (c *Client) OnConnectionLost(handler func(error)) {
+ 	type connectionLostSetter interface {
+ 		SetConnectionLostHandler(func(error))
+ 	}
+-	if setter, ok := c.(connectionLostSetter); ok {
++	if setter, ok := c.transport.(connectionLostSetter); ok {
+ 		setter.SetConnectionLostHandler(handler)
+ 	}
+ }
+@@ -164,7 +164,7 @@ func (c *Client) sendRequest(
+ 		Header:  header,
+ 	}
+ 
+-	response, err := c.SendRequest(ctx, request)
++	response, err := c.transport.SendRequest(ctx, request)
+ 	if err != nil {
+ 		return nil, NewError(err)
+ 	}
+@@ -173,10 +173,10 @@ func (c *Client) sendRequest(
+ 		return nil, response.Error.AsError()
+ 	}
+ 
+-	return &response.Result, nil
++	return response, nil
+ }
+ 
+-// Initialize negotiates with the 
++// Initialize negotiates with the
+ // Must be called after Start, and before any request methods.
+ func (c *Client) Initialize(
+ 	ctx context.Context,
+@@ -201,7 +201,7 @@ func (c *Client) Initialize(
+ 
+ 	// Ensure we send a params object with all required fields
+ 	params := struct {
+-		ProtocolVersion string                 `json:"protocolVersion"`
++		ProtocolVersion string             `json:"protocolVersion"`
+ 		ClientInfo      Implementation     `json:"clientInfo"`
+ 		Capabilities    ClientCapabilities `json:"capabilities"`
+ 	}{
+@@ -227,7 +227,7 @@ func (c *Client) Initialize(
+ 
+ 	// Validate protocol version
+ 	if !slices.Contains(ValidProtocolVersions, result.ProtocolVersion) {
+-		return nil, UnsupportedProtocolVersionError{Version: result.ProtocolVersion}
++		return nil, &UnsupportedProtocolVersionError{Version: result.ProtocolVersion}
+ 	}
+ 
+ 	// Store serverCapabilities and protocol version
+@@ -235,19 +235,12 @@ func (c *Client) Initialize(
+ 	c.protocolVersion = result.ProtocolVersion
+ 
+ 	// Set protocol version on HTTP transports
+-	if httpConn, ok := c.(HTTPConnection); ok {
++	if httpConn, ok := c.transport.(HTTPConnection); ok {
+ 		httpConn.SetProtocolVersion(result.ProtocolVersion)
+ 	}
+ 
+ 	// Send initialized notification
+-	notification := JSONRPCNotification{
+-		JSONRPC: JSONRPC_VERSION,
+-		Notification: Notification{
+-			Method: "notifications/initialized",
+-		},
+-	}
+-
+-	err = c.SendNotification(ctx, notification)
++	err = c.SendNotification(ctx, "notifications/initialized", nil)
+ 	if err != nil {
+ 		return nil, fmt.Errorf(
+ 			"failed to send initialized notification: %w",
+@@ -486,19 +479,12 @@ func (c *Client) Complete(
+ 	return &result, nil
+ }
+ 
+-// RootListChanges sends a roots list-changed notification to the 
++// RootListChanges sends a roots list-changed notification to the
+ func (c *Client) RootListChanges(
+ 	ctx context.Context,
+ ) error {
+ 	// Send root list changes notification
+-	notification := JSONRPCNotification{
+-		JSONRPC: JSONRPC_VERSION,
+-		Notification: Notification{
+-			Method: MethodNotificationRootsListChanged,
+-		},
+-	}
+-
+-	err := c.SendNotification(ctx, notification)
++	err := c.SendNotification(ctx, MethodNotificationRootsListChanged, nil)
+ 	if err != nil {
+ 		return fmt.Errorf(
+ 			"failed to send root list change notification: %w",
+@@ -508,7 +494,26 @@ func (c *Client) RootListChanges(
+ 	return nil
+ }
+ 
+-// handleIncomingRequest processes incoming requests from the 
++// SetNotificationHandler sets a handler for incoming notifications.
++func (c *Client) SetNotificationHandler(handler func(JSONRPCNotification)) {
++	c.notifyMu.Lock()
++	defer c.notifyMu.Unlock()
++	c.notifications = append(c.notifications, handler)
++}
++
++// SendNotification sends a notification to the server.
++func (c *Client) SendNotification(ctx context.Context, method string, params any) error {
++	notification := JSONRPCNotification{
++		JSONRPC: JSONRPC_VERSION,
++		Notification: Notification{
++			Method: method,
++			Params: params,
++		},
++	}
++	return c.transport.SendNotification(ctx, notification)
++}
++
++// handleIncomingRequest processes incoming requests from the
+ // This is the main entry point for server-to-client requests like sampling and elicitation.
+ func (c *Client) handleIncomingRequest(ctx context.Context, request JSONRPCRequest) (*JSONRPCResponse, error) {
+ 	switch request.Method {
+@@ -702,7 +707,7 @@ func (c *Client) GetClientCapabilities() ClientCapabilities {
+ 	return c.clientCapabilities
+ }
+ 
+-// GetSessionId returns the session ID of the 
++// GetSessionId returns the session ID of the
+ // If the transport does not support sessions, it returns an empty string.
+ func (c *Client) GetSessionId() string {
+ 	if c.transport == nil {
+diff --git a/errors.go b/errors.go
+index b3ac9b6..60e0ecd 100644
+--- a/errors.go
++++ b/errors.go
+@@ -34,3 +34,12 @@ type ErrDynamicPathConfig struct {
+ func (e *ErrDynamicPathConfig) Error() string {
+ 	return fmt.Sprintf("%s cannot be used with WithDynamicBasePath. Use dynamic path logic in your router.", e.Method)
+ }
++
++// UnsupportedProtocolVersionError is returned when a protocol version is not supported.
++type UnsupportedProtocolVersionError struct {
++	Version string
++}
++
++func (e *UnsupportedProtocolVersionError) Error() string {
++	return fmt.Sprintf("unsupported protocol version: %s", e.Version)
++}
+diff --git a/session.go b/session.go
+index 5e19d36..89e3aad 100644
+--- a/session.go
++++ b/session.go
+@@ -146,15 +146,11 @@ func (s *MCPServer) RegisterSession(
+ func (s *MCPServer) buildLogNotification(notification LoggingMessageNotification) JSONRPCNotification {
+ 	return JSONRPCNotification{
+ 		JSONRPC: JSONRPC_VERSION,
+-		Notification: Notification{
+-			Method: notification.Method,
+-			Params: NotificationParams{
+-				AdditionalFields: map[string]any{
+-					"level":  notification.Params.Level,
+-					"logger": notification.Params.Logger,
+-					"data":   notification.Params.Data,
+-				},
+-			},
++		Method:  notification.Method,
++		Params: map[string]any{
++			"level":  notification.Params.Level,
++			"logger": notification.Params.Logger,
++			"data":   notification.Params.Data,
+ 		},
+ 	}
+ }
+diff --git a/transport_streamable_http.go b/transport_streamable_http.go
+index 8e3b3c8..c483a3b 100644
+--- a/transport_streamable_http.go
++++ b/transport_streamable_http.go
+@@ -15,7 +15,8 @@ import (
+ 	"sync"
+ 	"sync/atomic"
+ 	"time"
+-"github.com/tinywasm/mcp/util"
++
++	"github.com/tinywasm/mcp/util"
+ )
+ 
+ type StreamableHTTPCOption func(*StreamableHTTP)
+@@ -24,7 +25,7 @@ type StreamableHTTPCOption func(*StreamableHTTP)
+ // In particular, if you want to receive global notifications from the server (like ToolListChangedNotification),
+ // you should enable this option.
+ //
+-// It will establish a standalone long-live GET HTTP connection to the 
++// It will establish a standalone long-live GET HTTP connection to the
+ // https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#listening-for-messages-from-the-server
+ // NOTICE: Even enabled, the server may not support this feature.
+ func WithContinuousListening() StreamableHTTPCOption {
+@@ -33,7 +34,7 @@ func WithContinuousListening() StreamableHTTPCOption {
+ 	}
+ }
+ 
+-// WithHTTPClient sets a custom HTTP client on the StreamableHTTP 
++// WithHTTPClient sets a custom HTTP client on the StreamableHTTP
+ func WithHTTPBasicClient(client *http.Client) StreamableHTTPCOption {
+ 	return func(sc *StreamableHTTP) {
+ 		sc.httpClient = client
+@@ -59,14 +60,14 @@ func WithHTTPTimeout(timeout time.Duration) StreamableHTTPCOption {
+ 	}
+ }
+ 
+-// WithHTTPOAuth enables OAuth authentication for the 
++// WithHTTPOAuth enables OAuth authentication for the
+ func WithHTTPOAuth(config OAuthConfig) StreamableHTTPCOption {
+ 	return func(sc *StreamableHTTP) {
+ 		sc.oauthHandler = NewOAuthHandler(config)
+ 	}
+ }
+ 
+-// WithHTTPLogger sets a custom logger for the StreamableHTTP 
++// WithHTTPLogger sets a custom logger for the StreamableHTTP
+ func WithHTTPLogger(logger util.Logger) StreamableHTTPCOption {
+ 	return func(sc *StreamableHTTP) {
+ 		sc.logger = logger
+@@ -78,15 +79,15 @@ func WithLogger(logger util.Logger) StreamableHTTPCOption {
+ 	return WithHTTPLogger(logger)
+ }
+ 
+-// WithSession creates a client with a pre-configured session
+-func WithSession(sessionID string) StreamableHTTPCOption {
++// WithStreamableHTTPSession creates a client with a pre-configured session
++func WithStreamableHTTPSession(sessionID string) StreamableHTTPCOption {
+ 	return func(sc *StreamableHTTP) {
+ 		sc.sessionID.Store(sessionID)
+ 	}
+ }
+ 
+ // WithStreamableHTTPHost sets a custom Host header for the StreamableHTTP client, enabling manual DNS resolution.
+-// This allows connecting to an IP address while sending a specific Host header to the 
++// This allows connecting to an IP address while sending a specific Host header to the
+ // For example, connecting to "http://192.168.1.100:8080/mcp" but sending Host: "api.example.com"
+ func WithStreamableHTTPHost(host string) StreamableHTTPCOption {
+ 	return func(sc *StreamableHTTP) {
+@@ -94,7 +95,7 @@ func WithStreamableHTTPHost(host string) StreamableHTTPCOption {
+ 	}
+ }
+ 
+-// StreamableHTTP implements Streamable HTTP 
++// StreamableHTTP implements Streamable HTTP
+ //
+ // It transmits JSON-RPC messages over individual HTTP requests. One message per request.
+ // The HTTP response body can either be a single JSON-RPC response,
+@@ -168,7 +169,7 @@ func NewStreamableHTTP(serverURL string, options ...StreamableHTTPCOption) (*Str
+ 	return smc, nil
+ }
+ 
+-// Start initiates the HTTP connection to the 
++// Start initiates the HTTP connection to the
+ func (c *StreamableHTTP) Start(ctx context.Context) error {
+ 	// Start is idempotent - check if already initialized
+ 	select {
+@@ -194,7 +195,7 @@ func (c *StreamableHTTP) Start(ctx context.Context) error {
+ 	return nil
+ }
+ 
+-// Close closes the all the HTTP connections to the 
++// Close closes the all the HTTP connections to the
+ func (c *StreamableHTTP) Close() error {
+ 	c.closeOnce.Do(func() {
+ 		// Cancel all in-flight requests
+@@ -597,7 +598,7 @@ func (c *StreamableHTTP) SetNotificationHandler(handler func(JSONRPCNotification
+ 	c.notificationHandler = handler
+ }
+ 
+-// SetRequestHandler sets the handler for incoming requests from the 
++// SetRequestHandler sets the handler for incoming requests from the
+ func (c *StreamableHTTP) SetRequestHandler(handler RequestHandler) {
+ 	c.requestMu.Lock()
+ 	defer c.requestMu.Unlock()
+diff --git a/types.go b/types.go
+index 0ccb6ae..0f3f1a5 100644
+--- a/types.go
++++ b/types.go
+@@ -361,16 +361,16 @@ func (r *RequestId) UnmarshalJSON(data []byte) error {
+ type JSONRPCRequest struct {
+ 	JSONRPC string      `json:"jsonrpc"`
+ 	ID      RequestId   `json:"id"`
++	Method  string      `json:"method"`
+ 	Params  any         `json:"params,omitempty"`
+ 	Header  http.Header `json:"-"`
+-	Request
+ }
+ 
+ // JSONRPCNotification represents a notification which does not expect a response.
+ type JSONRPCNotification struct {
+ 	JSONRPC string `json:"jsonrpc"`
++	Method  string `json:"method"`
+ 	Params  any    `json:"params,omitempty"`
+-	Notification
+ }
+ 
+ // JSONRPCResponse represents a response to a request.
+@@ -401,6 +401,11 @@ type JSONRPCErrorDetails struct {
+ 	Data any `json:"data,omitempty"`
+ }
+ 
++// AsError returns the error details as a Go error.
++func (e *JSONRPCErrorDetails) AsError() error {
++	return fmt.Errorf("JSON-RPC error: %d: %s", e.Code, e.Message)
++}
++
+ // Standard JSON-RPC error codes
+ const (
+ 	// PARSE_ERROR indicates invalid JSON was received by the
