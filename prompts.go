@@ -92,8 +92,8 @@ const (
 // This is similar to `SamplingMessage`, but also supports the embedding of
 // resources from the MCP 
 type PromptMessage struct {
-	Role    Role    `json:"role"`
-	Content Content `json:"content"` // Can be TextContent, ImageContent, AudioContent or EmbeddedResource
+	Role    Role `json:"role"`
+	Content any  `json:"content"` // Can be Content or []Content
 }
 
 // PromptListChangedNotification is an optional notification from the server

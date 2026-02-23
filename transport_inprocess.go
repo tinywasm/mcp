@@ -78,7 +78,7 @@ func (c *InProcessTransport) Start(ctx context.Context) error {
 			elicitationHandler: c.elicitationHandler,
 			rootsHandler:       c.rootsHandler,
 		}
-		if err := c.RegisterSession(ctx, c.session); err != nil {
+		if err := c.server.RegisterSession(ctx, c.session); err != nil {
 			c.startedMu.Lock()
 			c.started = false
 			c.startedMu.Unlock()
@@ -97,10 +97,10 @@ func (c *InProcessTransport) SendRequest(ctx context.Context, request JSONRPCReq
 
 	// Add session to context if available
 	if c.session != nil {
-		ctx = c.WithContext(ctx, c.session)
+		ctx = c.server.WithContext(ctx, c.session)
 	}
 
-	respMessage := c.HandleMessage(ctx, requestBytes)
+	respMessage := c.server.HandleMessage(ctx, requestBytes)
 	respByte, err := json.Marshal(respMessage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal response message: %w", err)
@@ -120,7 +120,7 @@ func (c *InProcessTransport) SendNotification(ctx context.Context, notification 
 		return fmt.Errorf("failed to marshal notification: %w", err)
 	}
 	notificationBytes = append(notificationBytes, '\n')
-	c.HandleMessage(ctx, notificationBytes)
+	c.server.HandleMessage(ctx, notificationBytes)
 
 	return nil
 }
@@ -133,7 +133,7 @@ func (c *InProcessTransport) SetNotificationHandler(handler func(notification JS
 
 func (c *InProcessTransport) Close() error {
 	if c.session != nil {
-		c.UnregisterSession(context.Background(), c.sessionID)
+		c.server.UnregisterSession(context.Background(), c.sessionID)
 	}
 	return nil
 }

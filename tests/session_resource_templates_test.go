@@ -17,7 +17,7 @@ type sessionTestClientWithResourceTemplates struct {
 	sessionID                string
 	notificationChannel      chan mcp.JSONRPCNotification
 	initialized              atomic.Bool
-	sessionResourceTemplates map[string]ServerResourceTemplate
+	sessionResourceTemplates map[string]mcp.ServerResourceTemplate
 	mu                       sync.RWMutex
 }
 
@@ -37,24 +37,24 @@ func (f *sessionTestClientWithResourceTemplates) Initialized() bool {
 	return f.initialized.Load()
 }
 
-func (f *sessionTestClientWithResourceTemplates) GetSessionResourceTemplates() map[string]ServerResourceTemplate {
+func (f *sessionTestClientWithResourceTemplates) GetSessionResourceTemplates() map[string]mcp.ServerResourceTemplate {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	return maps.Clone(f.sessionResourceTemplates)
 }
 
-func (f *sessionTestClientWithResourceTemplates) SetSessionResourceTemplates(templates map[string]ServerResourceTemplate) {
+func (f *sessionTestClientWithResourceTemplates) SetSessionResourceTemplates(templates map[string]mcp.ServerResourceTemplate) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.sessionResourceTemplates = maps.Clone(templates)
 }
 
-var _ SessionWithResourceTemplates = (*sessionTestClientWithResourceTemplates)(nil)
+var _ mcp.SessionWithResourceTemplates = (*sessionTestClientWithResourceTemplates)(nil)
 
 func TestSessionWithResourceTemplates_Integration(t *testing.T) {
-	server := NewMCPServer("test-server", "1.0.0")
+	server := mcp.NewMCPServer("test-server", "1.0.0")
 
-	sessionTemplate := ServerResourceTemplate{
+	sessionTemplate := mcp.ServerResourceTemplate{
 		Template: mcp.NewResourceTemplate("test://session/{id}", "session-template"),
 		Handler: func(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
 			return []mcp.ResourceContents{mcp.TextResourceContents{
@@ -67,7 +67,7 @@ func TestSessionWithResourceTemplates_Integration(t *testing.T) {
 	session := &sessionTestClientWithResourceTemplates{
 		sessionID:           "session-1",
 		notificationChannel: make(chan mcp.JSONRPCNotification, 10),
-		sessionResourceTemplates: map[string]ServerResourceTemplate{
+		sessionResourceTemplates: map[string]mcp.ServerResourceTemplate{
 			"test://session/{id}": sessionTemplate,
 		},
 	}
@@ -81,11 +81,11 @@ func TestSessionWithResourceTemplates_Integration(t *testing.T) {
 
 	sessionCtx := server.WithContext(context.Background(), session)
 
-	s := ClientSessionFromContext(sessionCtx)
+	s := mcp.ClientSessionFromContext(sessionCtx)
 	require.NotNil(t, s, "Session should be available from context")
 	assert.Equal(t, session.SessionID(), s.SessionID(), "Session ID should match")
 
-	swrt, ok := s.(SessionWithResourceTemplates)
+	swrt, ok := s.(mcp.SessionWithResourceTemplates)
 	require.True(t, ok, "Session should implement SessionWithResourceTemplates")
 
 	templates := swrt.GetSessionResourceTemplates()

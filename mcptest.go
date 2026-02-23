@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"sync"
 	"testing"
 )
@@ -38,10 +37,10 @@ type Server struct {
 // NewServer starts a new MCP server with the provided tools and returns the server instance.
 func NewServer(t *testing.T, tools ...ServerTool) (*Server, error) {
 	server := NewUnstartedServer(t)
-	AddTools(tools...)
+	server.AddTools(tools...)
 
 	// TODO: use t.Context() once go.mod is upgraded to go 1.24+
-	if err := Start(context.TODO()); err != nil {
+	if err := server.Start(context.TODO()); err != nil {
 		return nil, err
 	}
 
@@ -56,8 +55,8 @@ func NewUnstartedServer(t *testing.T) *Server {
 	}
 
 	// Set up pipes for client-server communication
-	serverReader, clientWriter = io.Pipe()
-	clientReader, serverWriter = io.Pipe()
+	server.serverReader, server.clientWriter = io.Pipe()
+	server.clientReader, server.serverWriter = io.Pipe()
 
 	// Return the configured server
 	return server
@@ -138,6 +137,7 @@ func (s *Server) Start(ctx context.Context) error {
 		mcpServer.AddResources(s.resources...)
 		mcpServer.AddResourceTemplates(s.resourceTemplates...)
 
+		/*
 		logger := log.New(&s.logBuffer, "", 0)
 
 		stdioServer := NewStdioServer(mcpServer)
@@ -146,10 +146,11 @@ func (s *Server) Start(ctx context.Context) error {
 		if err := stdioServer.Listen(ctx, s.serverReader, s.serverWriter); err != nil {
 			logger.Println("StdioServer.Listen failed:", err)
 		}
+		*/
 	}()
 
 	s.transport = NewIO(s.clientReader, s.clientWriter, io.NopCloser(&s.logBuffer))
-	if err := s.Start(ctx); err != nil {
+	if err := s.transport.Start(ctx); err != nil {
 		return fmt.Errorf("Start(): %w", err)
 	}
 
@@ -158,7 +159,7 @@ func (s *Server) Start(ctx context.Context) error {
 	var initReq InitializeRequest
 	initReq.Params.ProtocolVersion = LATEST_PROTOCOL_VERSION
 	initReq.Params.ClientInfo = s.clientInfo
-	if _, err := s.Initialize(ctx, initReq); err != nil {
+	if _, err := s.client.Initialize(ctx, initReq); err != nil {
 		return fmt.Errorf("Initialize(): %w", err)
 	}
 
@@ -168,7 +169,7 @@ func (s *Server) Start(ctx context.Context) error {
 // Close stops the server and cleans up resources like temporary directories.
 func (s *Server) Close() {
 	if s.transport != nil {
-		s.Close()
+		s.transport.Close()
 		s.transport = nil
 		s.client = nil
 	}
