@@ -52,7 +52,9 @@ func (h *Handler) mcpExecuteTool(targetHandler any, executor ToolExecutor) func(
 		}
 
 		// 3. Execute handler-specific logic
-		executor(args)
+		if _, err := executor(ctx, args); err != nil {
+			return NewToolResultError(err.Error()), nil
+		}
 
 		// 4. Refresh UI (generic)
 		if h.tui != nil {

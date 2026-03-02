@@ -1,5 +1,9 @@
 package mcp
 
+import (
+	"context"
+)
+
 // Loggable defines the interface for handlers that support logging
 type Loggable interface {
 	Name() string
@@ -14,7 +18,7 @@ type ToolProvider interface {
 // ToolExecutor defines how a tool should be executed
 // Handlers implement this to provide execution logic without exposing internals
 // args: map of parameter name to value from MCP request
-type ToolExecutor func(args map[string]any)
+type ToolExecutor func(ctx context.Context, args map[string]any) (any, error)
 
 // ToolMetadata provides MCP tool configuration metadata
 // This is the standard interface that all handlers should implement
