@@ -156,133 +156,22 @@ Keep all tool/session errors.
 
 ---
 
-## Phase 4 — Fix `ToolExecutor` Signature
+## Phase 4 — Update `go.mod`
 
-**File:** `tools_meta.go`
-
-Current (broken — no context, no return):
-```go
-type ToolExecutor func(args map[string]any)
-```
-
-New (matches ecosystem handler signature):
-```go
-type ToolExecutor func(ctx context.Context, args map[string]any) (any, error)
-```
-
-Also add `BinaryData` type to this file (moved from mcpserve/executor.go):
-```go
-// BinaryData represents a binary tool result (e.g., screenshots).
-// When passed as result from ToolExecutor, it is base64-encoded and returned as image content.
-type BinaryData struct {
-    MimeType string
-    Data     []byte
-}
-```
-
----
-
-## Phase 5 — Create `provider.go` (New File)
-
-New file `/home/cesar/Dev/Project/tinywasm/mcp/provider.go`:
-
-```go
-package mcp
-
-import "context"
-
-// RegisterProvider registers all MCP tools declared by a ToolProvider.
-// Calls provider.GetMCPToolsMetadata() once at registration time.
-// Each ToolMetadata.Execute is automatically adapted to ToolHandlerFunc.
-//
-// This is the standard registration entry point for tinywasm ecosystem modules:
-//
-//   func (m *Module) RegisterTools(srv *mcp.MCPServer) {
-//       srv.RegisterProvider(m)
-//   }
-func (s *MCPServer) RegisterProvider(provider ToolProvider) {
-    for _, meta := range provider.GetMCPToolsMetadata() {
-        tool := buildMCPTool(meta)
-        exec := meta.Execute // capture
-
-        s.AddTool(*tool, func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
-            if exec == nil {
-                return NewToolResultError("tool has no executor"), nil
-            }
-            args := make(map[string]any)
-            if err := req.BindArguments(&args); err != nil {
-                return NewToolResultError("invalid arguments: " + err.Error()), nil
-            }
-            result, err := exec(ctx, args)
-            if err != nil {
-                return NewToolResultError(err.Error()), nil
-            }
-            if bd, ok := result.(BinaryData); ok {
-                return NewToolResultImage("", bd.Data, bd.MimeType), nil
-            }
-            return NewToolResultStructuredOnly(result), nil
-        })
-    }
-}
-```
-
----
-
-## Phase 6 — Update `executor.go`
-
-Update `mcpExecuteTool` to use the new `ToolExecutor` signature. The pattern:
-1. Extract args from `CallToolRequest` via `BindArguments`
-2. Call `handler.SetLog(capturingLogger)` if handler implements `Loggable`
-3. Call `exec(ctx, args)` → returns `(any, error)`
-4. If result is `BinaryData`, return as image content
-5. Otherwise return as structured/text content
-
-Reference implementation: `/home/cesar/Dev/Project/tinywasm/mcpserve/executor.go`
-
----
-
-## Phase 7 — Update `go.mod`
-
-After deleting `handler.go` (which was the only file importing `github.com/tinywasm/sse` directly), run:
+After deleting unnecessary files, run:
 
 ```bash
 go mod tidy
 ```
 
-This will remove any unused dependencies automatically. `tinywasm/sse` and `tinywasm/fmt` may remain if still referenced by other files — that is fine, they are ecosystem packages.
+This will remove any unused dependencies automatically. `tinywasm/sse` and `tinywasm/fmt` may remain if still referenced by other files.
 
 ---
 
-## Phase 8 — Write New Tests
+## Phase 5 — Verify & Submit
 
-Create new `tests/` directory with minimal, passing tests:
-
-**`tests/setup_test.go`**
-- Package declaration: `package mcp_test`
-- Imports `github.com/tinywasm/mcp`
-- Helper to create test server
-
-**`tests/server_test.go`**
-- `TestAddTool` — register a tool, verify it appears in ListTools
-- `TestCallTool` — register a tool with handler, call it, verify result
-- `TestCallTool_Error` — handler returns error, verify tool result is error
-
-**`tests/provider_test.go`**
-- `TestRegisterProvider` — mock ToolProvider with 2 tools, register, verify both registered
-- `TestRegisterProvider_Execute` — verify ctx and args passed correctly to Execute
-- `TestRegisterProvider_ExecuteError` — Execute returns error → NewToolResultError
-
-**`tests/tools_meta_test.go`**
-- `TestBuildMCPTool` — verify ParameterMetadata → Tool schema conversion
-
-Run: `gotest` — 100% pass required before proceeding.
-
----
-
-## Phase 9 — Verify & Submit
-
-1. `gotest` — all tests pass
-2. `gopush 'refactor: simplify to minimal tools-only MCP server/client, remove all unused features'`
+1. Run the test suite: `gotest` — 100% pass required before proceeding.
+2. `gopush 'refactor: complete mcp file pruning and server/types simplification'`
 
 ---
 
