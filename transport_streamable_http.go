@@ -294,11 +294,6 @@ func (c *StreamableHTTP) SendRequest(
 
 		// Handle unauthorized error
 		if resp.StatusCode == http.StatusUnauthorized {
-			if c.oauthHandler != nil {
-				return nil, &OAuthAuthorizationRequiredError{
-					Handler: c.oauthHandler,
-				}
-			}
 			return nil, ErrUnauthorized
 		}
 
@@ -387,21 +382,6 @@ func (c *StreamableHTTP) sendHTTP(
 	// Set custom Host header if provided
 	if c.host != "" {
 		req.Host = c.host
-	}
-
-	// Add OAuth authorization if configured
-	if c.oauthHandler != nil {
-		authHeader, err := c.oauthHandler.GetAuthorizationHeader(ctx)
-		if err != nil {
-			// If we get an authorization error, return a specific error that can be handled by the client
-			if errors.Is(err, ErrOAuthAuthorizationRequired) {
-				return nil, &OAuthAuthorizationRequiredError{
-					Handler: c.oauthHandler,
-				}
-			}
-			return nil, fmt.Errorf("failed to get authorization header: %w", err)
-		}
-		req.Header.Set("Authorization", authHeader)
 	}
 
 	if c.headerFunc != nil {
@@ -575,11 +555,6 @@ func (c *StreamableHTTP) SendNotification(ctx context.Context, notification JSON
 	case http.StatusOK, http.StatusAccepted, http.StatusNoContent:
 		return nil
 	case http.StatusUnauthorized:
-		if c.oauthHandler != nil {
-			return &OAuthAuthorizationRequiredError{
-				Handler: c.oauthHandler,
-			}
-		}
 		return ErrUnauthorized
 	default:
 		body, _ := io.ReadAll(resp.Body)
@@ -606,16 +581,6 @@ func (c *StreamableHTTP) SetRequestHandler(handler RequestHandler) {
 
 func (c *StreamableHTTP) GetSessionId() string {
 	return c.sessionID.Load().(string)
-}
-
-// GetOAuthHandler returns the OAuth handler if configured
-func (c *StreamableHTTP) GetOAuthHandler() *OAuthHandler {
-	return c.oauthHandler
-}
-
-// IsOAuthEnabled returns true if OAuth is enabled
-func (c *StreamableHTTP) IsOAuthEnabled() bool {
-	return c.oauthHandler != nil
 }
 
 func (c *StreamableHTTP) listenForever(ctx context.Context) {

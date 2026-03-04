@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -43,10 +42,7 @@ type SSE struct {
 	onConnectionLost func(error)
 	connectionLostMu sync.RWMutex
 
-	// OAuth support
-	oauthHandler *OAuthHandler
 }
-
 type SSEOption func(*SSE)
 
 // WithSSELogger sets a custom logger for the SSE
@@ -74,11 +70,6 @@ func WithSSEHTTPClient(httpClient *http.Client) SSEOption {
 	}
 }
 
-func WithSSEOAuth(config OAuthConfig) SSEOption {
-	return func(sc *SSE) {
-		sc.oauthHandler = NewOAuthHandler(config)
-	}
-}
 
 // WithHTTPHost sets a custom Host header for the SSE client, enabling manual DNS resolution.
 // This allows connecting to an IP address while sending a specific Host header to the
@@ -110,12 +101,6 @@ func NewSSE(baseURL string, options ...SSEOption) (*SSE, error) {
 		opt(smc)
 	}
 
-	// If OAuth is configured, set the base URL for metadata discovery
-	if smc.oauthHandler != nil {
-		// Extract base URL from server URL for metadata discovery
-		baseURL := fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host)
-		smc.oauthHandler.SetBaseURL(baseURL)
-	}
 
 	return smc, nil
 }
@@ -163,20 +148,6 @@ func (c *SSE) Start(ctx context.Context) error {
 		}
 	}
 
-	// Add OAuth authorization if configured
-	if c.oauthHandler != nil {
-		authHeader, err := c.oauthHandler.GetAuthorizationHeader(ctx)
-		if err != nil {
-			// If we get an authorization error, return a specific error that can be handled by the client
-			if err.Error() == "no valid token available, authorization required" {
-				return &OAuthAuthorizationRequiredError{
-					Handler: c.oauthHandler,
-				}
-			}
-			return fmt.Errorf("failed to get authorization header: %w", err)
-		}
-		req.Header.Set("Authorization", authHeader)
-	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -187,11 +158,6 @@ func (c *SSE) Start(ctx context.Context) error {
 		resp.Body.Close()
 		// Handle unauthorized error
 		if resp.StatusCode == http.StatusUnauthorized {
-			if c.oauthHandler != nil {
-				return &OAuthAuthorizationRequiredError{
-					Handler: c.oauthHandler,
-				}
-			}
 			return ErrUnauthorized
 		}
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -407,20 +373,6 @@ func (c *SSE) SendRequest(
 		req.Host = c.host
 	}
 
-	// Add OAuth authorization if configured
-	if c.oauthHandler != nil {
-		authHeader, err := c.oauthHandler.GetAuthorizationHeader(ctx)
-		if err != nil {
-			// If we get an authorization error, return a specific error that can be handled by the client
-			if err.Error() == "no valid token available, authorization required" {
-				return nil, &OAuthAuthorizationRequiredError{
-					Handler: c.oauthHandler,
-				}
-			}
-			return nil, fmt.Errorf("failed to get authorization header: %w", err)
-		}
-		req.Header.Set("Authorization", authHeader)
-	}
 
 	if c.headerFunc != nil {
 		for k, v := range c.headerFunc(ctx) {
@@ -462,15 +414,6 @@ func (c *SSE) SendRequest(
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
 		deleteResponseChan()
 
-		// Handle unauthorized error
-		if resp.StatusCode == http.StatusUnauthorized {
-			if c.oauthHandler != nil {
-				return nil, &OAuthAuthorizationRequiredError{
-					Handler: c.oauthHandler,
-				}
-			}
-			return nil, ErrUnauthorized
-		}
 
 		return nil, fmt.Errorf("request failed with status %d: %s", resp.StatusCode, body)
 	}
@@ -577,20 +520,6 @@ func (c *SSE) SendNotification(ctx context.Context, notification JSONRPCNotifica
 		req.Header.Set(k, v)
 	}
 
-	// Add OAuth authorization if configured
-	if c.oauthHandler != nil {
-		authHeader, err := c.oauthHandler.GetAuthorizationHeader(ctx)
-		if err != nil {
-			// If we get an authorization error, return a specific error that can be handled by the client
-			if errors.Is(err, ErrOAuthAuthorizationRequired) {
-				return &OAuthAuthorizationRequiredError{
-					Handler: c.oauthHandler,
-				}
-			}
-			return fmt.Errorf("failed to get authorization header: %w", err)
-		}
-		req.Header.Set("Authorization", authHeader)
-	}
 
 	if c.headerFunc != nil {
 		for k, v := range c.headerFunc(ctx) {
@@ -610,13 +539,7 @@ func (c *SSE) SendNotification(ctx context.Context, notification JSONRPCNotifica
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
-		// Handle unauthorized error
 		if resp.StatusCode == http.StatusUnauthorized {
-			if c.oauthHandler != nil {
-				return &OAuthAuthorizationRequiredError{
-					Handler: c.oauthHandler,
-				}
-			}
 			return ErrUnauthorized
 		}
 
@@ -641,12 +564,4 @@ func (c *SSE) GetBaseURL() *url.URL {
 	return c.baseURL
 }
 
-// GetOAuthHandler returns the OAuth handler if configured
-func (c *SSE) GetOAuthHandler() *OAuthHandler {
-	return c.oauthHandler
-}
 
-// IsOAuthEnabled returns true if OAuth is enabled
-func (c *SSE) IsOAuthEnabled() bool {
-	return c.oauthHandler != nil
-}
