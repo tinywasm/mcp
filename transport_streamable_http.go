@@ -59,13 +59,6 @@ func WithHTTPTimeout(timeout time.Duration) StreamableHTTPCOption {
 	}
 }
 
-// WithHTTPOAuth enables OAuth authentication for the 
-func WithHTTPOAuth(config OAuthConfig) StreamableHTTPCOption {
-	return func(sc *StreamableHTTP) {
-		sc.oauthHandler = NewOAuthHandler(config)
-	}
-}
-
 // WithHTTPLogger sets a custom logger for the StreamableHTTP 
 func WithHTTPLogger(logger util.Logger) StreamableHTTPCOption {
 	return func(sc *StreamableHTTP) {
@@ -129,9 +122,6 @@ type StreamableHTTP struct {
 
 	closed    chan struct{}
 	closeOnce sync.Once
-
-	// OAuth support
-	oauthHandler *OAuthHandler
 }
 
 // NewStreamableHTTP creates a new Streamable HTTP transport with the given server URL.
@@ -156,13 +146,6 @@ func NewStreamableHTTP(serverURL string, options ...StreamableHTTPCOption) (*Str
 		if opt != nil {
 			opt(smc)
 		}
-	}
-
-	// If OAuth is configured, set the base URL for metadata discovery
-	if smc.oauthHandler != nil {
-		// Extract base URL from server URL for metadata discovery
-		baseURL := fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host)
-		smc.oauthHandler.SetBaseURL(baseURL)
 	}
 
 	return smc, nil
@@ -237,22 +220,6 @@ func (c *StreamableHTTP) Close() error {
 // SetProtocolVersion sets the negotiated protocol version for this connection.
 func (c *StreamableHTTP) SetProtocolVersion(version string) {
 	c.protocolVersion.Store(version)
-}
-
-// ErrOAuthAuthorizationRequired is a sentinel error for OAuth authorization required
-var ErrOAuthAuthorizationRequired = errors.New("no valid token available, authorization required")
-
-// OAuthAuthorizationRequiredError is returned when OAuth authorization is required
-type OAuthAuthorizationRequiredError struct {
-	Handler *OAuthHandler
-}
-
-func (e *OAuthAuthorizationRequiredError) Error() string {
-	return ErrOAuthAuthorizationRequired.Error()
-}
-
-func (e *OAuthAuthorizationRequiredError) Unwrap() error {
-	return ErrOAuthAuthorizationRequired
 }
 
 // SendRequest sends a JSON-RPC request to the server and waits for a response.
@@ -705,14 +672,8 @@ func (c *StreamableHTTP) handleIncomingRequest(ctx context.Context, request JSON
 				errorMessage = "request timed out"
 			} else {
 				// Generic error cases
-				switch request.Method {
-				case string(MethodSamplingCreateMessage):
-					errorCode = INTERNAL_ERROR
-					errorMessage = fmt.Sprintf("sampling request failed: %v", err)
-				default:
-					errorCode = INTERNAL_ERROR
-					errorMessage = err.Error()
-				}
+				errorCode = INTERNAL_ERROR
+				errorMessage = err.Error()
 			}
 
 			// Send error response

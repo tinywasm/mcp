@@ -21,9 +21,6 @@ type Client struct {
 	clientCapabilities ClientCapabilities
 	serverCapabilities ServerCapabilities
 	protocolVersion    string
-	samplingHandler    SamplingHandler
-	rootsHandler       RootsHandler
-	elicitationHandler ElicitationHandler
 }
 
 type ClientOption func(*Client)
@@ -32,31 +29,6 @@ type ClientOption func(*Client)
 func WithClientCapabilities(capabilities ClientCapabilities) ClientOption {
 	return func(c *Client) {
 		c.clientCapabilities = capabilities
-	}
-}
-
-// WithSamplingHandler sets the sampling handler for the client.
-// When set, the client will declare sampling capability during initialization.
-func WithSamplingHandler(handler SamplingHandler) ClientOption {
-	return func(c *Client) {
-		c.samplingHandler = handler
-	}
-}
-
-// WithRootsHandler sets the roots handler for the client.
-// WithRootsHandler returns a ClientOption that sets the client's RootsHandler.
-// When provided, the client will declare the roots capability (ListChanged) during initialization.
-func WithRootsHandler(handler RootsHandler) ClientOption {
-	return func(c *Client) {
-		c.rootsHandler = handler
-	}
-}
-
-// WithElicitationHandler sets the elicitation handler for the client.
-// When set, the client will declare elicitation capability during initialization.
-func WithElicitationHandler(handler ElicitationHandler) ClientOption {
-	return func(c *Client) {
-		c.elicitationHandler = handler
 	}
 }
 
@@ -194,22 +166,7 @@ func (c *Client) Initialize(
 	ctx context.Context,
 	request InitializeRequest,
 ) (*InitializeResult, error) {
-	// Merge client capabilities with sampling capability if handler is configured
 	capabilities := request.Params.Capabilities
-	if c.samplingHandler != nil {
-		capabilities.Sampling = &struct{}{}
-	}
-	if c.rootsHandler != nil {
-		capabilities.Roots = &struct {
-			ListChanged bool `json:"listChanged,omitempty"`
-		}{
-			ListChanged: true,
-		}
-	}
-	// Add elicitation capability if handler is configured
-	if c.elicitationHandler != nil {
-		capabilities.Elicitation = &ElicitationCapability{}
-	}
 
 	// Ensure we send a params object with all required fields
 	params := struct {
@@ -276,155 +233,6 @@ func (c *Client) Ping(ctx context.Context) error {
 	return err
 }
 
-// ListResourcesByPage manually list resources by page.
-func (c *Client) ListResourcesByPage(
-	ctx context.Context,
-	request ListResourcesRequest,
-) (*ListResourcesResult, error) {
-	result, err := listByPage[ListResourcesResult](ctx, c, request.PaginatedRequest, request.Header, "resources/list")
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func (c *Client) ListResources(
-	ctx context.Context,
-	request ListResourcesRequest,
-) (*ListResourcesResult, error) {
-	result, err := c.ListResourcesByPage(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-	for result.NextCursor != "" {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-			request.Params.Cursor = result.NextCursor
-			newPageRes, err := c.ListResourcesByPage(ctx, request)
-			if err != nil {
-				return nil, err
-			}
-			result.Resources = append(result.Resources, newPageRes.Resources...)
-			result.NextCursor = newPageRes.NextCursor
-		}
-	}
-	return result, nil
-}
-
-func (c *Client) ListResourceTemplatesByPage(
-	ctx context.Context,
-	request ListResourceTemplatesRequest,
-) (*ListResourceTemplatesResult, error) {
-	result, err := listByPage[ListResourceTemplatesResult](ctx, c, request.PaginatedRequest, request.Header, "resources/templates/list")
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func (c *Client) ListResourceTemplates(
-	ctx context.Context,
-	request ListResourceTemplatesRequest,
-) (*ListResourceTemplatesResult, error) {
-	result, err := c.ListResourceTemplatesByPage(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-	for result.NextCursor != "" {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-			request.Params.Cursor = result.NextCursor
-			newPageRes, err := c.ListResourceTemplatesByPage(ctx, request)
-			if err != nil {
-				return nil, err
-			}
-			result.ResourceTemplates = append(result.ResourceTemplates, newPageRes.ResourceTemplates...)
-			result.NextCursor = newPageRes.NextCursor
-		}
-	}
-	return result, nil
-}
-
-func (c *Client) ReadResource(
-	ctx context.Context,
-	request ReadResourceRequest,
-) (*ReadResourceResult, error) {
-	response, err := c.sendRequest(ctx, "resources/read", request.Params, request.Header)
-	if err != nil {
-		return nil, err
-	}
-
-	return ParseReadResourceResult(response)
-}
-
-func (c *Client) Subscribe(
-	ctx context.Context,
-	request SubscribeRequest,
-) error {
-	_, err := c.sendRequest(ctx, "resources/subscribe", request.Params, request.Header)
-	return err
-}
-
-func (c *Client) Unsubscribe(
-	ctx context.Context,
-	request UnsubscribeRequest,
-) error {
-	_, err := c.sendRequest(ctx, "resources/unsubscribe", request.Params, request.Header)
-	return err
-}
-
-func (c *Client) ListPromptsByPage(
-	ctx context.Context,
-	request ListPromptsRequest,
-) (*ListPromptsResult, error) {
-	result, err := listByPage[ListPromptsResult](ctx, c, request.PaginatedRequest, request.Header, "prompts/list")
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
-func (c *Client) ListPrompts(
-	ctx context.Context,
-	request ListPromptsRequest,
-) (*ListPromptsResult, error) {
-	result, err := c.ListPromptsByPage(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-	for result.NextCursor != "" {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-			request.Params.Cursor = result.NextCursor
-			newPageRes, err := c.ListPromptsByPage(ctx, request)
-			if err != nil {
-				return nil, err
-			}
-			result.Prompts = append(result.Prompts, newPageRes.Prompts...)
-			result.NextCursor = newPageRes.NextCursor
-		}
-	}
-	return result, nil
-}
-
-func (c *Client) GetPrompt(
-	ctx context.Context,
-	request GetPromptRequest,
-) (*GetPromptResult, error) {
-	response, err := c.sendRequest(ctx, "prompts/get", request.Params, request.Header)
-	if err != nil {
-		return nil, err
-	}
-
-	return ParseGetPromptResult(response)
-}
-
 func (c *Client) ListToolsByPage(
 	ctx context.Context,
 	request ListToolsRequest,
@@ -473,204 +281,15 @@ func (c *Client) CallTool(
 	return ParseCallToolResult(response)
 }
 
-func (c *Client) SetLevel(
-	ctx context.Context,
-	request SetLevelRequest,
-) error {
-	_, err := c.sendRequest(ctx, "logging/setLevel", request.Params, request.Header)
-	return err
-}
-
-func (c *Client) Complete(
-	ctx context.Context,
-	request CompleteRequest,
-) (*CompleteResult, error) {
-	response, err := c.sendRequest(ctx, "completion/complete", request.Params, request.Header)
-	if err != nil {
-		return nil, err
-	}
-
-	var result CompleteResult
-	if err := json.Unmarshal(*response, &result); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	return &result, nil
-}
-
-// RootListChanges sends a roots list-changed notification to the server.
-func (c *Client) RootListChanges(
-	ctx context.Context,
-) error {
-	// Send root list changes notification
-	notification := JSONRPCNotification{
-		JSONRPC: JSONRPC_VERSION,
-		Notification: Notification{
-			Method: MethodNotificationRootsListChanged,
-		},
-	}
-
-	err := c.transport.SendNotification(ctx, notification)
-	if err != nil {
-		return fmt.Errorf(
-			"failed to send root list change notification: %w",
-			err,
-		)
-	}
-	return nil
-}
-
 // handleIncomingRequest processes incoming requests from the server.
 // This is the main entry point for server-to-client requests like sampling and elicitation.
 func (c *Client) handleIncomingRequest(ctx context.Context, request JSONRPCRequest) (*JSONRPCResponse, error) {
 	switch request.Method {
-	case string(MethodSamplingCreateMessage):
-		return c.handleSamplingRequestTransport(ctx, request)
-	case string(MethodElicitationCreate):
-		return c.handleElicitationRequestTransport(ctx, request)
 	case string(MethodPing):
 		return c.handlePingRequestTransport(ctx, request)
-	case string(MethodListRoots):
-		return c.handleListRootsRequestTransport(ctx, request)
 	default:
 		return nil, fmt.Errorf("unsupported request method: %s", request.Method)
 	}
-}
-
-// handleSamplingRequestTransport handles sampling requests at the transport level.
-func (c *Client) handleSamplingRequestTransport(ctx context.Context, request JSONRPCRequest) (*JSONRPCResponse, error) {
-	if c.samplingHandler == nil {
-		return nil, fmt.Errorf("no sampling handler configured")
-	}
-
-	// Parse the request parameters
-	var params CreateMessageParams
-	if request.Params != nil {
-		paramsBytes, err := json.Marshal(request.Params)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal params: %w", err)
-		}
-		if err := json.Unmarshal(paramsBytes, &params); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal params: %w", err)
-		}
-	}
-
-	// Fix content parsing - HTTP transport unmarshals TextContent as map[string]any
-	// Use the helper function to properly handle content from different transports
-	for i := range params.Messages {
-		if contentMap, ok := params.Messages[i].Content.(map[string]any); ok {
-			// Parse the content map into a proper Content type
-			content, err := ParseContent(contentMap)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse content for message %d: %w", i, err)
-			}
-			params.Messages[i].Content = content
-		}
-	}
-
-	// Create the MCP request
-	mcpRequest := CreateMessageRequest{
-		Request: Request{
-			Method: string(MethodSamplingCreateMessage),
-		},
-		CreateMessageParams: params,
-	}
-
-	// Call the sampling handler
-	result, err := c.samplingHandler.CreateMessage(ctx, mcpRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	// Marshal the result
-	resultBytes, err := json.Marshal(result)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal result: %w", err)
-	}
-
-	// Create the transport response
-	response := NewJSONRPCResultResponse(request.ID, json.RawMessage(resultBytes))
-
-	return &response, nil
-}
-
-// handleListRootsRequestTransport handles list roots requests at the transport level.
-func (c *Client) handleListRootsRequestTransport(ctx context.Context, request JSONRPCRequest) (*JSONRPCResponse, error) {
-	if c.rootsHandler == nil {
-		return nil, fmt.Errorf("no roots handler configured")
-	}
-
-	// Create the MCP request
-	mcpRequest := ListRootsRequest{
-		Request: Request{
-			Method: string(MethodListRoots),
-		},
-	}
-
-	// Call the list roots handler
-	result, err := c.rootsHandler.ListRoots(ctx, mcpRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	// Marshal the result
-	resultBytes, err := json.Marshal(result)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal result: %w", err)
-	}
-
-	// Create the transport response
-	response := NewJSONRPCResultResponse(request.ID, json.RawMessage(resultBytes))
-
-	return &response, nil
-}
-
-// handleElicitationRequestTransport handles elicitation requests at the transport level.
-func (c *Client) handleElicitationRequestTransport(ctx context.Context, request JSONRPCRequest) (*JSONRPCResponse, error) {
-	if c.elicitationHandler == nil {
-		return nil, fmt.Errorf("no elicitation handler configured")
-	}
-
-	// Parse the request parameters
-	var params ElicitationParams
-	if request.Params != nil {
-		paramsBytes, err := json.Marshal(request.Params)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal params: %w", err)
-		}
-		if err := json.Unmarshal(paramsBytes, &params); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal params: %w", err)
-		}
-	}
-
-	if err := params.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid elicitation params: %w", err)
-	}
-
-	// Create the MCP request
-	mcpRequest := ElicitationRequest{
-		Request: Request{
-			Method: string(MethodElicitationCreate),
-		},
-		Params: params,
-	}
-
-	// Call the elicitation handler
-	result, err := c.elicitationHandler.Elicit(ctx, mcpRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	// Marshal the result
-	resultBytes, err := json.Marshal(result)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal result: %w", err)
-	}
-
-	// Create the transport response
-	response := NewJSONRPCResultResponse(request.ID, resultBytes)
-
-	return &response, nil
 }
 
 func (c *Client) handlePingRequestTransport(ctx context.Context, request JSONRPCRequest) (*JSONRPCResponse, error) {
