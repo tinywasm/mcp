@@ -1,5 +1,7 @@
 package mcp
 
+import "context"
+
 // Loggable defines the interface for handlers that support logging
 type Loggable interface {
 	Name() string
@@ -14,7 +16,14 @@ type ToolProvider interface {
 // ToolExecutor defines how a tool should be executed
 // Handlers implement this to provide execution logic without exposing internals
 // args: map of parameter name to value from MCP request
-type ToolExecutor func(args map[string]any)
+type ToolExecutor func(ctx context.Context, args map[string]any) (any, error)
+
+// BinaryData represents a binary tool result (e.g., screenshots).
+// When passed as result from ToolExecutor, it is base64-encoded and returned as image content.
+type BinaryData struct {
+	MimeType string
+	Data     []byte
+}
 
 // ToolMetadata provides MCP tool configuration metadata
 // This is the standard interface that all handlers should implement
@@ -35,8 +44,8 @@ type ParameterMetadata struct {
 	Default     any
 }
 
-// buildMCPTool constructs MCP tool from metadata
-func buildMCPTool(meta ToolMetadata) *Tool {
+// BuildMCPTool constructs MCP tool from metadata
+func BuildMCPTool(meta ToolMetadata) *Tool {
 	options := []ToolOption{
 		WithDescription(meta.Description),
 	}
