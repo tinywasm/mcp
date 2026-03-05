@@ -1,8 +1,10 @@
-# tinywasm/mcp — Refactoring Plan: Minimal MCP Server/Client Library
+# tinywasm/mcp — Refactoring Plan: Protocol-Only MCP Library
 
-> **Goal:** Simplify `tinywasm/mcp` from a ~46-file fork of mark3labs/mcp-go into a lean, zero-external-dependency MCP library that will eventually replace `tinywasm/mcpserve` entirely.
+> **Goal:** Strip `tinywasm/mcp` to a lean MCP protocol library — tools + JSON-RPC + HTTP transport only.
+> No SSE, no stdio, no OAuth, no Resources, no Prompts, no Tasks, no session management state.
+> Session lifecycle is managed by the consumer (e.g. `tinywasm/user`) and injected via context.
 >
-> **Status:** Pending execution
+> **Status:** Phases 1–2 complete. Phase 3 pending.
 
 ---
 
@@ -12,201 +14,175 @@
 - **Standard Library Only:** No external assertion libraries. No `testify`.
 - **Max 500 lines per file.** Subdivide if exceeded.
 - **SRP:** Each file has a single purpose, named by domain.
-- **No third-party dependencies:** Only standard library + `tinywasm/*` ecosystem packages. Remove any non-tinywasm external dependencies from go.mod.
+- **No third-party dependencies:** Only stdlib + `tinywasm/*` ecosystem packages.
 - **Flat structure:** All source in root. Tests in `tests/`. No new subdirectories.
 
 ---
 
-## Context
+## Architecture
 
-`tinywasm/mcp` is a fork of `mark3labs/mcp-go` containing ~46 Go files, 20+ test files (all broken after migration to `tests/`), and 10 internal packages. The library implements the full MCP spec (tools, resources, prompts, tasks, sampling, elicitation, roots, OAuth, stdio, inprocess), but only **tools + SSE/HTTP transport** are needed.
-
-The goal is a single importable package with a clean API:
-```go
-srv := mcp.NewServer("name", "1.0.0")
-srv.RegisterProvider(myModule)
-http.ListenAndServe(":8080", srv.HTTPHandler())
+```
+[ tinywasm/user ]  — creates + manages sessions, injects via context
+        │
+        ▼
+[ tinywasm/mcp ]   — MCP protocol: types, tools, JSON-RPC dispatch, HTTP transport
+        │
+        ▼
+[ Standard HTTP handler: srv.HTTPHandler() ]
 ```
 
-This will allow `tinywasm/mcpserve` to be eliminated after consumers are migrated.
+### What lives in `tinywasm/mcp`
 
-**Key insight from exploration:** `mcpserve/handler.go` already imports `"github.com/tinywasm/mcp/server"` (a subpackage that does not yet exist). This plan keeps everything in the root package.
+| Concern | Decision |
+|---------|----------|
+| JSON-RPC types | ✅ Keep |
+| Tool registration + dispatch | ✅ Keep |
+| HTTP transport (streamable HTTP) | ✅ Keep — stripped of OAuth |
+| SSE transport | ❌ Delete — superseded by streamable HTTP |
+| Stdio transport | ❌ Delete — HTTP only |
+| OAuth / security | ❌ Delete — injected by consumer |
+| Session state (sync.Map, AddSessionTools) | ❌ Delete — managed by tinywasm/user |
+| Resources, Prompts, Tasks, Sampling | ❌ Delete — out of scope |
+
+### Session design
+
+The `ClientSession` **interface** stays as the protocol contract. The **management** of sessions
+(creating, storing, routing) is extracted from `MCPServer`. The consumer calls `HandleMessage`
+with a context that already contains the resolved session, placed there by `tinywasm/user`.
+
+```go
+// consumer code (pseudocode)
+session := userPkg.GetSession(r)
+ctx = mcp.ContextWithSession(ctx, session)
+response := mcpServer.HandleMessage(ctx, body)
+```
+
+`MCPServer` never holds a `sync.Map` of sessions. It is stateless regarding session lifecycle.
 
 ---
 
-## Phase 1 — Delete Unnecessary Files
+## Final File List (after refactor)
 
-Delete the following files from `/home/cesar/Dev/Project/tinywasm/mcp/`:
+| File | Purpose |
+|------|---------|
+| `server.go` | MCPServer — tool registration, HandleMessage dispatch |
+| `client.go` | Client — Initialize, ListTools, CallTool (HTTP transport) |
+| `provider.go` | RegisterProvider() |
+| `executor.go` | mcpExecuteTool() — Loggable + BinaryData handling |
+| `tools.go` | Tool, CallToolRequest/Result, argument helpers |
+| `tools_meta.go` | ToolProvider, ToolMetadata, ParameterMetadata, BinaryData |
+| `types.go` | JSON-RPC types, capabilities, content types |
+| `session.go` | `ClientSession` interface only (~15 lines) |
+| `errors.go` | Standard errors |
+| `ctx.go` | Context utilities |
+| `constants.go` | Protocol constants |
+| `interface.go` | MCPClient interface |
+| `utils.go` | Helpers (NewTool*, ParseXxx, content helpers) |
+| `logger.go` | Logger |
+| `transport_interface.go` | Transport contract (Interface, BidirectionalInterface) |
+| `transport_streamable_http.go` | HTTP streamable transport — stripped of OAuth |
+| `transport_error.go` | Transport errors |
+| `transport_utils.go` | Transport utilities |
+| `http.go` | HTTP server handler — stripped of OAuth |
+| `internal/unixid/` | Session ID generation |
+| `tests/` | Integration tests |
 
-**Feature files (not needed):**
-- `handler.go` — app-level orchestration, belongs in mcpserve/app, not the library **✅ DONE**
-- `resources.go` — resources not needed now
-- `prompts.go` — prompts not needed now
-- `tasks.go` + `task_hooks.go` — tasks removed
-- `hooks.go` — lifecycle hooks removed
-- `request_handler.go` — auto-generated dispatcher (will be rewritten to tool-only)
-- `sampling.go` — not needed
-- `elicitation.go` — not needed
-- `roots.go` — not needed
-- `completion.go` — not needed
-- `oauth.go` + `transport_oauth.go` + `transport_oauth_utils.go` — no OAuth needed
-- `transport_stdio.go` + `stdio.go` — no stdio transport
-- `inprocess.go` + `inprocess_session.go` + `transport_inprocess.go` — no in-process
-- `ide_config.go` — not library concern **✅ DONE**
-- `typed_tools.go` — reflection-based tool building not needed
-- `http_transport_options.go` — merge into `transport_streamable_http.go` **✅ DONE**
-- `consts.go` — check for duplicates with `constants.go`, merge and delete **✅ DONE**
+---
+
+## Phase 1 — Delete Files ✅ (complete or verify)
+
+**Feature files:**
+- `handler.go` ✅
+- `resources.go`
+- `prompts.go`
+- `tasks.go` + `task_hooks.go`
+- `hooks.go`
+- `sampling.go`
+- `elicitation.go`
+- `roots.go`
+- `completion.go`
+- `oauth.go` + `transport_oauth.go` + `transport_oauth_utils.go`
+- `ide_config.go` ✅
+- `typed_tools.go`
+- `http_transport_options.go` ✅
+- `consts.go` ✅
+
+**Eliminated transport implementations:**
+- `transport_sse.go` ← DELETE (superseded by streamable HTTP)
+- `transport_stdio.go` + `stdio.go` ← DELETE (HTTP only)
+- `inprocess.go` + `inprocess_session.go` + `transport_inprocess.go` ← DELETE
+- `request_handler.go` ← will be **replaced** in Phase 3 (not deleted here)
 
 **Directories:**
-- `e2e/` — delete entirely **✅ DONE**
-- `testdata/` — delete entirely **✅ DONE**
-- `util/` — delete by moving `util/logger.go` to root as `logger.go` (package `mcp`) **✅ DONE**
-- `tests/` — **KEEP**. Existing tests in this folder will be updated/rewritten as needed.
+- `e2e/` ✅
+- `testdata/` ✅
+- `util/` ✅ (logger.go moved to root)
 
 ---
 
-## Phase 2 — Delete Unused Internal Packages
+## Phase 2 — Delete Unused Internal Packages ✅ (complete or verify)
 
-Audit and delete from `internal/`:
-
-| Package | Used By | Decision |
-|---------|---------|----------|
-| `internal/jsonschema/` | `typed_tools.go` (deleted) | **DELETE** |
-| `internal/go-ordered-map/` | `jsonschema` (deleted) | **DELETE** |
-| `internal/generic-list-go/` | task lists (deleted) | **DELETE** |
-| `internal/uritemplate/` | resource templates (deleted) | **DELETE** |
-| `internal/tfmt/` | possibly tools/server | **DELETE** — replaced by `tinywasm/fmt` | ✅ DONE |
-| `internal/ttime/` | possibly tools/server | **DELETE** — replaced by `tinywasm/time` | ✅ DONE |
-| `internal/cast/` | possibly tools | **CHECK** — delete if unused | |
-| `internal/unixid/` | `server.go` (session IDs) | **EXTERNAL** — replaced by `tinywasm/unixid` | ✅ DONE |
-| `internal/testutils/` | tests | **DELETE** — unused, and violates 'Standard Library Only' test rule | ✅ DONE |
+| Package | Decision |
+|---------|----------|
+| `internal/jsonschema/` | DELETE |
+| `internal/go-ordered-map/` | DELETE |
+| `internal/generic-list-go/` | DELETE |
+| `internal/uritemplate/` | DELETE |
+| `internal/tfmt/` | DELETE ✅ |
+| `internal/ttime/` | DELETE ✅ |
+| `internal/cast/` | KEEP — used by `utils.go` ParseXxx helpers |
+| `internal/unixid/` | KEEP ✅ |
+| `internal/testutils/` | DELETE ✅ |
 
 ---
 
-## Phase 3 — Simplify Core Files
+## Phase 3 — Core File Rewrites
 
-### 3a. `server.go`
-Remove:
-- All resource-related fields: `resources`, `resourceTemplates`, `resourceHandlers`
-- All prompt-related fields: `prompts`, `promptHandlers`
-- All task-related fields: `tasks`, `taskTools`, `expiredTasks`
-- `hooks` and `taskHooks` fields
-- All methods: `AddResource`, `AddPrompt`, `AddTask`, `SetHooks` and their variants
-- Session extension handlers: `SessionWithResources`, `SessionWithResourceTemplates`, `SessionWithSampling`, `SessionWithElicitation`, `SessionWithRoots`, `SessionWithLogging`
+> ⚠️ Do NOT edit large files with shell scripts. Follow [PLAN_STAGE_3.md](PLAN_STAGE_3.md) exactly.
+> That document provides complete replacement content or exact deletion lists per file.
 
-Keep:
-- `MCPServer` struct (minimal fields: `name`, `version`, `tools`, `sessions`)
-- `NewMCPServer(name, version string, opts ...ServerOption) *MCPServer`
-- `AddTool(tool Tool, handler ToolHandlerFunc)`
-- `AddTools(tools ...ServerTool)`
-- `RegisterSession` / `UnregisterSession`
-- `AddSessionTool(s)` / `DeleteSessionTools`
-- `WithContext` / session context helpers
-- HTTP handler creation (currently in `http.go`)
+**Execution order:**
 
-### 3b. `types.go`
-Remove type definitions for:
-- Resources, ResourceTemplates
-- Prompts, PromptArguments
-- Tasks, TaskStatus
-- Sampling (CreateMessage*)
-- Elicitation
-- Roots
-- Logging (LoggingLevel)
-- Completion (CompletionArgument, etc.)
+1. **Section A** — Write complete replacements:
+   - `errors.go`, `session.go` (interface only), `interface.go`, `client.go`, `request_handler.go`
 
-Keep:
-- JSON-RPC types: `JSONRPCRequest`, `JSONRPCResponse`, `JSONRPCNotification`, `JSONRPCErrorDetails`
-- Capability types (only tool-related capabilities)
-- `Implementation`, `Meta`, `Content`, `TextContent`, `ImageContent`
-- `InitializeRequest/Result`, `PaginatedRequest/Result`
-- Session and client info types
+2. **Section B** — Surgical deletions from `utils.go`
 
-### 3c. `session.go`
-Remove:
-- `SessionWithResources`
-- `SessionWithResourceTemplates`
-- `SessionWithSampling`
-- `SessionWithElicitation`
-- `SessionWithRoots`
-- `SessionWithLogging`
+3. **Section C** — Structural rewrite of `server.go`
+   (new stateless MCPServer struct + exact deletion list)
 
-Keep:
-- `ClientSession` interface
-- `SessionWithTools`
-- `SessionWithClientInfo`
-- `SessionWithStreamableHTTPConfig`
+4. **Section D** — Surgical deletions from `tools.go`
 
-### 3d. `mcptest.go`
-Remove:
-- `prompts`, `resources`, `resourceTemplates` fields
-- `AddPrompt`, `AddResource`, `AddResourceTemplate` methods
+5. **Section E** — Type deletion list for `types.go`
 
-Keep:
-- `Server` struct (tools only)
-- `NewServer(t, tools...)` / `NewUnstartedServer(t)`
-- `AddTool`, `AddTools`, `Start`, `Close`, `Client`
+6. **Section E2** — OAuth/SSE cleanup in `transport_streamable_http.go` and `http.go`
 
-### 3e. `errors.go`
-Remove:
-- `ErrResourceNotFound`, `ErrPromptNotFound`
-- `ErrSessionDoesNotSupportResources`, `ErrSessionDoesNotSupportResourceTemplates`
-- `ErrSessionDoesNotSupportLogging`
-- `ErrDynamicPathConfig`
+7. **Section F** — Build, test, push
 
-Keep all tool/session errors.
+→ **[Open PLAN_STAGE_3.md](PLAN_STAGE_3.md)**
 
 ---
 
-## Phase 4 — Update `go.mod`
-
-After deleting unnecessary files, run:
+## Phase 4 — `go mod tidy`
 
 ```bash
 go mod tidy
 ```
 
-This will remove any unused dependencies automatically. `tinywasm/sse` and `tinywasm/fmt` may remain if still referenced by other files.
-
 ---
 
 ## Phase 5 — Verify & Submit
 
-1. Run the test suite: `gotest` — 100% pass required before proceeding.
-2. `gopush 'refactor: complete mcp file pruning and server/types simplification'`
+```bash
+gotest
+gopush 'refactor: strip mcp to protocol-only HTTP transport, extract session management'
+```
 
 ---
 
-## Files Remaining After Refactor (~15 files)
+## Migration Note (Out of Scope)
 
-| File | Purpose |
-|------|---------|
-| `server.go` | MCPServer — tool registration, dispatch, sessions |
-| `client.go` | MCPClient — ListTools, CallTool |
-| `provider.go` | RegisterProvider() |
-| `executor.go` | mcpExecuteTool() — Loggable + BinaryData handling |
-| `tools.go` | Tool, CallToolRequest, CallToolResult, builder helpers |
-| `tools_meta.go` | ToolProvider, ToolMetadata, ParameterMetadata, BinaryData |
-| `types.go` | JSON-RPC types, capabilities, content types |
-| `session.go` | ClientSession, SessionWithTools |
-| `errors.go` | Standard errors |
-| `ctx.go` | Context utilities |
-| `constants.go` | Protocol constants |
-| `interface.go` | MCPClient interface |
-| `utils.go` | Internal helpers |
-| `transport_interface.go` | Transport interface |
-| `transport_sse.go` | SSE client transport |
-| `transport_streamable_http.go` | HTTP streamable transport (client+server) |
-| `transport_error.go` | Transport errors |
-| `transport_utils.go` | Transport utilities |
-| `http.go` | HTTP server handler (NewStreamableHTTPServer) |
-| `mcptest.go` | Test harness |
-| `internal/unixid/` | Session ID generation |
-| `internal/testutils/` | Test assertion helpers |
-| `tests/` | New minimal tests |
-
----
-
-## Migration Note (Out of Scope for This Plan)
-
-After this plan is executed, a separate plan will migrate `app`, `devbrowser`, `devtui` to import `github.com/tinywasm/mcp` directly instead of `github.com/tinywasm/mcpserve`, allowing `mcpserve` to be deleted. The `ToolExecutor` signature change is a breaking change for those consumers.
+After this plan executes, a separate plan will:
+1. Implement session management in `tinywasm/user` and wire it to `tinywasm/mcp`.
+2. Migrate `app`, `devbrowser`, `devtui` to import `github.com/tinywasm/mcp` directly.
+3. Delete `tinywasm/mcpserve`.
