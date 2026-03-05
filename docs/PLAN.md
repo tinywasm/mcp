@@ -39,7 +39,7 @@ This will allow `tinywasm/mcpserve` to be eliminated after consumers are migrate
 Delete the following files from `/home/cesar/Dev/Project/tinywasm/mcp/`:
 
 **Feature files (not needed):**
-- `handler.go` — app-level orchestration, belongs in mcpserve/app, not the library
+- `handler.go` — app-level orchestration, belongs in mcpserve/app, not the library **✅ DONE**
 - `resources.go` — resources not needed now
 - `prompts.go` — prompts not needed now
 - `tasks.go` + `task_hooks.go` — tasks removed
@@ -52,14 +52,16 @@ Delete the following files from `/home/cesar/Dev/Project/tinywasm/mcp/`:
 - `oauth.go` + `transport_oauth.go` + `transport_oauth_utils.go` — no OAuth needed
 - `transport_stdio.go` + `stdio.go` — no stdio transport
 - `inprocess.go` + `inprocess_session.go` + `transport_inprocess.go` — no in-process
-- `ide_config.go` — not library concern
+- `ide_config.go` — not library concern **✅ DONE**
 - `typed_tools.go` — reflection-based tool building not needed
-- `http_transport_options.go` — merge into `transport_streamable_http.go`
-- `consts.go` — check for duplicates with `constants.go`, merge and delete
+- `http_transport_options.go` — merge into `transport_streamable_http.go` **✅ DONE**
+- `consts.go` — check for duplicates with `constants.go`, merge and delete **✅ DONE**
 
 **Directories:**
-- `e2e/` — delete entirely
-- `tests/` — delete entirely (rewrite from scratch in Step 6)
+- `e2e/` — delete entirely **✅ DONE**
+- `testdata/` — delete entirely **✅ DONE**
+- `util/` — delete by moving `util/logger.go` to root as `logger.go` (package `mcp`) **✅ DONE**
+- `tests/` — **KEEP**. Existing tests in this folder will be updated/rewritten as needed.
 
 ---
 
@@ -73,11 +75,11 @@ Audit and delete from `internal/`:
 | `internal/go-ordered-map/` | `jsonschema` (deleted) | **DELETE** |
 | `internal/generic-list-go/` | task lists (deleted) | **DELETE** |
 | `internal/uritemplate/` | resource templates (deleted) | **DELETE** |
-| `internal/tfmt/` | possibly tools/server | **CHECK** — delete if unused |
-| `internal/ttime/` | possibly tools/server | **CHECK** — delete if unused |
-| `internal/cast/` | possibly tools | **CHECK** — delete if unused |
-| `internal/unixid/` | `server.go` (session IDs) | **KEEP** |
-| `internal/testutils/` | tests | **KEEP** (for new tests) |
+| `internal/tfmt/` | possibly tools/server | **DELETE** — replaced by `tinywasm/fmt` | ✅ DONE |
+| `internal/ttime/` | possibly tools/server | **DELETE** — replaced by `tinywasm/time` | ✅ DONE |
+| `internal/cast/` | possibly tools | **CHECK** — delete if unused | |
+| `internal/unixid/` | `server.go` (session IDs) | **EXTERNAL** — replaced by `tinywasm/unixid` | ✅ DONE |
+| `internal/testutils/` | tests | **DELETE** — unused, and violates 'Standard Library Only' test rule | ✅ DONE |
 
 ---
 

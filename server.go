@@ -13,7 +13,8 @@ import (
 	"sort"
 	"sync"
 	"time"
-	"github.com/tinywasm/mcp/internal/unixid"
+
+	"github.com/tinywasm/unixid"
 )
 
 var idGenerator *unixid.UnixID
@@ -212,7 +213,7 @@ type MCPServer struct {
 	activeTasks                int                  // Current count of running (non-terminal) tasks
 }
 
-// WithPaginationLimit sets the pagination limit for the 
+// WithPaginationLimit sets the pagination limit for the
 func WithPaginationLimit(limit int) ServerOption {
 	return func(s *MCPServer) {
 		s.paginationLimit = &limit
@@ -353,7 +354,7 @@ func WithRecovery() ServerOption {
 
 // WithHooks allows adding hooks that will be called before or after
 // either [all] requests or before / after specific request methods, or else
-// prior to returning an error to the 
+// prior to returning an error to the
 func WithHooks(hooks *Hooks) ServerOption {
 	return func(s *MCPServer) {
 		s.hooks = hooks

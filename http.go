@@ -1,8 +1,15 @@
 package mcp
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 )
+
+// HTTPContextFunc is a function that takes an existing context and the current
+// request and returns a potentially modified context based on the request
+// content. This can be used to inject context values from headers, for example.
+type HTTPContextFunc func(ctx context.Context, r *http.Request) context.Context
 
 // NewStreamableHttpClient is a convenience method that creates a new streamable-http-based MCP client
 // with the given base URL. Returns an error if the URL is invalid.

@@ -14,8 +14,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/tinywasm/mcp/util"
 )
 
 // SSE implements the transport layer of the MCP protocol using Server-Sent Events (SSE).
@@ -34,7 +32,7 @@ type SSE struct {
 	headers        map[string]string
 	headerFunc     HTTPHeaderFunc
 	host           string
-	logger         util.Logger
+	logger         Logger
 
 	started          atomic.Bool
 	closed           atomic.Bool
@@ -50,7 +48,7 @@ type SSE struct {
 type SSEOption func(*SSE)
 
 // WithSSELogger sets a custom logger for the SSE
-func WithSSELogger(logger util.Logger) SSEOption {
+func WithSSELogger(logger Logger) SSEOption {
 	return func(sc *SSE) {
 		sc.logger = logger
 	}
@@ -103,7 +101,7 @@ func NewSSE(baseURL string, options ...SSEOption) (*SSE, error) {
 		responses:    make(map[string]chan *JSONRPCResponse),
 		endpointChan: make(chan struct{}),
 		headers:      make(map[string]string),
-		logger:       util.DefaultLogger(),
+		logger:       DefaultLogger(),
 	}
 
 	for _, opt := range options {

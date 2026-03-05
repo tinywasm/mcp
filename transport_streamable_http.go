@@ -15,7 +15,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-"github.com/tinywasm/mcp/util"
 )
 
 type StreamableHTTPCOption func(*StreamableHTTP)
@@ -24,7 +23,7 @@ type StreamableHTTPCOption func(*StreamableHTTP)
 // In particular, if you want to receive global notifications from the server (like ToolListChangedNotification),
 // you should enable this option.
 //
-// It will establish a standalone long-live GET HTTP connection to the 
+// It will establish a standalone long-live GET HTTP connection to the
 // https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#listening-for-messages-from-the-server
 // NOTICE: Even enabled, the server may not support this feature.
 func WithContinuousListening() StreamableHTTPCOption {
@@ -33,7 +32,7 @@ func WithContinuousListening() StreamableHTTPCOption {
 	}
 }
 
-// WithHTTPClient sets a custom HTTP client on the StreamableHTTP 
+// WithHTTPClient sets a custom HTTP client on the StreamableHTTP
 func WithHTTPBasicClient(client *http.Client) StreamableHTTPCOption {
 	return func(sc *StreamableHTTP) {
 		sc.httpClient = client
@@ -59,22 +58,22 @@ func WithHTTPTimeout(timeout time.Duration) StreamableHTTPCOption {
 	}
 }
 
-// WithHTTPOAuth enables OAuth authentication for the 
+// WithHTTPOAuth enables OAuth authentication for the
 func WithHTTPOAuth(config OAuthConfig) StreamableHTTPCOption {
 	return func(sc *StreamableHTTP) {
 		sc.oauthHandler = NewOAuthHandler(config)
 	}
 }
 
-// WithHTTPLogger sets a custom logger for the StreamableHTTP 
-func WithHTTPLogger(logger util.Logger) StreamableHTTPCOption {
+// WithHTTPLogger sets a custom logger for the StreamableHTTP
+func WithHTTPLogger(logger Logger) StreamableHTTPCOption {
 	return func(sc *StreamableHTTP) {
 		sc.logger = logger
 	}
 }
 
 // Deprecated: Use [WithHTTPLogger] instead.
-func WithLogger(logger util.Logger) StreamableHTTPCOption {
+func WithLogger(logger Logger) StreamableHTTPCOption {
 	return WithHTTPLogger(logger)
 }
 
@@ -86,7 +85,7 @@ func WithHTTPSession(sessionID string) StreamableHTTPCOption {
 }
 
 // WithStreamableHTTPHost sets a custom Host header for the StreamableHTTP client, enabling manual DNS resolution.
-// This allows connecting to an IP address while sending a specific Host header to the 
+// This allows connecting to an IP address while sending a specific Host header to the
 // For example, connecting to "http://192.168.1.100:8080/mcp" but sending Host: "api.example.com"
 func WithStreamableHTTPHost(host string) StreamableHTTPCOption {
 	return func(sc *StreamableHTTP) {
@@ -94,7 +93,7 @@ func WithStreamableHTTPHost(host string) StreamableHTTPCOption {
 	}
 }
 
-// StreamableHTTP implements Streamable HTTP 
+// StreamableHTTP implements Streamable HTTP
 //
 // It transmits JSON-RPC messages over individual HTTP requests. One message per request.
 // The HTTP response body can either be a single JSON-RPC response,
@@ -111,7 +110,7 @@ type StreamableHTTP struct {
 	headers             map[string]string
 	headerFunc          HTTPHeaderFunc
 	host                string
-	logger              util.Logger
+	logger              Logger
 	getListeningEnabled bool
 
 	sessionID       atomic.Value // string
@@ -147,7 +146,7 @@ func NewStreamableHTTP(serverURL string, options ...StreamableHTTPCOption) (*Str
 		httpClient:  &http.Client{},
 		headers:     make(map[string]string),
 		closed:      make(chan struct{}),
-		logger:      util.DefaultLogger(),
+		logger:      DefaultLogger(),
 		initialized: make(chan struct{}),
 	}
 	smc.sessionID.Store("") // set initial value to simplify later usage
@@ -168,7 +167,7 @@ func NewStreamableHTTP(serverURL string, options ...StreamableHTTPCOption) (*Str
 	return smc, nil
 }
 
-// Start initiates the HTTP connection to the 
+// Start initiates the HTTP connection to the
 func (c *StreamableHTTP) Start(ctx context.Context) error {
 	// Start is idempotent - check if already initialized
 	select {
@@ -194,7 +193,7 @@ func (c *StreamableHTTP) Start(ctx context.Context) error {
 	return nil
 }
 
-// Close closes the all the HTTP connections to the 
+// Close closes the all the HTTP connections to the
 func (c *StreamableHTTP) Close() error {
 	c.closeOnce.Do(func() {
 		// Cancel all in-flight requests
@@ -597,7 +596,7 @@ func (c *StreamableHTTP) SetNotificationHandler(handler func(JSONRPCNotification
 	c.notificationHandler = handler
 }
 
-// SetRequestHandler sets the handler for incoming requests from the 
+// SetRequestHandler sets the handler for incoming requests from the
 func (c *StreamableHTTP) SetRequestHandler(handler RequestHandler) {
 	c.requestMu.Lock()
 	defer c.requestMu.Unlock()

@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
-"github.com/tinywasm/mcp/util"
 )
 
 // ErrTransportClosed is returned when attempting to send a request or notification
@@ -27,25 +26,25 @@ type Stdio struct {
 	args    []string
 	env     []string
 
-	cmd            *exec.Cmd
-	cmdFunc        CommandFunc
-	stdin          io.WriteCloser
-	stdout         *bufio.Reader
-	stderr         io.ReadCloser
-	responses      map[string]chan *JSONRPCResponse
-	mu             sync.RWMutex
+	cmd              *exec.Cmd
+	cmdFunc          CommandFunc
+	stdin            io.WriteCloser
+	stdout           *bufio.Reader
+	stderr           io.ReadCloser
+	responses        map[string]chan *JSONRPCResponse
+	mu               sync.RWMutex
 	done             chan struct{}
 	closeOnce        sync.Once
 	closeCleanupOnce sync.Once
 	onNotification   func(JSONRPCNotification)
-	notifyMu       sync.RWMutex
-	onRequest      RequestHandler
-	requestMu      sync.RWMutex
-	ctx            context.Context
-	ctxMu          sync.RWMutex
-	logger         util.Logger
-	started        bool
-	startedMu      sync.Mutex
+	notifyMu         sync.RWMutex
+	onRequest        RequestHandler
+	requestMu        sync.RWMutex
+	ctx              context.Context
+	ctxMu            sync.RWMutex
+	logger           Logger
+	started          bool
+	startedMu        sync.Mutex
 }
 
 // StdioOption defines a function that configures a Stdio transport instance.
@@ -57,7 +56,7 @@ type StdioOption func(*Stdio)
 // It can be used to apply sandboxing, custom environment control, working directories, etc.
 type CommandFunc func(ctx context.Context, command string, env []string, args []string) (*exec.Cmd, error)
 
-// WithCommandFunc sets a custom command factory function for the stdio 
+// WithCommandFunc sets a custom command factory function for the stdio
 // The CommandFunc is responsible for constructing the exec.Cmd used to launch the subprocess,
 // allowing control over attributes like environment, working directory, and system-level sandboxing.
 func WithCommandFunc(f CommandFunc) StdioOption {
@@ -66,8 +65,8 @@ func WithCommandFunc(f CommandFunc) StdioOption {
 	}
 }
 
-// WithCommandLogger sets a custom logger for the stdio 
-func WithCommandLogger(logger util.Logger) StdioOption {
+// WithCommandLogger sets a custom logger for the stdio
+func WithCommandLogger(logger Logger) StdioOption {
 	return func(s *Stdio) {
 		s.logger = logger
 	}
@@ -85,7 +84,7 @@ func NewIO(input io.Reader, output io.WriteCloser, logging io.ReadCloser) *Stdio
 		responses: make(map[string]chan *JSONRPCResponse),
 		done:      make(chan struct{}),
 		ctx:       context.Background(),
-		logger:    util.DefaultLogger(),
+		logger:    DefaultLogger(),
 	}
 }
 
@@ -119,7 +118,7 @@ func NewStdioWithOptions(
 		responses: make(map[string]chan *JSONRPCResponse),
 		done:      make(chan struct{}),
 		ctx:       context.Background(),
-		logger:    util.DefaultLogger(),
+		logger:    DefaultLogger(),
 	}
 
 	for _, opt := range opts {
@@ -245,7 +244,7 @@ func (c *Stdio) Close() error {
 	return closeErr
 }
 
-// GetSessionId returns the session ID of the 
+// GetSessionId returns the session ID of the
 // Since stdio does not maintain a session ID, it returns an empty string.
 func (c *Stdio) GetSessionId() string {
 	return ""
@@ -261,7 +260,7 @@ func (c *Stdio) SetNotificationHandler(
 	c.onNotification = handler
 }
 
-// SetRequestHandler sets the handler function to be called when a request is received from the 
+// SetRequestHandler sets the handler function to be called when a request is received from the
 // This enables bidirectional communication for features like sampling.
 func (c *Stdio) SetRequestHandler(handler RequestHandler) {
 	c.requestMu.Lock()
@@ -292,9 +291,9 @@ func (c *Stdio) readResponses() {
 			line = strings.TrimRight(line, "\r\n")
 			// First try to parse as a generic message to check for ID field
 			var baseMessage struct {
-				JSONRPC string         `json:"jsonrpc"`
+				JSONRPC string     `json:"jsonrpc"`
 				ID      *RequestId `json:"id,omitempty"`
-				Method  string         `json:"method,omitempty"`
+				Method  string     `json:"method,omitempty"`
 			}
 			if err := json.Unmarshal([]byte(line), &baseMessage); err != nil {
 				continue
@@ -413,7 +412,7 @@ func (c *Stdio) SendRequest(
 	}
 }
 
-// SendNotification sends a json RPC Notification to the 
+// SendNotification sends a json RPC Notification to the
 func (c *Stdio) SendNotification(
 	ctx context.Context,
 	notification JSONRPCNotification,
@@ -443,8 +442,8 @@ func (c *Stdio) SendNotification(
 	return nil
 }
 
-// handleIncomingRequest processes incoming requests from the 
-// It calls the registered request handler and sends the response back to the 
+// handleIncomingRequest processes incoming requests from the
+// It calls the registered request handler and sends the response back to the
 func (c *Stdio) handleIncomingRequest(request JSONRPCRequest) {
 	c.requestMu.RLock()
 	handler := c.onRequest
@@ -490,7 +489,7 @@ func (c *Stdio) handleIncomingRequest(request JSONRPCRequest) {
 	}()
 }
 
-// sendResponse sends a response back to the 
+// sendResponse sends a response back to the
 func (c *Stdio) sendResponse(response JSONRPCResponse) {
 	responseBytes, err := json.Marshal(response)
 	if err != nil {
