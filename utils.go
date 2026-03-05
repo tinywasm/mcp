@@ -3,70 +3,8 @@ package mcp
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tinywasm/mcp/internal/cast"
 )
 
-// ClientRequest types
-var (
-	_ ClientRequest = (*PingRequest)(nil)
-	_ ClientRequest = (*InitializeRequest)(nil)
-	_ ClientRequest = (*CompleteRequest)(nil)
-	_ ClientRequest = (*SetLevelRequest)(nil)
-	_ ClientRequest = (*GetPromptRequest)(nil)
-	_ ClientRequest = (*ListPromptsRequest)(nil)
-	_ ClientRequest = (*ListResourcesRequest)(nil)
-	_ ClientRequest = (*ReadResourceRequest)(nil)
-	_ ClientRequest = (*SubscribeRequest)(nil)
-	_ ClientRequest = (*UnsubscribeRequest)(nil)
-	_ ClientRequest = (*CallToolRequest)(nil)
-	_ ClientRequest = (*ListToolsRequest)(nil)
-)
-
-// ClientNotification types
-var (
-	_ ClientNotification = (*CancelledNotification)(nil)
-	_ ClientNotification = (*ProgressNotification)(nil)
-	_ ClientNotification = (*InitializedNotification)(nil)
-	_ ClientNotification = (*RootsListChangedNotification)(nil)
-)
-
-// ClientResult types
-var (
-	_ ClientResult = (*EmptyResult)(nil)
-	_ ClientResult = (*CreateMessageResult)(nil)
-	_ ClientResult = (*ListRootsResult)(nil)
-)
-
-// ServerRequest types
-var (
-	_ ServerRequest = (*PingRequest)(nil)
-	_ ServerRequest = (*CreateMessageRequest)(nil)
-	_ ServerRequest = (*ListRootsRequest)(nil)
-)
-
-// ServerNotification types
-var (
-	_ ServerNotification = (*CancelledNotification)(nil)
-	_ ServerNotification = (*ProgressNotification)(nil)
-	_ ServerNotification = (*LoggingMessageNotification)(nil)
-	_ ServerNotification = (*ResourceUpdatedNotification)(nil)
-	_ ServerNotification = (*ResourceListChangedNotification)(nil)
-	_ ServerNotification = (*ToolListChangedNotification)(nil)
-	_ ServerNotification = (*PromptListChangedNotification)(nil)
-)
-
-// ServerResult types
-var (
-	_ ServerResult = (*EmptyResult)(nil)
-	_ ServerResult = (*InitializeResult)(nil)
-	_ ServerResult = (*CompleteResult)(nil)
-	_ ServerResult = (*GetPromptResult)(nil)
-	_ ServerResult = (*ListPromptsResult)(nil)
-	_ ServerResult = (*ListResourcesResult)(nil)
-	_ ServerResult = (*ReadResourceResult)(nil)
-	_ ServerResult = (*CallToolResult)(nil)
-	_ ServerResult = (*ListToolsResult)(nil)
-)
 
 // Helper functions for type assertions
 
@@ -92,21 +30,6 @@ func AsImageContent(content any) (*ImageContent, bool) {
 // AsAudioContent attempts to cast the given interface to AudioContent
 func AsAudioContent(content any) (*AudioContent, bool) {
 	return asType[AudioContent](content)
-}
-
-// AsEmbeddedResource attempts to cast the given interface to EmbeddedResource
-func AsEmbeddedResource(content any) (*EmbeddedResource, bool) {
-	return asType[EmbeddedResource](content)
-}
-
-// AsTextResourceContents attempts to cast the given interface to TextResourceContents
-func AsTextResourceContents(content any) (*TextResourceContents, bool) {
-	return asType[TextResourceContents](content)
-}
-
-// AsBlobResourceContents attempts to cast the given interface to BlobResourceContents
-func AsBlobResourceContents(content any) (*BlobResourceContents, bool) {
-	return asType[BlobResourceContents](content)
 }
 
 // Helper function for JSON-RPC
@@ -156,74 +79,11 @@ func NewJSONRPCError(
 	}
 }
 
-// NewProgressNotification
-// Helper function for creating a progress notification
-func NewProgressNotification(
-	token ProgressToken,
-	progress float64,
-	total *float64,
-	message *string,
-) ProgressNotification {
-	notification := ProgressNotification{
-		Notification: Notification{
-			Method: "notifications/progress",
-		},
-		Params: struct {
-			ProgressToken ProgressToken `json:"progressToken"`
-			Progress      float64       `json:"progress"`
-			Total         float64       `json:"total,omitempty"`
-			Message       string        `json:"message,omitempty"`
-		}{
-			ProgressToken: token,
-			Progress:      progress,
-		},
-	}
-	if total != nil {
-		notification.Params.Total = *total
-	}
-	if message != nil {
-		notification.Params.Message = *message
-	}
-	return notification
-}
-
-// NewLoggingMessageNotification
-// Helper function for creating a logging message notification
-func NewLoggingMessageNotification(
-	level LoggingLevel,
-	logger string,
-	data any,
-) LoggingMessageNotification {
-	return LoggingMessageNotification{
-		Notification: Notification{
-			Method: "notifications/message",
-		},
-		Params: struct {
-			Level  LoggingLevel `json:"level"`
-			Logger string       `json:"logger,omitempty"`
-			Data   any          `json:"data"`
-		}{
-			Level:  level,
-			Logger: logger,
-			Data:   data,
-		},
-	}
-}
-
-// NewPromptMessage
-// Helper function to create a new PromptMessage
-func NewPromptMessage(role Role, content any) PromptMessage {
-	return PromptMessage{
-		Role:    role,
-		Content: content,
-	}
-}
-
 // NewTextContent
 // Helper function to create a new TextContent
 func NewTextContent(text string) TextContent {
 	return TextContent{
-		Type: ContentTypeText,
+		Type: "text",
 		Text: text,
 	}
 }
@@ -232,7 +92,7 @@ func NewTextContent(text string) TextContent {
 // Helper function to create a new ImageContent
 func NewImageContent(data, mimeType string) ImageContent {
 	return ImageContent{
-		Type:     ContentTypeImage,
+		Type:     "image",
 		Data:     data,
 		MIMEType: mimeType,
 	}
@@ -241,28 +101,9 @@ func NewImageContent(data, mimeType string) ImageContent {
 // Helper function to create a new AudioContent
 func NewAudioContent(data, mimeType string) AudioContent {
 	return AudioContent{
-		Type:     ContentTypeAudio,
+		Type:     "audio",
 		Data:     data,
 		MIMEType: mimeType,
-	}
-}
-
-// Helper function to create a new ResourceLink
-func NewResourceLink(uri, name, description, mimeType string) ResourceLink {
-	return ResourceLink{
-		Type:        ContentTypeLink,
-		URI:         uri,
-		Name:        name,
-		Description: description,
-		MIMEType:    mimeType,
-	}
-}
-
-// Helper function to create a new EmbeddedResource
-func NewEmbeddedResource(resource ResourceContents) EmbeddedResource {
-	return EmbeddedResource{
-		Type:     ContentTypeResource,
-		Resource: resource,
 	}
 }
 
@@ -271,7 +112,7 @@ func NewToolResultText(text string) *CallToolResult {
 	return &CallToolResult{
 		Content: []Content{
 			TextContent{
-				Type: ContentTypeText,
+				Type: "text",
 				Text: text,
 			},
 		},
@@ -288,7 +129,7 @@ func NewToolResultJSON[T any](data T) (*CallToolResult, error) {
 	return &CallToolResult{
 		Content: []Content{
 			TextContent{
-				Type: ContentTypeText,
+				Type: "text",
 				Text: string(b),
 			},
 		},
@@ -339,11 +180,11 @@ func NewToolResultImage(text, imageData, mimeType string) *CallToolResult {
 	return &CallToolResult{
 		Content: []Content{
 			TextContent{
-				Type: ContentTypeText,
+				Type: "text",
 				Text: text,
 			},
 			ImageContent{
-				Type:     ContentTypeImage,
+				Type:     "image",
 				Data:     imageData,
 				MIMEType: mimeType,
 			},
@@ -356,32 +197,13 @@ func NewToolResultAudio(text, audioData, mimeType string) *CallToolResult {
 	return &CallToolResult{
 		Content: []Content{
 			TextContent{
-				Type: ContentTypeText,
+				Type: "text",
 				Text: text,
 			},
 			AudioContent{
-				Type:     ContentTypeAudio,
+				Type:     "audio",
 				Data:     audioData,
 				MIMEType: mimeType,
-			},
-		},
-	}
-}
-
-// NewToolResultResource creates a new CallToolResult with an embedded resource
-func NewToolResultResource(
-	text string,
-	resource ResourceContents,
-) *CallToolResult {
-	return &CallToolResult{
-		Content: []Content{
-			TextContent{
-				Type: ContentTypeText,
-				Text: text,
-			},
-			EmbeddedResource{
-				Type:     ContentTypeResource,
-				Resource: resource,
 			},
 		},
 	}
@@ -393,7 +215,7 @@ func NewToolResultError(text string) *CallToolResult {
 	return &CallToolResult{
 		Content: []Content{
 			TextContent{
-				Type: ContentTypeText,
+				Type: "text",
 				Text: text,
 			},
 		},
@@ -411,7 +233,7 @@ func NewToolResultErrorFromErr(text string, err error) *CallToolResult {
 	return &CallToolResult{
 		Content: []Content{
 			TextContent{
-				Type: ContentTypeText,
+				Type: "text",
 				Text: text,
 			},
 		},
@@ -426,72 +248,11 @@ func NewToolResultErrorf(format string, a ...any) *CallToolResult {
 	return &CallToolResult{
 		Content: []Content{
 			TextContent{
-				Type: ContentTypeText,
+				Type: "text",
 				Text: fmt.Sprintf(format, a...),
 			},
 		},
 		IsError: true,
-	}
-}
-
-// NewListResourcesResult creates a new ListResourcesResult
-func NewListResourcesResult(
-	resources []Resource,
-	nextCursor Cursor,
-) *ListResourcesResult {
-	return &ListResourcesResult{
-		PaginatedResult: PaginatedResult{
-			NextCursor: nextCursor,
-		},
-		Resources: resources,
-	}
-}
-
-// NewListResourceTemplatesResult creates a new ListResourceTemplatesResult
-func NewListResourceTemplatesResult(
-	templates []ResourceTemplate,
-	nextCursor Cursor,
-) *ListResourceTemplatesResult {
-	return &ListResourceTemplatesResult{
-		PaginatedResult: PaginatedResult{
-			NextCursor: nextCursor,
-		},
-		ResourceTemplates: templates,
-	}
-}
-
-// NewReadResourceResult creates a new ReadResourceResult with text content
-func NewReadResourceResult(text string) *ReadResourceResult {
-	return &ReadResourceResult{
-		Contents: []ResourceContents{
-			TextResourceContents{
-				Text: text,
-			},
-		},
-	}
-}
-
-// NewListPromptsResult creates a new ListPromptsResult
-func NewListPromptsResult(
-	prompts []Prompt,
-	nextCursor Cursor,
-) *ListPromptsResult {
-	return &ListPromptsResult{
-		PaginatedResult: PaginatedResult{
-			NextCursor: nextCursor,
-		},
-		Prompts: prompts,
-	}
-}
-
-// NewGetPromptResult creates a new GetPromptResult
-func NewGetPromptResult(
-	description string,
-	messages []PromptMessage,
-) *GetPromptResult {
-	return &GetPromptResult{
-		Description: description,
-		Messages:    messages,
 	}
 }
 
@@ -535,42 +296,6 @@ func ExtractString(data map[string]any, key string) string {
 	return ""
 }
 
-// ParseAnnotations parses priority, audience, and lastModified fields from the provided map
-// and returns an Annotations struct populated with any valid values found.
-// If data is nil, ParseAnnotations returns nil. Priority is set when a numeric value can be
-// parsed and is stored as a *float64. Audience is populated from string values and includes
-// only RoleUser and RoleAssistant entries. LastModified is set when the value is a string.
-func ParseAnnotations(data map[string]any) *Annotations {
-	if data == nil {
-		return nil
-	}
-	annotations := &Annotations{}
-	if value, ok := data["priority"]; ok {
-		if value != nil {
-			if priority, err := cast.ToFloat64E(value); err == nil {
-				annotations.Priority = &priority
-			}
-		}
-	}
-
-	if value, ok := data["audience"]; ok {
-		for _, a := range cast.ToStringSlice(value) {
-			a := Role(a)
-			if a == RoleUser || a == RoleAssistant {
-				annotations.Audience = append(annotations.Audience, a)
-			}
-		}
-	}
-
-	if value, ok := data["lastModified"]; ok {
-		if str, ok := value.(string); ok {
-			annotations.LastModified = str
-		}
-	}
-	return annotations
-
-}
-
 func ExtractMap(data map[string]any, key string) map[string]any {
 	if value, ok := data[key]; ok {
 		if m, ok := value.(map[string]any); ok {
@@ -584,18 +309,15 @@ func ParseContent(contentMap map[string]any) (Content, error) {
 	contentType := ExtractString(contentMap, "type")
 
 	var annotations *Annotations
-	if annotationsMap := ExtractMap(contentMap, "annotations"); annotationsMap != nil {
-		annotations = ParseAnnotations(annotationsMap)
-	}
 
 	switch contentType {
-	case ContentTypeText:
+	case "text":
 		text := ExtractString(contentMap, "text")
 		c := NewTextContent(text)
 		c.Annotations = annotations
 		return c, nil
 
-	case ContentTypeImage:
+	case "image":
 		data := ExtractString(contentMap, "data")
 		mimeType := ExtractString(contentMap, "mimeType")
 		if data == "" || mimeType == "" {
@@ -605,7 +327,7 @@ func ParseContent(contentMap map[string]any) (Content, error) {
 		c.Annotations = annotations
 		return c, nil
 
-	case ContentTypeAudio:
+	case "audio":
 		data := ExtractString(contentMap, "data")
 		mimeType := ExtractString(contentMap, "mimeType")
 		if data == "" || mimeType == "" {
@@ -615,121 +337,9 @@ func ParseContent(contentMap map[string]any) (Content, error) {
 		c.Annotations = annotations
 		return c, nil
 
-	case ContentTypeLink:
-		uri := ExtractString(contentMap, "uri")
-		name := ExtractString(contentMap, "name")
-		description := ExtractString(contentMap, "description")
-		mimeType := ExtractString(contentMap, "mimeType")
-		if uri == "" || name == "" {
-			return nil, fmt.Errorf("resource_link uri or name is missing")
-		}
-		c := NewResourceLink(uri, name, description, mimeType)
-		c.Annotations = annotations
-		return c, nil
-
-	case ContentTypeResource:
-		resourceMap := ExtractMap(contentMap, "resource")
-		if resourceMap == nil {
-			return nil, fmt.Errorf("resource is missing")
-		}
-
-		resourceContents, err := ParseResourceContents(resourceMap)
-		if err != nil {
-			return nil, err
-		}
-
-		c := NewEmbeddedResource(resourceContents)
-		c.Annotations = annotations
-		return c, nil
 	}
 
 	return nil, fmt.Errorf("unsupported content type: %s", contentType)
-}
-
-func ParseGetPromptResult(rawMessage *json.RawMessage) (*GetPromptResult, error) {
-	if rawMessage == nil {
-		return nil, fmt.Errorf("response is nil")
-	}
-
-	var jsonContent map[string]any
-	if err := json.Unmarshal(*rawMessage, &jsonContent); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	result := GetPromptResult{}
-
-	meta, ok := jsonContent["_meta"]
-	if ok {
-		if metaMap, ok := meta.(map[string]any); ok {
-			result.Meta = NewMetaFromMap(metaMap)
-		}
-	}
-
-	description, ok := jsonContent["description"]
-	if ok {
-		if descriptionStr, ok := description.(string); ok {
-			result.Description = descriptionStr
-		}
-	}
-
-	messages, ok := jsonContent["messages"]
-	if ok {
-		messagesArr, ok := messages.([]any)
-		if !ok {
-			return nil, fmt.Errorf("messages is not an array")
-		}
-
-		for _, message := range messagesArr {
-			messageMap, ok := message.(map[string]any)
-			if !ok {
-				return nil, fmt.Errorf("message is not an object")
-			}
-
-			// Extract role
-			roleStr := ExtractString(messageMap, "role")
-			if roleStr == "" || (roleStr != string(RoleAssistant) && roleStr != string(RoleUser)) {
-				return nil, fmt.Errorf("unsupported role: %s", roleStr)
-			}
-
-			// Extract content
-			var content any
-
-			if contentMap, ok := messageMap["content"].(map[string]any); ok {
-				// Single content object
-				c, err := ParseContent(contentMap)
-				if err != nil {
-					return nil, err
-				}
-				content = c
-			} else if contentArray, ok := messageMap["content"].([]any); ok {
-				// Array of content objects
-				var contents []Content
-				for _, item := range contentArray {
-					itemMap, ok := item.(map[string]any)
-					if !ok {
-						return nil, fmt.Errorf("content item is not an object")
-					}
-					c, err := ParseContent(itemMap)
-					if err != nil {
-						return nil, err
-					}
-					contents = append(contents, c)
-				}
-				content = contents
-			} else if contentStr, ok := messageMap["content"].(string); ok {
-				// String content (simplified text)
-				content = NewTextContent(contentStr)
-			} else {
-				return nil, fmt.Errorf("content is not an object, array or string")
-			}
-
-			// Append processed message
-			result.Messages = append(result.Messages, PromptMessage{Role: Role(roleStr), Content: content})
-
-		}
-	}
-
-	return &result, nil
 }
 
 func ParseCallToolResult(rawMessage *json.RawMessage) (*CallToolResult, error) {
@@ -793,89 +403,6 @@ func ParseCallToolResult(rawMessage *json.RawMessage) (*CallToolResult, error) {
 	return &result, nil
 }
 
-func ParseResourceContents(contentMap map[string]any) (ResourceContents, error) {
-	uri := ExtractString(contentMap, "uri")
-	if uri == "" {
-		return nil, fmt.Errorf("resource uri is missing")
-	}
-
-	mimeType := ExtractString(contentMap, "mimeType")
-
-	meta := ExtractMap(contentMap, "_meta")
-
-	if _, present := contentMap["_meta"]; present && meta == nil {
-		return nil, fmt.Errorf("_meta must be an object")
-	}
-
-	if text := ExtractString(contentMap, "text"); text != "" {
-		return TextResourceContents{
-			Meta:     meta,
-			URI:      uri,
-			MIMEType: mimeType,
-			Text:     text,
-		}, nil
-	}
-
-	if blob := ExtractString(contentMap, "blob"); blob != "" {
-		return BlobResourceContents{
-			Meta:     meta,
-			URI:      uri,
-			MIMEType: mimeType,
-			Blob:     blob,
-		}, nil
-	}
-
-	return nil, fmt.Errorf("unsupported resource type")
-}
-
-func ParseReadResourceResult(rawMessage *json.RawMessage) (*ReadResourceResult, error) {
-	if rawMessage == nil {
-		return nil, fmt.Errorf("response is nil")
-	}
-
-	var jsonContent map[string]any
-	if err := json.Unmarshal(*rawMessage, &jsonContent); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	var result ReadResourceResult
-
-	meta, ok := jsonContent["_meta"]
-	if ok {
-		if metaMap, ok := meta.(map[string]any); ok {
-			result.Meta = NewMetaFromMap(metaMap)
-		}
-	}
-
-	contents, ok := jsonContent["contents"]
-	if !ok {
-		return nil, fmt.Errorf("contents is missing")
-	}
-
-	contentArr, ok := contents.([]any)
-	if !ok {
-		return nil, fmt.Errorf("contents is not an array")
-	}
-
-	for _, content := range contentArr {
-		// Extract content
-		contentMap, ok := content.(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("content is not an object")
-		}
-
-		// Process content
-		content, err := ParseResourceContents(contentMap)
-		if err != nil {
-			return nil, err
-		}
-
-		result.Contents = append(result.Contents, content)
-	}
-
-	return &result, nil
-}
-
 func ParseArgument(request CallToolRequest, key string, defaultVal any) any {
 	args := request.GetArguments()
 	if _, ok := args[key]; !ok {
@@ -883,100 +410,6 @@ func ParseArgument(request CallToolRequest, key string, defaultVal any) any {
 	} else {
 		return args[key]
 	}
-}
-
-// ParseBoolean extracts and converts a boolean parameter from a CallToolRequest.
-// If the key is not found in the Arguments map, the defaultValue is returned.
-// The function uses cast.ToBool for conversion which handles various string representations
-// such as "true", "yes", "1", etc.
-func ParseBoolean(request CallToolRequest, key string, defaultValue bool) bool {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToBool(v)
-}
-
-// ParseInt64 extracts and converts an int64 parameter from a CallToolRequest.
-// If the key is not found in the Arguments map, the defaultValue is returned.
-func ParseInt64(request CallToolRequest, key string, defaultValue int64) int64 {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToInt64(v)
-}
-
-// ParseInt32 extracts and converts an int32 parameter from a CallToolRequest.
-func ParseInt32(request CallToolRequest, key string, defaultValue int32) int32 {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToInt32(v)
-}
-
-// ParseInt16 extracts and converts an int16 parameter from a CallToolRequest.
-func ParseInt16(request CallToolRequest, key string, defaultValue int16) int16 {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToInt16(v)
-}
-
-// ParseInt8 extracts and converts an int8 parameter from a CallToolRequest.
-func ParseInt8(request CallToolRequest, key string, defaultValue int8) int8 {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToInt8(v)
-}
-
-// ParseInt extracts and converts an int parameter from a CallToolRequest.
-func ParseInt(request CallToolRequest, key string, defaultValue int) int {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToInt(v)
-}
-
-// ParseUInt extracts and converts an uint parameter from a CallToolRequest.
-func ParseUInt(request CallToolRequest, key string, defaultValue uint) uint {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToUint(v)
-}
-
-// ParseUInt64 extracts and converts an uint64 parameter from a CallToolRequest.
-func ParseUInt64(request CallToolRequest, key string, defaultValue uint64) uint64 {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToUint64(v)
-}
-
-// ParseUInt32 extracts and converts an uint32 parameter from a CallToolRequest.
-func ParseUInt32(request CallToolRequest, key string, defaultValue uint32) uint32 {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToUint32(v)
-}
-
-// ParseUInt16 extracts and converts an uint16 parameter from a CallToolRequest.
-func ParseUInt16(request CallToolRequest, key string, defaultValue uint16) uint16 {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToUint16(v)
-}
-
-// ParseUInt8 extracts and converts an uint8 parameter from a CallToolRequest.
-func ParseUInt8(request CallToolRequest, key string, defaultValue uint8) uint8 {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToUint8(v)
-}
-
-// ParseFloat32 extracts and converts a float32 parameter from a CallToolRequest.
-func ParseFloat32(request CallToolRequest, key string, defaultValue float32) float32 {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToFloat32(v)
-}
-
-// ParseFloat64 extracts and converts a float64 parameter from a CallToolRequest.
-func ParseFloat64(request CallToolRequest, key string, defaultValue float64) float64 {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToFloat64(v)
-}
-
-// ParseString extracts and converts a string parameter from a CallToolRequest.
-func ParseString(request CallToolRequest, key string, defaultValue string) string {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToString(v)
-}
-
-// ParseStringMap extracts and converts a string map parameter from a CallToolRequest.
-func ParseStringMap(request CallToolRequest, key string, defaultValue map[string]any) map[string]any {
-	v := ParseArgument(request, key, defaultValue)
-	return cast.ToStringMap(v)
 }
 
 // ToBoolPtr returns a pointer to the given boolean value

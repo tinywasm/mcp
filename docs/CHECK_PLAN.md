@@ -1,210 +1,272 @@
-# tinywasm/mcp — Refactoring Plan: Minimal MCP Server/Client Library
+# tinywasm/mcp — Remaining Refactoring Plan
 
-> **Goal:** Simplify `tinywasm/mcp` from a ~46-file fork of mark3labs/mcp-go into a lean, zero-external-dependency MCP library that will eventually replace `tinywasm/mcpserve` entirely.
+> **Goal:** Complete the simplification of `tinywasm/mcp` into a lean, zero-external-dependency MCP library (tools + SSE/HTTP transport only).
 >
-> **Status:** Pending execution
+> **Status:** Partially complete. Files `provider.go`, `executor.go`, `tools_meta.go` exist and tests in `tests/` are present. The bulk deletion and core file simplification phases were NOT executed.
 
 ---
 
 ## Development Rules
 
-- **Testing Runner:** `go install github.com/tinywasm/devflow/cmd/gotest@latest`
+- **Testing Runner:** `go install github.com/tinywasm/devflow/cmd/gotest@latest` (first prerequisite)
 - **Standard Library Only:** No external assertion libraries. No `testify`.
 - **Max 500 lines per file.** Subdivide if exceeded.
 - **SRP:** Each file has a single purpose, named by domain.
-- **No third-party dependencies:** Only standard library + `tinywasm/*` ecosystem packages. Remove any non-tinywasm external dependencies from go.mod.
+- **No third-party dependencies:** Only standard library + `tinywasm/*` ecosystem packages.
 - **Flat structure:** All source in root. Tests in `tests/`. No new subdirectories.
 
 ---
 
-## Context
+## Current State (After Partial Execution)
 
-`tinywasm/mcp` is a fork of `mark3labs/mcp-go` containing ~46 Go files, 20+ test files (all broken after migration to `tests/`), and 10 internal packages. The library implements the full MCP spec (tools, resources, prompts, tasks, sampling, elicitation, roots, OAuth, stdio, inprocess), but only **tools + SSE/HTTP transport** are needed.
+**Files that already exist and MUST be kept:**
+- `provider.go` ✅ — RegisterProvider() implementation (NEW, keep)
+- `executor.go` ✅ — mcpExecuteTool() (NEW, keep)
+- `tools_meta.go` ✅ — ToolProvider, ToolMetadata, BinaryData (NEW, keep)
+- `tests/provider_test.go` ✅
+- `tests/server_test.go` ✅
+- `tests/tools_meta_test.go` ✅
+- `go.mod` ✅ — already clean (only `tinywasm/sse` + `tinywasm/fmt`)
 
-The goal is a single importable package with a clean API:
-```go
-srv := mcp.NewServer("name", "1.0.0")
-srv.RegisterProvider(myModule)
-http.ListenAndServe(":8080", srv.HTTPHandler())
-```
+**Files that still need to be DELETED (Phase 1 not executed):**
+- `completion.go`, `consts.go`, `elicitation.go`, `hooks.go`, `http_transport_options.go`
+- `inprocess.go`, `inprocess_session.go`, `prompts.go`, `request_handler.go`
+- `resources.go`, `roots.go`, `sampling.go`, `stdio.go`, `task_hooks.go`, `tasks.go`
+- `transport_inprocess.go`, `transport_oauth.go`, `transport_oauth_utils.go`
+- `transport_stdio.go`, `typed_tools.go`
+- Scratch files: `jules_changes.patch`, `remote_diff.txt`
 
-This will allow `tinywasm/mcpserve` to be eliminated after consumers are migrated.
+**Internal packages to DELETE (Phase 2 not executed):**
+- `internal/jsonschema/`
+- `internal/go-ordered-map/`
+- `internal/generic-list-go/`
+- `internal/uritemplate/`
+- `internal/cast/`
+- `internal/tfmt/`
+- `internal/ttime/`
 
-**Key insight from exploration:** `mcpserve/handler.go` already imports `"github.com/tinywasm/mcp/server"` (a subpackage that does not yet exist). This plan keeps everything in the root package.
+**Core files that still need HEAVY SURGERY (Phase 3 not executed):**
+- `server.go` — 2325 lines, still contains resources/prompts/tasks/hooks logic
+- `types.go` — 54 KB, still contains all removed feature types
+- `session.go` — 765 lines, still contains SessionWithResources/Prompts/Sampling/Elicitation/Roots
+- `errors.go` — still contains ErrResourceNotFound, ErrPromptNotFound, ErrDynamicPathConfig, etc.
 
 ---
 
-## Phase 1 — Delete Unnecessary Files
+## Phase 1 — Delete Unnecessary Feature Files
 
-Delete the following files from `/home/cesar/Dev/Project/tinywasm/mcp/`:
+Delete the following files from the project root:
 
-**Feature files (not needed):**
-- `handler.go` — app-level orchestration, belongs in mcpserve/app, not the library
-- `resources.go` — resources not needed now
-- `prompts.go` — prompts not needed now
-- `tasks.go` + `task_hooks.go` — tasks removed
-- `hooks.go` — lifecycle hooks removed
-- `request_handler.go` — auto-generated dispatcher (will be rewritten to tool-only)
-- `sampling.go` — not needed
-- `elicitation.go` — not needed
-- `roots.go` — not needed
-- `completion.go` — not needed
-- `oauth.go` + `transport_oauth.go` + `transport_oauth_utils.go` — no OAuth needed
-- `transport_stdio.go` + `stdio.go` — no stdio transport
-- `inprocess.go` + `inprocess_session.go` + `transport_inprocess.go` — no in-process
-- `ide_config.go` — not library concern
-- `typed_tools.go` — reflection-based tool building not needed
-- `http_transport_options.go` — merge into `transport_streamable_http.go`
-- `consts.go` — check for duplicates with `constants.go`, merge and delete
+```bash
+rm -f completion.go consts.go elicitation.go hooks.go http_transport_options.go \
+      inprocess.go inprocess_session.go prompts.go request_handler.go \
+      resources.go roots.go sampling.go stdio.go task_hooks.go tasks.go \
+      transport_inprocess.go transport_oauth.go transport_oauth_utils.go \
+      transport_stdio.go typed_tools.go \
+      jules_changes.patch remote_diff.txt
+```
 
-**Directories:**
-- `e2e/` — delete entirely
-- `tests/` — delete entirely (rewrite from scratch in Step 6)
+> **Why:** These files implement features (resources, prompts, tasks, OAuth, stdio, inprocess, completion) that are out of scope for this library. Deleting them eliminates dead code and compilation errors from missing type references.
 
 ---
 
 ## Phase 2 — Delete Unused Internal Packages
 
-Audit and delete from `internal/`:
+Delete these `internal/` subdirectories entirely:
 
-| Package | Used By | Decision |
-|---------|---------|----------|
-| `internal/jsonschema/` | `typed_tools.go` (deleted) | **DELETE** |
-| `internal/go-ordered-map/` | `jsonschema` (deleted) | **DELETE** |
-| `internal/generic-list-go/` | task lists (deleted) | **DELETE** |
-| `internal/uritemplate/` | resource templates (deleted) | **DELETE** |
-| `internal/tfmt/` | possibly tools/server | **CHECK** — delete if unused |
-| `internal/ttime/` | possibly tools/server | **CHECK** — delete if unused |
-| `internal/cast/` | possibly tools | **CHECK** — delete if unused |
-| `internal/unixid/` | `server.go` (session IDs) | **KEEP** |
-| `internal/testutils/` | tests | **KEEP** (for new tests) |
+```bash
+rm -rf internal/jsonschema internal/go-ordered-map internal/generic-list-go \
+       internal/uritemplate internal/cast internal/tfmt internal/ttime
+```
+
+Keep: `internal/unixid/` and `internal/testutils/`
+
+> **Why:** These packages were only used by the deleted feature files. Removing them eliminates external dependency risks and reduces binary size.
 
 ---
 
-## Phase 3 — Simplify Core Files
+## Phase 3 — Rewrite `server.go`
 
-### 3a. `server.go`
-Remove:
-- All resource-related fields: `resources`, `resourceTemplates`, `resourceHandlers`
-- All prompt-related fields: `prompts`, `promptHandlers`
-- All task-related fields: `tasks`, `taskTools`, `expiredTasks`
-- `hooks` and `taskHooks` fields
-- All methods: `AddResource`, `AddPrompt`, `AddTask`, `SetHooks` and their variants
-- Session extension handlers: `SessionWithResources`, `SessionWithResourceTemplates`, `SessionWithSampling`, `SessionWithElicitation`, `SessionWithRoots`, `SessionWithLogging`
+**Target:** Reduce from 2325 lines to ~300 lines. Keep ONLY tool and session management.
 
-Keep:
-- `MCPServer` struct (minimal fields: `name`, `version`, `tools`, `sessions`)
-- `NewMCPServer(name, version string, opts ...ServerOption) *MCPServer`
-- `AddTool(tool Tool, handler ToolHandlerFunc)`
-- `AddTools(tools ...ServerTool)`
-- `RegisterSession` / `UnregisterSession`
-- `AddSessionTool(s)` / `DeleteSessionTools`
-- `WithContext` / session context helpers
-- HTTP handler creation (currently in `http.go`)
+Replace the entire content of `server.go` with a minimal version that:
 
-### 3b. `types.go`
-Remove type definitions for:
-- Resources, ResourceTemplates
-- Prompts, PromptArguments
-- Tasks, TaskStatus
-- Sampling (CreateMessage*)
-- Elicitation
-- Roots
-- Logging (LoggingLevel)
-- Completion (CompletionArgument, etc.)
+1. **Remove all struct fields** for resources/resourceTemplates/prompts/promptHandlers/tasks/taskTools/expiredTasks/hooks/taskHooks/activeTasks/maxConcurrentTasks
+2. **Remove all mutex fields** except `toolsMu`, `toolMiddlewareMu`, `toolFiltersMu`, `notificationHandlersMu`, `capabilitiesMu`
+3. **Remove all methods** for: `AddResource*`, `AddResourceTemplate*`, `AddPrompt*`, `AddTask*`, `AddSessionResource*`, `AddSessionResourceTemplate*`, `DeleteResource*`, `DeletePrompt*`, `RemoveResource*`, `SetResources`, `SetResourceTemplates`, `SetPrompts`, `AddTaskTool*`, `AddTaskTools*`
+4. **Remove server options:** `WithResourceCapabilities`, `WithResourceHandlerMiddleware`, `WithResourceRecovery`, `WithPromptCapabilities`, `WithPromptCompletionProvider`, `WithResourceCompletionProvider`, `WithLogging`, `WithElicitation`, `WithRoots`, `WithTaskCapabilities`, `WithTaskHooks`, `WithMaxConcurrentTasks`, `WithCompletions`
+5. **Remove type definitions:** `ResourceHandlerFunc`, `ResourceTemplateHandlerFunc`, `PromptHandlerFunc`, `TaskToolHandlerFunc`, `ResourceHandlerMiddleware`, `ServerPrompt`, `ServerResource`, `ServerResourceTemplate`, `ServerTaskTool`, `taskEntry`, `resourceEntry`, `resourceTemplateEntry`
+6. **Remove helper types:** `serverCapabilities` fields: resources, prompts, logging, sampling, elicitation, roots, tasks, completions — keep only `tools`
+7. **Remove:** `implicitlyRegisterResourceCapabilities`, `implicitlyRegisterPromptCapabilities`, `GenerateInProcessSessionID`
 
-Keep:
-- JSON-RPC types: `JSONRPCRequest`, `JSONRPCResponse`, `JSONRPCNotification`, `JSONRPCErrorDetails`
-- Capability types (only tool-related capabilities)
-- `Implementation`, `Meta`, `Content`, `TextContent`, `ImageContent`
-- `InitializeRequest/Result`, `PaginatedRequest/Result`
-- Session and client info types
+**Minimal `MCPServer` struct (target):**
+```go
+type MCPServer struct {
+    toolsMu                sync.RWMutex
+    toolMiddlewareMu       sync.RWMutex
+    notificationHandlersMu sync.RWMutex
+    capabilitiesMu         sync.RWMutex
+    toolFiltersMu          sync.RWMutex
 
-### 3c. `session.go`
-Remove:
-- `SessionWithResources`
-- `SessionWithResourceTemplates`
+    name                   string
+    version                string
+    instructions           string
+    tools                  map[string]ServerTool
+    toolHandlerMiddlewares []ToolHandlerMiddleware
+    toolFilters            []ToolFilterFunc
+    notificationHandlers   map[string]NotificationHandlerFunc
+    capabilities           serverCapabilities
+    paginationLimit        *int
+    sessions               sync.Map
+}
+
+type serverCapabilities struct {
+    tools *toolCapabilities
+}
+```
+
+**Keep these methods in server.go:**
+- `NewMCPServer`
+- `AddTool`, `AddTools`, `SetTools`, `GetTool`, `ListTools`, `DeleteTools`
+- `WithToolCapabilities`, `WithToolHandlerMiddleware`, `WithRecovery`, `WithToolFilter`
+- `WithInstructions`, `WithPaginationLimit`
+- `implicitlyRegisterToolCapabilities`, `implicitlyRegisterCapabilities`
+- `HandleMessage` (dispatches tool calls only)
+- `handleInitialize`, `handleToolsList`, `handleToolsCall`, `handlePing`
+- `SendNotificationToAllClients`, `SendNotificationToClient`, `SendNotificationToSpecificClient`
+- `sendNotificationToAllClients`, `sendNotificationToSpecificClient`, `sendNotificationCore`
+- `AddNotificationHandler`
+- `ServerFromContext`
+- `requestError`, `UnparsableMessageError`
+
+> **IMPORTANT:** The `HandleMessage` function in `request_handler.go` (which is being deleted) must be reproduced as a minimal version directly in `server.go`. It should only switch on these methods: `initialize`, `ping`, `tools/list`, `tools/call`. All other methods should return a JSON-RPC "method not found" error.
+
+---
+
+## Phase 4 — Rewrite `types.go`
+
+**Target:** Reduce from 54 KB to ~300 lines. Keep ONLY JSON-RPC core + tool-related types.
+
+Delete all type definitions for:
+- Resources: `Resource`, `ResourceContents`, `TextResourceContents`, `BlobResourceContents`, `ResourceTemplate`, `ReadResourceRequest`, `ReadResourceResult`, `ListResourcesRequest`, `ListResourcesResult`, `ListResourceTemplatesRequest`, `ListResourceTemplatesResult`, `SubscribeRequest`, `UnsubscribeRequest`, `ResourceListChangedNotification`
+- Prompts: `Prompt`, `PromptArgument`, `PromptMessage`, `GetPromptRequest`, `GetPromptResult`, `ListPromptsRequest`, `ListPromptsResult`, `PromptListChangedNotification`, `PromptCompletionProvider`, `DefaultPromptCompletionProvider`
+- Tasks: `Task`, `TaskStatus`, `CreateTaskResult`, `TaskResultRequest`, `TaskListRequest`, `TaskListResult`, `TaskCancelRequest`
+- Sampling: `CreateMessageRequest`, `CreateMessageResult`, `SamplingMessage`, `ModelPreferences`, `ModelHint`
+- Elicitation: `ElicitationRequest`, `ElicitationResult`, `ElicitationSchema`
+- Roots: `Root`, `ListRootsRequest`, `ListRootsResult`
+- Logging: `LoggingLevel`, `LoggingMessageNotification`, `SetLevelRequest`
+- Completion: `CompletionArgument`, `CompleteRequest`, `CompleteResult`, `CompletionResult`, `ResourceCompletionProvider`, `DefaultResourceCompletionProvider`
+
+**Keep:**
+- `JSONRPCRequest`, `JSONRPCResponse`, `JSONRPCNotification`, `JSONRPCError`, `JSONRPCErrorDetails`, `NewJSONRPCErrorDetails`
+- `RequestId`, `NewRequestId`
+- `MCPMethod` (string type + method constants for the 4 supported methods only: initialize, ping, tools/list, tools/call)
+- `Implementation`, `ClientCapabilities`, `ServerCapabilities` (minimal)
+- `InitializeRequest`, `InitializeResult`
+- `PaginatedRequest`, `PaginatedResult`, `Cursor`
+- `Meta`, `Content`, `TextContent`, `ImageContent`, `EmbeddedResource`
+- `Notification`, `NotificationParams`
+- `Tool`, `CallToolRequest`, `CallToolResult`, `ListToolsRequest`, `ListToolsResult`
+- `ToolsListChangedNotification`
+- Helper functions: `ToBoolPtr`, `NewToolResult*` functions (already in `tools.go` — move if needed)
+- `JSONRPC_VERSION`, `LATEST_PROTOCOL_VERSION`
+
+> **Note:** Many helper constants and notification method strings for deleted features can simply be removed. Scan for `MethodNotification*` constants in `constants.go` and remove all except `MethodNotificationToolsListChanged`.
+
+---
+
+## Phase 5 — Simplify `session.go`
+
+**Target:** Reduce from 765 lines to ~150 lines.
+
+**Remove these interfaces and all their usages:**
+- `SessionWithLogging` (and `buildLogNotification`, `SendLogMessageToClient`, `SendLogMessageToSpecificClient`)
+- `SessionWithResources` (and `AddSessionResources`, `AddSessionResource`, `DeleteSessionResources`)
+- `SessionWithResourceTemplates` (and `AddSessionResourceTemplates`, `AddSessionResourceTemplate`, `DeleteSessionResourceTemplates`)
 - `SessionWithSampling`
 - `SessionWithElicitation`
 - `SessionWithRoots`
-- `SessionWithLogging`
 
-Keep:
+**Keep:**
 - `ClientSession` interface
-- `SessionWithTools`
-- `SessionWithClientInfo`
-- `SessionWithStreamableHTTPConfig`
+- `SessionWithTools` interface + `AddSessionTools`, `AddSessionTool`, `DeleteSessionTools`
+- `SessionWithClientInfo` interface
+- `SessionWithStreamableHTTPConfig` interface
+- `clientSessionKey`, `ClientSessionFromContext`
+- `WithContext`, `RegisterSession`, `UnregisterSession`
+- `SendNotificationToAllClients`, `SendNotificationToClient`, `SendNotificationToSpecificClient`
 
-### 3d. `mcptest.go`
-Remove:
-- `prompts`, `resources`, `resourceTemplates` fields
-- `AddPrompt`, `AddResource`, `AddResourceTemplate` methods
-
-Keep:
-- `Server` struct (tools only)
-- `NewServer(t, tools...)` / `NewUnstartedServer(t)`
-- `AddTool`, `AddTools`, `Start`, `Close`, `Client`
-
-### 3e. `errors.go`
-Remove:
-- `ErrResourceNotFound`, `ErrPromptNotFound`
-- `ErrSessionDoesNotSupportResources`, `ErrSessionDoesNotSupportResourceTemplates`
-- `ErrSessionDoesNotSupportLogging`
-- `ErrDynamicPathConfig`
-
-Keep all tool/session errors.
+> **Note:** After removing `SessionWithLogging`, remove the `ErrSessionDoesNotSupportLogging` error from `errors.go` as well.
 
 ---
 
-## Phase 4 — Update `go.mod`
+## Phase 6 — Clean `errors.go`
 
-After deleting unnecessary files, run:
+Remove:
+- `ErrResourceNotFound`
+- `ErrPromptNotFound`
+- `ErrSessionDoesNotSupportResources`
+- `ErrSessionDoesNotSupportResourceTemplates`
+- `ErrSessionDoesNotSupportLogging`
+- `ErrDynamicPathConfig` type + method
+
+Keep all tool/session errors (`ErrToolNotFound`, `ErrSessionNotFound`, `ErrSessionExists`, `ErrSessionNotInitialized`, `ErrSessionDoesNotSupportTools`, `ErrNotification*`, `ErrUnsupported`).
+
+---
+
+## Phase 7 — Clean `constants.go` and merge `consts.go`
+
+`consts.go` is being deleted (Phase 1). Before deletion, check if it contains anything not already in `constants.go`. If so, merge the unique entries to `constants.go` first.
+
+From `constants.go`, remove notification method constants for deleted features (resources, prompts, tasks, logging, etc.). Keep only:
+- `JSONRPC_VERSION`
+- `LATEST_PROTOCOL_VERSION`
+- `MethodToolsList`, `MethodToolsCall`, `MethodInitialize`, `MethodPing`
+- `MethodNotificationToolsListChanged`
+
+---
+
+## Phase 8 — Run `go mod tidy`
 
 ```bash
 go mod tidy
 ```
 
-This will remove any unused dependencies automatically. `tinywasm/sse` and `tinywasm/fmt` may remain if still referenced by other files.
+This removes any stale indirect dependencies automatically.
 
 ---
 
-## Phase 5 — Verify & Submit
+## Phase 9 — Verify & Submit
 
-1. Run the test suite: `gotest` — 100% pass required before proceeding.
-2. `gopush 'refactor: complete mcp file pruning and server/types simplification'`
+1. Install test runner: `go install github.com/tinywasm/devflow/cmd/gotest@latest`
+2. Run: `gotest` — all tests in `tests/` must pass (0 failures).
+3. If tests pass: `gopush 'refactor: complete mcp simplification — tools-only lean library'`
 
 ---
 
-## Files Remaining After Refactor (~15 files)
+## Expected Final File Set (~20 files)
 
 | File | Purpose |
 |------|---------|
-| `server.go` | MCPServer — tool registration, dispatch, sessions |
+| `server.go` | MCPServer — tool registration, dispatch (tools only) |
 | `client.go` | MCPClient — ListTools, CallTool |
-| `provider.go` | RegisterProvider() |
-| `executor.go` | mcpExecuteTool() — Loggable + BinaryData handling |
+| `provider.go` | RegisterProvider() ✅ already done |
+| `executor.go` | mcpExecuteTool() ✅ already done |
 | `tools.go` | Tool, CallToolRequest, CallToolResult, builder helpers |
-| `tools_meta.go` | ToolProvider, ToolMetadata, ParameterMetadata, BinaryData |
-| `types.go` | JSON-RPC types, capabilities, content types |
-| `session.go` | ClientSession, SessionWithTools |
-| `errors.go` | Standard errors |
+| `tools_meta.go` | ToolProvider, ToolMetadata, BinaryData ✅ already done |
+| `types.go` | JSON-RPC types, capabilities, content types (trimmed) |
+| `session.go` | ClientSession, SessionWithTools (trimmed) |
+| `errors.go` | Standard errors (trimmed) |
 | `ctx.go` | Context utilities |
-| `constants.go` | Protocol constants |
+| `constants.go` | Protocol constants (trimmed) |
 | `interface.go` | MCPClient interface |
 | `utils.go` | Internal helpers |
 | `transport_interface.go` | Transport interface |
 | `transport_sse.go` | SSE client transport |
-| `transport_streamable_http.go` | HTTP streamable transport (client+server) |
+| `transport_streamable_http.go` | HTTP streamable transport (stripped of OAuth) |
 | `transport_error.go` | Transport errors |
 | `transport_utils.go` | Transport utilities |
-| `http.go` | HTTP server handler (NewStreamableHTTPServer) |
-| `mcptest.go` | Test harness |
+| `http.go` | HTTP server handler |
 | `internal/unixid/` | Session ID generation |
 | `internal/testutils/` | Test assertion helpers |
-| `tests/` | New minimal tests |
-
----
-
-## Migration Note (Out of Scope for This Plan)
-
-After this plan is executed, a separate plan will migrate `app`, `devbrowser`, `devtui` to import `github.com/tinywasm/mcp` directly instead of `github.com/tinywasm/mcpserve`, allowing `mcpserve` to be deleted. The `ToolExecutor` signature change is a breaking change for those consumers.
+| `tests/` | Existing minimal tests |

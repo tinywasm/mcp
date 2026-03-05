@@ -15,7 +15,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-"github.com/tinywasm/mcp/util"
 )
 
 type StreamableHTTPCOption func(*StreamableHTTP)
@@ -24,7 +23,7 @@ type StreamableHTTPCOption func(*StreamableHTTP)
 // In particular, if you want to receive global notifications from the server (like ToolListChangedNotification),
 // you should enable this option.
 //
-// It will establish a standalone long-live GET HTTP connection to the 
+// It will establish a standalone long-live GET HTTP connection to the
 // https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#listening-for-messages-from-the-server
 // NOTICE: Even enabled, the server may not support this feature.
 func WithContinuousListening() StreamableHTTPCOption {
@@ -33,7 +32,7 @@ func WithContinuousListening() StreamableHTTPCOption {
 	}
 }
 
-// WithHTTPClient sets a custom HTTP client on the StreamableHTTP 
+// WithHTTPClient sets a custom HTTP client on the StreamableHTTP
 func WithHTTPBasicClient(client *http.Client) StreamableHTTPCOption {
 	return func(sc *StreamableHTTP) {
 		sc.httpClient = client
@@ -59,22 +58,15 @@ func WithHTTPTimeout(timeout time.Duration) StreamableHTTPCOption {
 	}
 }
 
-// WithHTTPOAuth enables OAuth authentication for the 
-func WithHTTPOAuth(config OAuthConfig) StreamableHTTPCOption {
-	return func(sc *StreamableHTTP) {
-		sc.oauthHandler = NewOAuthHandler(config)
-	}
-}
-
-// WithHTTPLogger sets a custom logger for the StreamableHTTP 
-func WithHTTPLogger(logger util.Logger) StreamableHTTPCOption {
+// WithHTTPLogger sets a custom logger for the StreamableHTTP
+func WithHTTPLogger(logger Logger) StreamableHTTPCOption {
 	return func(sc *StreamableHTTP) {
 		sc.logger = logger
 	}
 }
 
 // Deprecated: Use [WithHTTPLogger] instead.
-func WithLogger(logger util.Logger) StreamableHTTPCOption {
+func WithLogger(logger Logger) StreamableHTTPCOption {
 	return WithHTTPLogger(logger)
 }
 
@@ -86,7 +78,7 @@ func WithHTTPSession(sessionID string) StreamableHTTPCOption {
 }
 
 // WithStreamableHTTPHost sets a custom Host header for the StreamableHTTP client, enabling manual DNS resolution.
-// This allows connecting to an IP address while sending a specific Host header to the 
+// This allows connecting to an IP address while sending a specific Host header to the
 // For example, connecting to "http://192.168.1.100:8080/mcp" but sending Host: "api.example.com"
 func WithStreamableHTTPHost(host string) StreamableHTTPCOption {
 	return func(sc *StreamableHTTP) {
@@ -94,7 +86,7 @@ func WithStreamableHTTPHost(host string) StreamableHTTPCOption {
 	}
 }
 
-// StreamableHTTP implements Streamable HTTP 
+// StreamableHTTP implements Streamable HTTP
 //
 // It transmits JSON-RPC messages over individual HTTP requests. One message per request.
 // The HTTP response body can either be a single JSON-RPC response,
@@ -111,7 +103,7 @@ type StreamableHTTP struct {
 	headers             map[string]string
 	headerFunc          HTTPHeaderFunc
 	host                string
-	logger              util.Logger
+	logger              Logger
 	getListeningEnabled bool
 
 	sessionID       atomic.Value // string
@@ -129,9 +121,6 @@ type StreamableHTTP struct {
 
 	closed    chan struct{}
 	closeOnce sync.Once
-
-	// OAuth support
-	oauthHandler *OAuthHandler
 }
 
 // NewStreamableHTTP creates a new Streamable HTTP transport with the given server URL.
@@ -147,7 +136,7 @@ func NewStreamableHTTP(serverURL string, options ...StreamableHTTPCOption) (*Str
 		httpClient:  &http.Client{},
 		headers:     make(map[string]string),
 		closed:      make(chan struct{}),
-		logger:      util.DefaultLogger(),
+		logger:      DefaultLogger(),
 		initialized: make(chan struct{}),
 	}
 	smc.sessionID.Store("") // set initial value to simplify later usage
@@ -158,17 +147,10 @@ func NewStreamableHTTP(serverURL string, options ...StreamableHTTPCOption) (*Str
 		}
 	}
 
-	// If OAuth is configured, set the base URL for metadata discovery
-	if smc.oauthHandler != nil {
-		// Extract base URL from server URL for metadata discovery
-		baseURL := fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host)
-		smc.oauthHandler.SetBaseURL(baseURL)
-	}
-
 	return smc, nil
 }
 
-// Start initiates the HTTP connection to the 
+// Start initiates the HTTP connection to the
 func (c *StreamableHTTP) Start(ctx context.Context) error {
 	// Start is idempotent - check if already initialized
 	select {
@@ -194,7 +176,7 @@ func (c *StreamableHTTP) Start(ctx context.Context) error {
 	return nil
 }
 
-// Close closes the all the HTTP connections to the 
+// Close closes the all the HTTP connections to the
 func (c *StreamableHTTP) Close() error {
 	c.closeOnce.Do(func() {
 		// Cancel all in-flight requests
@@ -237,22 +219,6 @@ func (c *StreamableHTTP) Close() error {
 // SetProtocolVersion sets the negotiated protocol version for this connection.
 func (c *StreamableHTTP) SetProtocolVersion(version string) {
 	c.protocolVersion.Store(version)
-}
-
-// ErrOAuthAuthorizationRequired is a sentinel error for OAuth authorization required
-var ErrOAuthAuthorizationRequired = errors.New("no valid token available, authorization required")
-
-// OAuthAuthorizationRequiredError is returned when OAuth authorization is required
-type OAuthAuthorizationRequiredError struct {
-	Handler *OAuthHandler
-}
-
-func (e *OAuthAuthorizationRequiredError) Error() string {
-	return ErrOAuthAuthorizationRequired.Error()
-}
-
-func (e *OAuthAuthorizationRequiredError) Unwrap() error {
-	return ErrOAuthAuthorizationRequired
 }
 
 // SendRequest sends a JSON-RPC request to the server and waits for a response.
@@ -572,7 +538,7 @@ func (c *StreamableHTTP) SetNotificationHandler(handler func(JSONRPCNotification
 	c.notificationHandler = handler
 }
 
-// SetRequestHandler sets the handler for incoming requests from the 
+// SetRequestHandler sets the handler for incoming requests from the
 func (c *StreamableHTTP) SetRequestHandler(handler RequestHandler) {
 	c.requestMu.Lock()
 	defer c.requestMu.Unlock()
@@ -705,14 +671,8 @@ func (c *StreamableHTTP) handleIncomingRequest(ctx context.Context, request JSON
 				errorMessage = "request timed out"
 			} else {
 				// Generic error cases
-				switch request.Method {
-				case string(MethodSamplingCreateMessage):
-					errorCode = INTERNAL_ERROR
-					errorMessage = fmt.Sprintf("sampling request failed: %v", err)
-				default:
-					errorCode = INTERNAL_ERROR
-					errorMessage = err.Error()
-				}
+				errorCode = INTERNAL_ERROR
+				errorMessage = err.Error()
 			}
 
 			// Send error response
