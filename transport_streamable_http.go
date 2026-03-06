@@ -58,13 +58,6 @@ func WithHTTPTimeout(timeout time.Duration) StreamableHTTPCOption {
 	}
 }
 
-// WithHTTPOAuth enables OAuth authentication for the
-func WithHTTPOAuth(config OAuthConfig) StreamableHTTPCOption {
-	return func(sc *StreamableHTTP) {
-		sc.oauthHandler = NewOAuthHandler(config)
-	}
-}
-
 // WithHTTPLogger sets a custom logger for the StreamableHTTP
 func WithHTTPLogger(logger Logger) StreamableHTTPCOption {
 	return func(sc *StreamableHTTP) {
@@ -128,9 +121,6 @@ type StreamableHTTP struct {
 
 	closed    chan struct{}
 	closeOnce sync.Once
-
-	// OAuth support
-	oauthHandler *OAuthHandler
 }
 
 // NewStreamableHTTP creates a new Streamable HTTP transport with the given server URL.
@@ -155,13 +145,6 @@ func NewStreamableHTTP(serverURL string, options ...StreamableHTTPCOption) (*Str
 		if opt != nil {
 			opt(smc)
 		}
-	}
-
-	// If OAuth is configured, set the base URL for metadata discovery
-	if smc.oauthHandler != nil {
-		// Extract base URL from server URL for metadata discovery
-		baseURL := fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host)
-		smc.oauthHandler.SetBaseURL(baseURL)
 	}
 
 	return smc, nil
@@ -238,22 +221,6 @@ func (c *StreamableHTTP) SetProtocolVersion(version string) {
 	c.protocolVersion.Store(version)
 }
 
-// ErrOAuthAuthorizationRequired is a sentinel error for OAuth authorization required
-var ErrOAuthAuthorizationRequired = errors.New("no valid token available, authorization required")
-
-// OAuthAuthorizationRequiredError is returned when OAuth authorization is required
-type OAuthAuthorizationRequiredError struct {
-	Handler *OAuthHandler
-}
-
-func (e *OAuthAuthorizationRequiredError) Error() string {
-	return ErrOAuthAuthorizationRequired.Error()
-}
-
-func (e *OAuthAuthorizationRequiredError) Unwrap() error {
-	return ErrOAuthAuthorizationRequired
-}
-
 // SendRequest sends a JSON-RPC request to the server and waits for a response.
 // Returns the raw JSON response message or an error if the request fails.
 func (c *StreamableHTTP) SendRequest(
@@ -290,14 +257,7 @@ func (c *StreamableHTTP) SendRequest(
 
 	// Check if we got an error response
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
-
-		// Handle unauthorized error
 		if resp.StatusCode == http.StatusUnauthorized {
-			if c.oauthHandler != nil {
-				return nil, &OAuthAuthorizationRequiredError{
-					Handler: c.oauthHandler,
-				}
-			}
 			return nil, ErrUnauthorized
 		}
 
@@ -386,21 +346,6 @@ func (c *StreamableHTTP) sendHTTP(
 	// Set custom Host header if provided
 	if c.host != "" {
 		req.Host = c.host
-	}
-
-	// Add OAuth authorization if configured
-	if c.oauthHandler != nil {
-		authHeader, err := c.oauthHandler.GetAuthorizationHeader(ctx)
-		if err != nil {
-			// If we get an authorization error, return a specific error that can be handled by the client
-			if errors.Is(err, ErrOAuthAuthorizationRequired) {
-				return nil, &OAuthAuthorizationRequiredError{
-					Handler: c.oauthHandler,
-				}
-			}
-			return nil, fmt.Errorf("failed to get authorization header: %w", err)
-		}
-		req.Header.Set("Authorization", authHeader)
 	}
 
 	if c.headerFunc != nil {
@@ -574,11 +519,6 @@ func (c *StreamableHTTP) SendNotification(ctx context.Context, notification JSON
 	case http.StatusOK, http.StatusAccepted, http.StatusNoContent:
 		return nil
 	case http.StatusUnauthorized:
-		if c.oauthHandler != nil {
-			return &OAuthAuthorizationRequiredError{
-				Handler: c.oauthHandler,
-			}
-		}
 		return ErrUnauthorized
 	default:
 		body, _ := io.ReadAll(resp.Body)
@@ -607,15 +547,7 @@ func (c *StreamableHTTP) GetSessionId() string {
 	return c.sessionID.Load().(string)
 }
 
-// GetOAuthHandler returns the OAuth handler if configured
-func (c *StreamableHTTP) GetOAuthHandler() *OAuthHandler {
-	return c.oauthHandler
-}
 
-// IsOAuthEnabled returns true if OAuth is enabled
-func (c *StreamableHTTP) IsOAuthEnabled() bool {
-	return c.oauthHandler != nil
-}
 
 func (c *StreamableHTTP) listenForever(ctx context.Context) {
 	c.logger.Infof("listening to server forever")
