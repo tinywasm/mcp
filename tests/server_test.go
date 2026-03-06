@@ -10,7 +10,7 @@ import (
 
 func TestAddTool(t *testing.T) {
 	server := mcp.NewMCPServer("test", "1.0")
-	tool := mcp.NewTool("test-tool", "A test tool", mcp.ToolInputSchema{Type: "object"})
+	tool := mcp.NewTool("test-tool", mcp.WithDescription("A test tool"))
 	handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		return mcp.NewToolResultText("success"), nil
 	}
@@ -28,13 +28,10 @@ func TestAddTool(t *testing.T) {
 
 func TestCallTool(t *testing.T) {
 	server := mcp.NewMCPServer("test", "1.0")
-	tool := mcp.NewTool("echo", "Echoes input", mcp.ToolInputSchema{
-		Type: "object",
-		Properties: map[string]any{
-			"message": map[string]any{"type": "string"},
-		},
-		Required: []string{"message"},
-	})
+	tool := mcp.NewTool("echo",
+		mcp.WithDescription("Echoes input"),
+		mcp.WithString("message", mcp.Required(), mcp.Description("Input message")),
+	)
 	handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		msg, ok := args["message"].(string)
@@ -83,7 +80,7 @@ func TestCallTool(t *testing.T) {
 
 func TestCallTool_Error(t *testing.T) {
 	server := mcp.NewMCPServer("test", "1.0")
-	tool := mcp.NewTool("fail-tool", "fails", mcp.ToolInputSchema{Type: "object"})
+	tool := mcp.NewTool("fail-tool", mcp.WithDescription("fails"))
 	handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		return mcp.NewToolResultError("expected failure"), nil
 	}

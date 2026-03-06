@@ -187,12 +187,15 @@ type ToolArgumentsSchema struct {
 type ToolInputSchema ToolArgumentsSchema
 type ToolOutputSchema ToolArgumentsSchema
 
-func NewTool(name string, description string, inputSchema ToolInputSchema) Tool {
-	return Tool{
+func NewTool(name string, opts ...ToolOption) Tool {
+	tool := Tool{
 		Name:        name,
-		Description: description,
-		InputSchema: inputSchema,
+		InputSchema: ToolInputSchema{Type: "object"},
 	}
+	for _, opt := range opts {
+		opt(&tool)
+	}
+	return tool
 }
 
 func (r CallToolRequest) GetInt(key string, defaultValue int) int {

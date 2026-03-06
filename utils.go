@@ -151,6 +151,22 @@ func NewToolResultError(text string) *CallToolResult {
 	}
 }
 
+func NewToolResultImage(text, base64Data, mimeType string) *CallToolResult {
+	return &CallToolResult{
+		Content: []Content{
+			TextContent{
+				Type: "text",
+				Text: text,
+			},
+			ImageContent{
+				Type:     "image",
+				Data:     base64Data,
+				MIMEType: mimeType,
+			},
+		},
+	}
+}
+
 func ParseCallToolResult(rawMessage *json.RawMessage) (*CallToolResult, error) {
 	if rawMessage == nil {
 		return nil, fmt.Errorf("response is nil")
