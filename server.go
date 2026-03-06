@@ -21,14 +21,14 @@ type ToolHandlerFunc func(ctx context.Context, request CallToolRequest) (*CallTo
 type ToolHandlerMiddleware func(ToolHandlerFunc) ToolHandlerFunc
 
 // ToolFilterFunc is a function that filters tools based on context, typically using session information.
-type ToolFilterFunc func(ctx context.Context, tools []Tool) []Tool
+type ToolFilterFunc func(ctx context.Context, tools []ProtocolTool) []ProtocolTool
 
 // NotificationHandlerFunc handles incoming notifications.
 type NotificationHandlerFunc func(ctx context.Context, notification JSONRPCNotification)
 
-// ServerTool combines a Tool with its ToolHandlerFunc.
+// ServerTool combines a ProtocolTool with its ToolHandlerFunc.
 type ServerTool struct {
-	Tool    Tool
+	Tool    ProtocolTool
 	Handler ToolHandlerFunc
 }
 
@@ -188,9 +188,19 @@ func (s *MCPServer) AddTools(tools ...ServerTool) {
 	s.toolsMu.Unlock()
 }
 
-// AddTool registers a new tool and its handler.
-func (s *MCPServer) AddTool(tool Tool, handler ToolHandlerFunc) {
+// AddTool registers a new tool and its handler (using ProtocolTool directly).
+func (s *MCPServer) AddTool(tool ProtocolTool, handler ToolHandlerFunc) {
 	s.AddTools(ServerTool{Tool: tool, Handler: handler})
+}
+
+// AddToolFromUser registers a user-facing Tool, converting to ProtocolTool internally.
+func (s *MCPServer) AddToolFromUser(userTool Tool, handler ToolHandlerFunc) {
+	protoTool := ProtocolTool{
+		Name:        userTool.Name,
+		Description: userTool.Description,
+		InputSchema: parametersToInputSchema(userTool.Parameters),
+	}
+	s.AddTool(protoTool, handler)
 }
 
 // GetTool retrieves the specified tool.
@@ -204,9 +214,9 @@ func (s *MCPServer) GetTool(toolName string) *ServerTool {
 }
 
 // ListTools returns all registered tools.
-func (s *MCPServer) ListTools(ctx context.Context) []Tool {
+func (s *MCPServer) ListTools(ctx context.Context) []ProtocolTool {
 	s.toolsMu.RLock()
-	tools := make([]Tool, 0, len(s.tools))
+	tools := make([]ProtocolTool, 0, len(s.tools))
 	for _, tool := range s.tools {
 		tools = append(tools, tool.Tool)
 	}
@@ -220,7 +230,7 @@ func (s *MCPServer) ListTools(ctx context.Context) []Tool {
 	s.toolFiltersMu.RUnlock()
 
 	// Sort
-	slices.SortFunc(tools, func(a, b Tool) int {
+	slices.SortFunc(tools, func(a, b ProtocolTool) int {
 		return cmp.Compare(a.Name, b.Name)
 	})
 	return tools

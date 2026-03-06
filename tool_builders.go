@@ -1,21 +1,21 @@
 package mcp
 
-// ToolOption configures a Tool during construction.
-type ToolOption func(*Tool)
+// ToolOption configures a ProtocolTool during construction.
+type ToolOption func(*ProtocolTool)
 
 // PropertyOption configures a property within a ToolInputSchema.
 type PropertyOption func(map[string]any)
 
 // WithDescription sets the tool description.
 func WithDescription(desc string) ToolOption {
-	return func(t *Tool) {
+	return func(t *ProtocolTool) {
 		t.Description = desc
 	}
 }
 
 // WithString adds a string property to the tool's input schema.
 func WithString(name string, opts ...PropertyOption) ToolOption {
-	return func(t *Tool) {
+	return func(t *ProtocolTool) {
 		prop := make(map[string]any)
 		prop["type"] = "string"
 		for _, opt := range opts {
@@ -30,7 +30,7 @@ func WithString(name string, opts ...PropertyOption) ToolOption {
 
 // WithNumber adds a number property to the tool's input schema.
 func WithNumber(name string, opts ...PropertyOption) ToolOption {
-	return func(t *Tool) {
+	return func(t *ProtocolTool) {
 		prop := make(map[string]any)
 		prop["type"] = "number"
 		for _, opt := range opts {
@@ -45,7 +45,7 @@ func WithNumber(name string, opts ...PropertyOption) ToolOption {
 
 // WithBoolean adds a boolean property to the tool's input schema.
 func WithBoolean(name string, opts ...PropertyOption) ToolOption {
-	return func(t *Tool) {
+	return func(t *ProtocolTool) {
 		prop := make(map[string]any)
 		prop["type"] = "boolean"
 		for _, opt := range opts {

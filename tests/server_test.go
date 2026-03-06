@@ -10,11 +10,14 @@ import (
 
 func TestAddTool(t *testing.T) {
 	server := mcp.NewMCPServer("test", "1.0")
-	tool := mcp.NewTool("test-tool", mcp.WithDescription("A test tool"))
+	tool := mcp.Tool{
+		Name:        "test-tool",
+		Description: "A test tool",
+	}
 	handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		return mcp.NewToolResultText("success"), nil
 	}
-	server.AddTool(tool, handler)
+	server.AddToolFromUser(tool, handler)
 
 	tools := server.ListTools(context.Background())
 	if len(tools) != 1 {
@@ -28,10 +31,18 @@ func TestAddTool(t *testing.T) {
 
 func TestCallTool(t *testing.T) {
 	server := mcp.NewMCPServer("test", "1.0")
-	tool := mcp.NewTool("echo",
-		mcp.WithDescription("Echoes input"),
-		mcp.WithString("message", mcp.Required(), mcp.Description("Input message")),
-	)
+	tool := mcp.Tool{
+		Name:        "echo",
+		Description: "Echoes input",
+		Parameters: []mcp.Parameter{
+			{
+				Name:        "message",
+				Description: "Input message",
+				Required:    true,
+				Type:        "string",
+			},
+		},
+	}
 	handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		msg, ok := args["message"].(string)
@@ -41,7 +52,7 @@ func TestCallTool(t *testing.T) {
 		return mcp.NewToolResultText(msg), nil
 	}
 
-	server.AddTool(tool, handler)
+	server.AddToolFromUser(tool, handler)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -80,12 +91,15 @@ func TestCallTool(t *testing.T) {
 
 func TestCallTool_Error(t *testing.T) {
 	server := mcp.NewMCPServer("test", "1.0")
-	tool := mcp.NewTool("fail-tool", mcp.WithDescription("fails"))
+	tool := mcp.Tool{
+		Name:        "fail-tool",
+		Description: "fails",
+	}
 	handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		return mcp.NewToolResultError("expected failure"), nil
 	}
 
-	server.AddTool(tool, handler)
+	server.AddToolFromUser(tool, handler)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

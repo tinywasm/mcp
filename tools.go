@@ -18,7 +18,7 @@ type ListToolsRequest struct {
 
 type ListToolsResult struct {
 	PaginatedResult
-	Tools []Tool `json:"tools"`
+	Tools []ProtocolTool `json:"tools"`
 }
 
 type CallToolResult struct {
@@ -141,7 +141,9 @@ type ToolListChangedNotification struct {
 	Notification
 }
 
-type Tool struct {
+// ProtocolTool is the internal MCP protocol representation.
+// Users never interact with this directly.
+type ProtocolTool struct {
 	Meta            *Meta            `json:"_meta,omitempty"`
 	Name            string           `json:"name"`
 	Description     string           `json:"description,omitempty"`
@@ -151,11 +153,11 @@ type Tool struct {
 	RawOutputSchema json.RawMessage  `json:"-"`
 }
 
-func (t Tool) GetName() string {
+func (t ProtocolTool) GetName() string {
 	return t.Name
 }
 
-func (t Tool) MarshalJSON() ([]byte, error) {
+func (t ProtocolTool) MarshalJSON() ([]byte, error) {
 	m := make(map[string]any)
 	m["name"] = t.Name
 	if t.Description != "" {
@@ -187,8 +189,8 @@ type ToolArgumentsSchema struct {
 type ToolInputSchema ToolArgumentsSchema
 type ToolOutputSchema ToolArgumentsSchema
 
-func NewTool(name string, opts ...ToolOption) Tool {
-	tool := Tool{
+func NewProtocolTool(name string, opts ...ToolOption) ProtocolTool {
+	tool := ProtocolTool{
 		Name:        name,
 		InputSchema: ToolInputSchema{Type: "object"},
 	}
@@ -196,6 +198,31 @@ func NewTool(name string, opts ...ToolOption) Tool {
 		opt(&tool)
 	}
 	return tool
+}
+
+// parametersToInputSchema converts user Parameter[] to MCP ToolInputSchema.
+func parametersToInputSchema(params []Parameter) ToolInputSchema {
+	schema := ToolInputSchema{
+		Type:       "object",
+		Properties: make(map[string]any),
+	}
+	for _, p := range params {
+		prop := map[string]any{"type": p.Type}
+		if p.Description != "" {
+			prop["description"] = p.Description
+		}
+		if len(p.EnumValues) > 0 {
+			prop["enum"] = p.EnumValues
+		}
+		if p.Default != nil {
+			prop["default"] = p.Default
+		}
+		schema.Properties[p.Name] = prop
+		if p.Required {
+			schema.Required = append(schema.Required, p.Name)
+		}
+	}
+	return schema
 }
 
 func (r CallToolRequest) GetInt(key string, defaultValue int) int {

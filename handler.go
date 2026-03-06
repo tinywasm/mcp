@@ -14,8 +14,8 @@ import (
 // and injects it via NewHandler.
 // *sse.SSEServer from tinywasm/sse satisfies this interface automatically.
 type SSEHub interface {
-	http.Handler                          // serves the /logs endpoint
-	Publish(data []byte, channel string)  // publishes structured log entries
+	http.Handler                         // serves the /logs endpoint
+	Publish(data []byte, channel string) // publishes structured log entries
 }
 
 const HandlerTypeLoggable = 4
@@ -136,10 +136,9 @@ func (h *Handler) Serve() {
 		if handler == nil {
 			continue
 		}
-		tools := handler.GetMCPToolsMetadata()
-		for _, toolMeta := range tools {
-			tool := BuildTool(toolMeta)
-			s.AddTool(tool, toolExecutorAdapter(handler, toolMeta.Execute, h.tui))
+		tools := handler.GetMCPTools()
+		for _, userTool := range tools {
+			s.AddToolFromUser(userTool, toolExecutorAdapter(handler, userTool.Execute, h.tui))
 		}
 	}
 
