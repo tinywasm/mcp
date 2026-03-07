@@ -1,6 +1,9 @@
 package mcp
 
-import "context"
+import (
+	"context"
+	"net/http"
+)
 
 // MCPClient is the interface for MCP client implementations.
 type MCPClient interface {
@@ -11,4 +14,12 @@ type MCPClient interface {
 	CallTool(ctx context.Context, request CallToolRequest) (*CallToolResult, error)
 	Close() error
 	OnNotification(handler func(notification JSONRPCNotification))
+}
+
+// SSEHub is the interface mcp.Handler uses for SSE transport.
+// Implemented by tinywasm/sse.SSEServer.
+// Single Publish method — message type is encoded in the JSON payload.
+type SSEHub interface {
+	http.Handler
+	Publish(data []byte, channels ...string)
 }
