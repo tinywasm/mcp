@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -57,15 +58,21 @@ func TestHandler_OnAction_JSONRPCMethod(t *testing.T) {
 	h := mcp.NewHandler(config, nil, nil)
 	h.SetAuth(mcp.OpenAuthorizer())
 
+	var mu sync.Mutex
 	var receivedKey, receivedValue string
+	done := make(chan struct{})
+
 	h.RegisterMethod("tinywasm/action", func(ctx context.Context, params []byte) (any, error) {
 		var p struct {
 			Key   string `json:"key"`
 			Value string `json:"value"`
 		}
 		json.Unmarshal(params, &p)
+		mu.Lock()
 		receivedKey = p.Key
 		receivedValue = p.Value
+		mu.Unlock()
+		close(done)
 		return nil, nil
 	})
 
@@ -75,11 +82,18 @@ func TestHandler_OnAction_JSONRPCMethod(t *testing.T) {
 	client := mcp.NewClient(server.URL, "")
 	client.Dispatch(context.Background(), "tinywasm/action", map[string]string{"key": "foo", "value": "bar"})
 
-	// Since Dispatch is async and fire-and-forget, we might need a small wait.
-	time.Sleep(100 * time.Millisecond)
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Timed out waiting for action handler")
+	}
 
-	if receivedKey != "foo" || receivedValue != "bar" {
-		t.Errorf("Expected foo/bar, got %s/%s", receivedKey, receivedValue)
+	mu.Lock()
+	key, val := receivedKey, receivedValue
+	mu.Unlock()
+
+	if key != "foo" || val != "bar" {
+		t.Errorf("Expected foo/bar, got %s/%s", key, val)
 	}
 }
 
