@@ -2,272 +2,110 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"slices"
-	"sync"
-	"sync/atomic"
+	"strings"
+
+	"github.com/tinywasm/fetch"
+	"github.com/tinywasm/fmt"
+	"github.com/tinywasm/json"
 )
 
-// Client implements the MCP client.
+// rpcRequest is the JSON-RPC 2.0 request envelope.
+// Struct avoids map allocations (WASM binary size concern).
+type rpcRequest struct {
+	JSONRPC string `json:"jsonrpc"`
+	ID      int    `json:"id"`
+	Method  string `json:"method"`
+	Params  any    `json:"params"`
+}
+
+// Client is a lightweight stateless JSON-RPC 2.0 client for tinywasm/mcp endpoints.
+// Thread-safe (no mutable state after construction).
+// Compatible with stdlib and WASM (browser) environments.
 type Client struct {
-	transport Interface
-
-	initialized        bool
-	notifications      []func(JSONRPCNotification)
-	notifyMu           sync.RWMutex
-	requestID          atomic.Int64
-	clientCapabilities ClientCapabilities
-	serverCapabilities ServerCapabilities
-	protocolVersion    string
+	endpoint string // always points to /mcp
+	apiKey   string // optional Bearer token; empty = no auth header
 }
 
-type ClientOption func(*Client)
-
-// WithClientCapabilities sets the client capabilities for the client.
-func WithClientCapabilities(capabilities ClientCapabilities) ClientOption {
-	return func(c *Client) {
-		c.clientCapabilities = capabilities
+// NewClient creates a Client targeting baseURL/mcp.
+// baseURL: e.g. "http://localhost:3030" — the /mcp path is appended automatically.
+// apiKey: Bearer token for secured endpoints; empty = open/local daemon.
+func NewClient(baseURL, apiKey string) *Client {
+	return &Client{
+		endpoint: strings.TrimSuffix(baseURL, "/") + "/mcp",
+		apiKey:   apiKey,
 	}
 }
 
-// WithInitializedSession assumes a MCP Session has already been initialized.
-func WithInitializedSession() ClientOption {
-	return func(c *Client) {
-		c.initialized = true
-	}
-}
-
-// NewClient creates a new MCP client with the given transport.
-func NewClient(transport Interface, options ...ClientOption) *Client {
-	client := &Client{transport: transport}
-	for _, opt := range options {
-		opt(client)
-	}
-	return client
-}
-
-// Start initiates the connection to the server.
-func (c *Client) Start(ctx context.Context) error {
-	if c.transport == nil {
-		return fmt.Errorf("transport is nil")
-	}
-	if err := c.transport.Start(ctx); err != nil {
-		return err
-	}
-	c.transport.SetNotificationHandler(func(notification JSONRPCNotification) {
-		c.notifyMu.RLock()
-		defer c.notifyMu.RUnlock()
-		for _, handler := range c.notifications {
-			handler(notification)
+// Call sends a stateless JSON-RPC 2.0 POST and delivers the raw result bytes via callback.
+// callback(nil, nil) when response has no result field.
+// Uses tinywasm/fetch (async, WASM+stdlib compatible).
+func (c *Client) Call(ctx context.Context, method string, params any, callback func([]byte, error)) {
+	body := c.buildBody(method, params)
+	if body == nil {
+		if callback != nil {
+			callback(nil, fmt.Err("mcp: failed to encode request"))
 		}
-	})
-	if bidirectional, ok := c.transport.(BidirectionalInterface); ok {
-		bidirectional.SetRequestHandler(c.handleIncomingRequest)
+		return
 	}
-	return nil
-}
-
-// Close shuts down the client and closes the transport.
-func (c *Client) Close() error {
-	return c.transport.Close()
-}
-
-// OnNotification registers a handler for notifications.
-func (c *Client) OnNotification(handler func(notification JSONRPCNotification)) {
-	c.notifyMu.Lock()
-	defer c.notifyMu.Unlock()
-	c.notifications = append(c.notifications, handler)
-}
-
-// OnConnectionLost registers a handler for when the connection is lost.
-func (c *Client) OnConnectionLost(handler func(error)) {
-	type connectionLostSetter interface {
-		SetConnectionLostHandler(func(error))
+	r := fetch.Post(c.endpoint).ContentTypeJSON().Body(body)
+	if c.apiKey != "" {
+		r = r.Header("Authorization", "Bearer "+c.apiKey)
 	}
-	if setter, ok := c.transport.(connectionLostSetter); ok {
-		setter.SetConnectionLostHandler(handler)
-	}
-}
-
-func (c *Client) sendRequest(ctx context.Context, method string, params any, header http.Header) (*json.RawMessage, error) {
-	if !c.initialized && method != "initialize" {
-		return nil, fmt.Errorf("client not initialized")
-	}
-	id := c.requestID.Add(1)
-	request := JSONRPCRequest{
-		JSONRPC: JSONRPC_VERSION,
-		ID:      NewRequestId(id),
-		Params:  params,
-		Header:  header,
-		Request: Request{Method: method},
-	}
-	response, err := c.transport.SendRequest(ctx, request)
-	if err != nil {
-		return nil, NewError(err)
-	}
-	if response.Error != nil {
-		return nil, &jsonRPCError{
-			code:    response.Error.Code,
-			message: response.Error.Message,
-			data:    response.Error.Data,
-		}
-	}
-	bytes, err := json.Marshal(response.Result)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal result: %w", err)
-	}
-	raw := json.RawMessage(bytes)
-	return &raw, nil
-}
-
-// Initialize negotiates with the server. Must be called after Start.
-func (c *Client) Initialize(ctx context.Context, request InitializeRequest) (*InitializeResult, error) {
-	params := struct {
-		ProtocolVersion string             `json:"protocolVersion"`
-		ClientInfo      Implementation     `json:"clientInfo"`
-		Capabilities    ClientCapabilities `json:"capabilities"`
-	}{
-		ProtocolVersion: request.Params.ProtocolVersion,
-		ClientInfo:      request.Params.ClientInfo,
-		Capabilities:    request.Params.Capabilities,
-	}
-	if params.ProtocolVersion == "" {
-		params.ProtocolVersion = LATEST_PROTOCOL_VERSION
-	}
-	response, err := c.sendRequest(ctx, "initialize", params, request.Header)
-	if err != nil {
-		return nil, err
-	}
-	var result InitializeResult
-	if err := json.Unmarshal(*response, &result); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-	if !slices.Contains(ValidProtocolVersions, result.ProtocolVersion) {
-		return nil, UnsupportedProtocolVersionError{Version: result.ProtocolVersion}
-	}
-	c.serverCapabilities = result.Capabilities
-	c.protocolVersion = result.ProtocolVersion
-	if httpConn, ok := c.transport.(HTTPConnection); ok {
-		httpConn.SetProtocolVersion(result.ProtocolVersion)
-	}
-	err = c.transport.SendNotification(ctx, JSONRPCNotification{
-		JSONRPC: JSONRPC_VERSION,
-		Notification: Notification{Method: "notifications/initialized"},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to send initialized notification: %w", err)
-	}
-	c.initialized = true
-	return &result, nil
-}
-
-func (c *Client) Ping(ctx context.Context) error {
-	_, err := c.sendRequest(ctx, "ping", nil, nil)
-	return err
-}
-
-// ListToolsByPage manually lists tools by page.
-func (c *Client) ListToolsByPage(ctx context.Context, request ListToolsRequest) (*ListToolsResult, error) {
-	return listByPage[ListToolsResult](ctx, c, request.PaginatedRequest, request.Header, "tools/list")
-}
-
-// ListTools requests all tools, paginating automatically.
-func (c *Client) ListTools(ctx context.Context, request ListToolsRequest) (*ListToolsResult, error) {
-	result, err := c.ListToolsByPage(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-	for result.NextCursor != "" {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-			request.Params.Cursor = result.NextCursor
-			newPageRes, err := c.ListToolsByPage(ctx, request)
-			if err != nil {
-				return nil, err
+	r.Send(func(resp *fetch.Response, err error) {
+		if err != nil {
+			if callback != nil {
+				callback(nil, err)
 			}
-			result.Tools = append(result.Tools, newPageRes.Tools...)
-			result.NextCursor = newPageRes.NextCursor
+			return
 		}
+		if callback == nil {
+			return
+		}
+		// Decode envelope: {"jsonrpc":"2.0","id":1,"result":<any>}
+		var envelope struct {
+			Result any `json:"result"`
+		}
+		if err := json.Decode(resp.Body(), &envelope); err != nil {
+			callback(nil, err)
+			return
+		}
+		if envelope.Result == nil {
+			callback(nil, nil)
+			return
+		}
+		// Re-encode result field to raw bytes for caller to decode into target type
+		var resultBytes []byte
+		if err := json.Encode(envelope.Result, &resultBytes); err != nil {
+			callback(nil, err)
+			return
+		}
+		callback(resultBytes, nil)
+	})
+}
+
+// Dispatch sends a JSON-RPC 2.0 POST and ignores the response (fire-and-forget).
+// Used for tinywasm/action calls where no return value is needed.
+func (c *Client) Dispatch(ctx context.Context, method string, params any) {
+	body := c.buildBody(method, params)
+	if body == nil {
+		return
 	}
-	return result, nil
-}
-
-// CallTool invokes a specific tool on the server.
-func (c *Client) CallTool(ctx context.Context, request CallToolRequest) (*CallToolResult, error) {
-	response, err := c.sendRequest(ctx, "tools/call", request.Params, request.Header)
-	if err != nil {
-		return nil, err
+	r := fetch.Post(c.endpoint).ContentTypeJSON().Body(body)
+	if c.apiKey != "" {
+		r = r.Header("Authorization", "Bearer "+c.apiKey)
 	}
-	return ParseCallToolResult(response)
+	r.Send(func(*fetch.Response, error) {}) // ignore response
 }
 
-func listByPage[T any](ctx context.Context, client *Client, request PaginatedRequest, header http.Header, method string) (*T, error) {
-	response, err := client.sendRequest(ctx, method, request.Params, header)
-	if err != nil {
-		return nil, err
+func (c *Client) buildBody(method string, params any) []byte {
+	var body []byte
+	if err := json.Encode(rpcRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  method,
+		Params:  params,
+	}, &body); err != nil {
+		return nil
 	}
-	var result T
-	if err := json.Unmarshal(*response, &result); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-	return &result, nil
-}
-
-// GetTransport gives access to the underlying transport.
-func (c *Client) GetTransport() Interface { return c.transport }
-
-// GetServerCapabilities returns the server capabilities.
-func (c *Client) GetServerCapabilities() ServerCapabilities { return c.serverCapabilities }
-
-// GetClientCapabilities returns the client capabilities.
-func (c *Client) GetClientCapabilities() ClientCapabilities { return c.clientCapabilities }
-
-// GetSessionId returns the session ID of the client.
-func (c *Client) GetSessionId() string {
-	if c.transport == nil {
-		return ""
-	}
-	return c.transport.GetSessionId()
-}
-
-// IsInitialized returns true if the client has been initialized.
-func (c *Client) IsInitialized() bool { return c.initialized }
-
-// handleIncomingRequest processes server-to-client requests.
-func (c *Client) handleIncomingRequest(ctx context.Context, request JSONRPCRequest) (*JSONRPCResponse, error) {
-	switch request.Method {
-	case string(MethodPing):
-		return c.handlePingRequestTransport(ctx, request)
-	default:
-		return nil, fmt.Errorf("unsupported request method: %s", request.Method)
-	}
-}
-
-func (c *Client) handlePingRequestTransport(_ context.Context, request JSONRPCRequest) (*JSONRPCResponse, error) {
-	b, _ := json.Marshal(&EmptyResult{})
-	response := NewJSONRPCResultResponse(request.ID, b)
-	return &response, nil
-}
-
-// UnsupportedProtocolVersionError is returned when the server proposes an unsupported version.
-type UnsupportedProtocolVersionError struct {
-	Version string
-}
-
-func (e UnsupportedProtocolVersionError) Error() string {
-	return fmt.Sprintf("unsupported protocol version: %s", e.Version)
-}
-
-type jsonRPCError struct {
-	code    int
-	message string
-	data    any
-}
-
-func (e *jsonRPCError) Error() string {
-	return fmt.Sprintf("JSON-RPC error %d: %s", e.code, e.message)
+	return body
 }

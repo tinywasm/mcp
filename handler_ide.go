@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 )
@@ -18,46 +19,50 @@ type IDEInfo struct {
 	ConfigFileName string
 
 	// IDE-specific JSON format configuration
-	ServersKey   string         // "servers" for VS Code, "mcpServers" for Antigravity
-	URLKey       string         // "url" for VS Code, "serverUrl" for Antigravity
-	ExtraFields  map[string]any // Additional fields like "type", "autoStart"
-	HasInputs    bool           // VS Code has "inputs" array, Antigravity doesn't
-	SkipProfiles bool           // true = single config file, no profile scanning
+	ServersKey      string         // "servers" for VS Code, "mcpServers" for Antigravity
+	URLKey          string         // "url" for VS Code, "serverUrl" for Antigravity
+	ExtraFields     map[string]any // Additional fields like "type", "autoStart"
+	HasInputs       bool           // VS Code has "inputs" array, Antigravity doesn't
+	SkipProfiles    bool           // true = single config file, no profile scanning
+	SupportsHeaders bool           // true = inject Authorization header
 }
 
 // ConfigureIDEs automatically configures supported IDEs with this MCP server
 func (h *Handler) ConfigureIDEs() {
 	ides := []IDEInfo{
 		{
-			ID:             "vsc",
-			Name:           "Visual Studio Code",
-			GetConfigDir:   getVSCodeConfigPath,
-			ConfigFileName: "mcp.json",
-			ServersKey:     "servers",
-			URLKey:         "url",
-			ExtraFields:    map[string]any{"type": "http", "autoStart": true},
-			HasInputs:      true,
+			ID:              "vsc",
+			Name:            "Visual Studio Code",
+			GetConfigDir:    getVSCodeConfigPath,
+			ConfigFileName:  "mcp.json",
+			ServersKey:      "servers",
+			URLKey:          "url",
+			ExtraFields:     map[string]any{"type": "http", "autoStart": true},
+			HasInputs:       true,
+			SupportsHeaders: true,
 		},
 		{
-			ID:             "antigravity",
-			Name:           "Antigravity",
-			GetConfigDir:   getAntigravityConfigPath,
-			ConfigFileName: "mcp_config.json",
-			ServersKey:     "mcpServers",
-			URLKey:         "serverUrl",
-			ExtraFields:    nil,
-			HasInputs:      false,
+			ID:              "antigravity",
+			Name:            "Antigravity",
+			GetConfigDir:    getAntigravityConfigPath,
+			ConfigFileName:  "mcp_config.json",
+			ServersKey:      "mcpServers",
+			URLKey:          "serverUrl",
+			ExtraFields:     nil,
+			HasInputs:       false,
+			SupportsHeaders: true,
 		},
 		{
-			ID:             "claude-code",
-			Name:           "Claude Code",
-			GetConfigDir:   getClaudeCodeConfigPath,
-			ConfigFileName: ".claude.json",
-			ServersKey:     "mcpServers",
-			URLKey:         "url",
-			ExtraFields:    map[string]any{"type": "http"},
-			HasInputs:      false,
-			SkipProfiles:   true,
+			ID:              "claude-code",
+			Name:            "Claude Code",
+			GetConfigDir:    getClaudeCodeConfigPath,
+			ConfigFileName:  ".claude.json",
+			ServersKey:      "mcpServers",
+			URLKey:          "url",
+			ExtraFields:     map[string]any{"type": "http"},
+			HasInputs:       false,
+			SkipProfiles:    true,
+			SupportsHeaders: true,
 		},
 	}
 
@@ -89,7 +94,7 @@ func (h *Handler) ConfigureIDEs() {
 
 		ideUpdated := false
 		for _, configPath := range configPaths {
-			updated, err := writeMCPConfig(configPath, h.config.AppName, h.config.Port, ide)
+			updated, err := h.writeMCPConfig(configPath, ide)
 			if err == nil && updated {
 				ideUpdated = true
 			}
@@ -196,16 +201,24 @@ func needsUpdate(existingEntry map[string]any, newEntry map[string]any, ide IDEI
 	}
 	// Compare ExtraFields
 	for k, v := range ide.ExtraFields {
-		if existingEntry[k] != v {
+		if !reflect.DeepEqual(existingEntry[k], v) {
 			return true
 		}
 	}
+	// Compare headers
+	if !reflect.DeepEqual(existingEntry["headers"], newEntry["headers"]) {
+		return true
+	}
+
 	return false
 }
 
 // writeMCPConfig is the unified config writer for all IDEs.
 // It reads existing config, preserves all servers, and adds/updates our entry only if needed.
-func writeMCPConfig(configPath string, appName string, mcpPort string, ide IDEInfo) (bool, error) {
+func (h *Handler) writeMCPConfig(configPath string, ide IDEInfo) (bool, error) {
+	appName := h.config.AppName
+	mcpPort := h.config.Port
+
 	// Validate appName first
 	if err := validateAppName(appName); err != nil {
 		return false, err
@@ -265,6 +278,17 @@ func writeMCPConfig(configPath string, appName string, mcpPort string, ide IDEIn
 	// Add extra fields (e.g., "type": "http", "autoStart": true)
 	for k, v := range ide.ExtraFields {
 		serverEntry[k] = v
+	}
+
+	// Inject Authorization header if conditions met
+	h.mu.RLock()
+	apiKey := h.apiKey
+	h.mu.RUnlock()
+
+	if apiKey != "" && ide.SupportsHeaders {
+		serverEntry["headers"] = map[string]string{
+			"Authorization": "Bearer " + apiKey,
+		}
 	}
 
 	// Check if entry already exists and is identical (skip if duplicates were cleaned)

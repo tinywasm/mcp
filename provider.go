@@ -25,6 +25,11 @@ type Tool struct {
 	Description string
 	Parameters  []Parameter
 	Execute     func(args map[string]any)
+
+	// RBAC — optional. If Resource is empty, no access control applied.
+	// Action: 'c' create, 'r' read, 'u' update, 'd' delete.
+	Resource string
+	Action   byte
 }
 
 // ToolProvider exposes MCP tools to the Handler.
