@@ -4,6 +4,7 @@ package mcp
 type Loggable interface {
 	Name() string
 	SetLog(logger func(message ...any))
+	GetLog() func(message ...any)
 }
 
 // ToolExecutor is a simplified handler that receives plain args.

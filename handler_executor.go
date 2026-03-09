@@ -8,16 +8,16 @@ import (
 )
 
 // toolExecutorAdapter converts a ToolExecutor into a ToolHandlerFunc.
-func toolExecutorAdapter(executor ToolExecutor) ToolHandlerFunc {
+// Optionally wraps a Loggable to route output to MCP response collector.
+func toolExecutorAdapter(executor ToolExecutor, loggable Loggable, debug bool) ToolHandlerFunc {
 	return func(ctx context.Context, req CallToolRequest) (*CallToolResult, error) {
 		args := req.GetArguments()
 
 		var messages []string
 		var binaryResponse *BinaryData
 
-		// Collectors for tool output. The executor may call a logger callback
-		// (passed by app via executor's closure) to publish results.
-		_ = func(message ...any) {
+		// Collector for tool output destined for MCP response.
+		collector := func(message ...any) {
 			for _, m := range message {
 				switch v := m.(type) {
 				case BinaryData:
@@ -28,6 +28,22 @@ func toolExecutorAdapter(executor ToolExecutor) ToolHandlerFunc {
 					messages = append(messages, fmt.Sprintf("%v", v))
 				}
 			}
+		}
+
+		// Swap logger: route output to MCP response collector.
+		if loggable != nil {
+			original := loggable.GetLog()
+			if debug {
+				// Debug mode: output goes to both TUI and MCP response.
+				loggable.SetLog(func(msg ...any) {
+					original(msg...)    // → TUI
+					collector(msg...)   // → MCP response
+				})
+			} else {
+				// Normal mode: output goes to MCP response only.
+				loggable.SetLog(collector)
+			}
+			defer loggable.SetLog(original)
 		}
 
 		executor(args)

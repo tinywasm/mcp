@@ -141,6 +141,43 @@ func TestHandler_SetDynamicProviders_ToolsVisible(t *testing.T) {
 	}
 }
 
+func TestHandler_ToolOutput_TextResult(t *testing.T) {
+	config := mcp.Config{
+		ServerName:    "Test Server",
+		ServerVersion: "1.0.0",
+	}
+	p := &mockProvider{
+		tools: []mcp.Tool{
+			{
+				Name:     "echo_tool",
+				Execute:  func(args map[string]any) { /* tool will call logger */ },
+			},
+		},
+	}
+	h := mcp.NewHandler(config, nil, []mcp.ToolProvider{p})
+	h.SetAuth(mcp.OpenAuthorizer())
+
+	server := httptest.NewServer(h.HTTPHandler())
+	defer server.Close()
+
+	client := mcp.NewClient(server.URL, "")
+
+	done := make(chan bool)
+	client.Call(context.Background(), "tools/call", map[string]any{"name": "echo_tool"}, func(data []byte, err error) {
+		var res mcp.CallToolResult
+		json.Unmarshal(data, &res)
+		if len(res.Content) == 0 {
+			t.Errorf("Expected content in response")
+		}
+		_, ok := res.Content[0].(mcp.TextContent)
+		if !ok {
+			t.Errorf("Expected TextContent, got %T", res.Content[0])
+		}
+		done <- true
+	})
+	<-done
+}
+
 func TestHandler_ToolRBAC_Denied(t *testing.T) {
 	config := mcp.Config{
 		ServerName:    "Test Server",

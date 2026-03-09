@@ -14,11 +14,12 @@ const HandlerTypeLoggable = 4
 
 // Config holds the MCP server configuration.
 type Config struct {
-	Port          string
-	ServerName    string
-	ServerVersion string
-	AppName       string
-	AppVersion    string
+	Port              string
+	ServerName        string
+	ServerVersion     string
+	AppName           string
+	AppVersion        string
+	DebugToolOutput   bool   // if true, tool output goes to both TUI and MCP response
 }
 
 // MethodFunc is the handler signature for consumer-defined JSON-RPC methods.
@@ -151,8 +152,9 @@ func (h *Handler) rebuildMCPServer() {
 		if p == nil {
 			continue
 		}
+		loggable, _ := p.(Loggable)
 		for _, tool := range p.GetMCPTools() {
-			s.AddToolFromUser(tool, toolExecutorAdapter(tool.Execute))
+			s.AddToolFromUser(tool, toolExecutorAdapter(tool.Execute, loggable, h.config.DebugToolOutput))
 			newMeta[tool.Name] = tool
 		}
 	}
