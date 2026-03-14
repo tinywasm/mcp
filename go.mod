@@ -7,5 +7,3 @@ require (
 	github.com/tinywasm/fmt v0.18.18
 	github.com/tinywasm/json v0.2.0
 )
-
-require github.com/tinywasm/orm v0.3.1
