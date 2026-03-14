@@ -51,11 +51,45 @@ type rpcResponse struct {
 
 ---
 
-## Stage 2 — Regenerate model_orm.go
+## Stage 2 — Regenerate model_orm.go with ormc
 
-1. Run `ormc` from project root
-2. Verify generated file only contains `FormName()`, `Schema()`, `Pointers()` (no `TableName`, no `ReadOne*`, no `ReadAll*`)
-3. Verify import is `tinywasm/fmt` only (no `tinywasm/orm`)
+The `ormc` code generator reads struct definitions from `model.go`/`models.go` and produces `model_orm.go` with `Schema()`, `Pointers()`, and other methods based on the struct fields and tags.
+
+### 2.1 — Install ormc
+
+```bash
+go install github.com/tinywasm/orm/cmd/ormc@latest
+```
+
+### 2.2 — Run ormc
+
+From the project root directory:
+
+```bash
+ormc
+```
+
+This will scan for `model.go` and regenerate `model_orm.go`.
+
+### 2.3 — Expected output in model_orm.go
+
+Because both structs use `// ormc:formonly`, the generated file should contain ONLY:
+
+For `rpcRequest`:
+- `func (m *rpcRequest) FormName() string` → returns `"rpc_request"`
+- `func (m *rpcRequest) Schema() []fmt.Field` → returns fields with types `fmt.FieldText` (for JSONRPC, Method, Params), `fmt.FieldInt` (for ID), and `JSON` tags from struct tags
+- `func (m *rpcRequest) Pointers() []any` → returns `[]any{&m.JSONRPC, &m.ID, &m.Method, &m.Params}`
+
+For `rpcResponse`:
+- `func (m *rpcResponse) FormName() string` → returns `"rpc_response"`
+- `func (m *rpcResponse) Schema() []fmt.Field` → returns `[]fmt.Field{{Name: "result", Type: fmt.FieldText, JSON: "result"}}`
+- `func (m *rpcResponse) Pointers() []any` → returns `[]any{&m.Result}`
+
+### 2.4 — Verify
+
+- Import must be `"github.com/tinywasm/fmt"` only (NO `"github.com/tinywasm/orm"`)
+- There must be NO `TableName()`, `ReadOne*`, `ReadAll*`, or `T_` descriptor generated
+- If `model_orm.go` still contains ORM methods, delete it and re-run `ormc`
 
 ---
 
