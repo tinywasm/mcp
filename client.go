@@ -9,14 +9,6 @@ import (
 	"github.com/tinywasm/json"
 )
 
-// rpcRequest is the JSON-RPC 2.0 request envelope.
-// Struct avoids map allocations (WASM binary size concern).
-type rpcRequest struct {
-	JSONRPC string `json:"jsonrpc"`
-	ID      int    `json:"id"`
-	Method  string `json:"method"`
-	Params  any    `json:"params"`
-}
 
 // Client is a lightweight stateless JSON-RPC 2.0 client for tinywasm/mcp endpoints.
 // Thread-safe (no mutable state after construction).
@@ -62,9 +54,7 @@ func (c *Client) Call(ctx context.Context, method string, params any, callback f
 			return
 		}
 		// Decode envelope: {"jsonrpc":"2.0","id":1,"result":<any>}
-		var envelope struct {
-			Result any `json:"result"`
-		}
+		var envelope rpcResponse
 		if err := json.Decode(resp.Body(), &envelope); err != nil {
 			callback(nil, err)
 			return
