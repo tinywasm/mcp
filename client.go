@@ -2,13 +2,12 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/tinywasm/fetch"
 	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/json"
 )
-
 
 // Client is a lightweight stateless JSON-RPC 2.0 client for tinywasm/mcp endpoints.
 // Thread-safe (no mutable state after construction).
@@ -53,23 +52,21 @@ func (c *Client) Call(ctx context.Context, method string, params any, callback f
 		if callback == nil {
 			return
 		}
-		// Decode envelope: {"jsonrpc":"2.0","id":1,"result":<any>}
-		var envelope rpcResponse
-		if err := json.Decode(resp.Body(), &envelope); err != nil {
+
+		// Use stdlib json for envelope decoding because tinywasm/json
+		// doesn't support raw JSON capturing into strings yet.
+		var envelope struct {
+			Result json.RawMessage `json:"result"`
+		}
+		if err := json.Unmarshal(resp.Body(), &envelope); err != nil {
 			callback(nil, err)
 			return
 		}
-		if envelope.Result == nil {
+		if len(envelope.Result) == 0 || string(envelope.Result) == "null" {
 			callback(nil, nil)
 			return
 		}
-		// Re-encode result field to raw bytes for caller to decode into target type
-		var resultBytes []byte
-		if err := json.Encode(envelope.Result, &resultBytes); err != nil {
-			callback(nil, err)
-			return
-		}
-		callback(resultBytes, nil)
+		callback([]byte(envelope.Result), nil)
 	})
 }
 
@@ -88,13 +85,22 @@ func (c *Client) Dispatch(ctx context.Context, method string, params any) {
 }
 
 func (c *Client) buildBody(method string, params any) []byte {
-	var body []byte
-	if err := json.Encode(rpcRequest{
+	// Use stdlib json for request building because tinywasm/json
+	// doesn't support arbitrary map/struct Params well yet.
+	req := struct {
+		JSONRPC string `json:"jsonrpc"`
+		ID      int    `json:"id"`
+		Method  string `json:"method"`
+		Params  any    `json:"params,omitempty"`
+	}{
 		JSONRPC: "2.0",
 		ID:      1,
 		Method:  method,
 		Params:  params,
-	}, &body); err != nil {
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
 		return nil
 	}
 	return body
