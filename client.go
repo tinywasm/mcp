@@ -2,11 +2,11 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 
 	"github.com/tinywasm/fetch"
 	"github.com/tinywasm/fmt"
+	"github.com/tinywasm/json"
 )
 
 // Client is a lightweight stateless JSON-RPC 2.0 client for tinywasm/mcp endpoints.
@@ -53,16 +53,12 @@ func (c *Client) Call(ctx context.Context, method string, params any, callback f
 			return
 		}
 
-		// Use stdlib json for envelope decoding because tinywasm/json
-		// doesn't support raw JSON capturing into strings yet.
-		var envelope struct {
-			Result json.RawMessage `json:"result"`
-		}
-		if err := json.Unmarshal(resp.Body(), &envelope); err != nil {
+		var envelope rpcResponse
+		if err := json.Decode(resp.Body(), &envelope); err != nil {
 			callback(nil, err)
 			return
 		}
-		if len(envelope.Result) == 0 || string(envelope.Result) == "null" {
+		if envelope.Result == "" {
 			callback(nil, nil)
 			return
 		}
@@ -85,22 +81,17 @@ func (c *Client) Dispatch(ctx context.Context, method string, params any) {
 }
 
 func (c *Client) buildBody(method string, params any) []byte {
-	// Use stdlib json for request building because tinywasm/json
-	// doesn't support arbitrary map/struct Params well yet.
-	req := struct {
-		JSONRPC string `json:"jsonrpc"`
-		ID      int    `json:"id"`
-		Method  string `json:"method"`
-		Params  any    `json:"params,omitempty"`
-	}{
-		JSONRPC: "2.0",
-		ID:      1,
-		Method:  method,
-		Params:  params,
+	var paramsJSON string
+	if params != nil {
+		if f, ok := params.(fmt.Fielder); ok {
+			if err := json.Encode(f, &paramsJSON); err != nil {
+				return nil
+			}
+		}
 	}
-
-	body, err := json.Marshal(req)
-	if err != nil {
+	req := rpcRequest{JSONRPC: "2.0", ID: 1, Method: method, Params: paramsJSON}
+	var body []byte
+	if err := json.Encode(&req, &body); err != nil {
 		return nil
 	}
 	return body
