@@ -6,15 +6,11 @@ import (
 	"github.com/tinywasm/fmt"
 )
 
-func (m *rpcRequest) FormName() string {
-	return "rpc_request"
-}
-
 var _schemarpcRequest = []fmt.Field{
-		{Name: "jsonrpc", Type: fmt.FieldText, JSON: "jsonrpc"},
-		{Name: "id", Type: fmt.FieldInt, PK: true, JSON: "id"},
-		{Name: "method", Type: fmt.FieldText, JSON: "method"},
-		{Name: "params", Type: fmt.FieldText, JSON: "params"},
+		{Name: "jsonrpc", Type: fmt.FieldText},
+		{Name: "id", Type: fmt.FieldInt, PK: true},
+		{Name: "method", Type: fmt.FieldText},
+		{Name: "params", Type: fmt.FieldText},
 	}
 
 func (m *rpcRequest) Schema() []fmt.Field { return _schemarpcRequest }
@@ -28,12 +24,8 @@ func (m *rpcRequest) Pointers() []any {
 	}
 }
 
-func (m *rpcResponse) FormName() string {
-	return "rpc_response"
-}
-
 var _schemarpcResponse = []fmt.Field{
-		{Name: "result", Type: fmt.FieldText, JSON: "result"},
+		{Name: "result", Type: fmt.FieldText},
 	}
 
 func (m *rpcResponse) Schema() []fmt.Field { return _schemarpcResponse }
@@ -43,3 +35,4 @@ func (m *rpcResponse) Pointers() []any {
 		&m.Result,
 	}
 }
+

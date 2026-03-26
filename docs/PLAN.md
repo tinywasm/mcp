@@ -1,125 +1,239 @@
-# Fix MCP Tests After tinywasm/json Migration
+# MCP: Eliminación total de encoding/json → tinywasm/json
 
-## Context
+## Contexto
 
-The client code was correctly migrated to use `tinywasm/json` with `fmt.Fielder` structs. However, the tests still pass `map[string]string` and `map[string]any` as params to `client.Call()` / `client.Dispatch()`. These types don't implement `fmt.Fielder`, so `buildBody()` silently produces empty params — causing test failures.
+`tinywasm/mcp` debe ser portable al navegador (sin HTTP, consultando herramientas localmente). Por eso **no puede depender de `encoding/json`** en ningún archivo fuente — ni test ni producción. Toda serialización/deserialización debe ir por `tinywasm/json`, que opera sobre `fmt.Fielder`.
 
-### Key Constraint
+La migración del cliente (`client.go`) ya está completa. El resto del paquete aún usa `encoding/json`.
 
-**`encoding/json` is allowed in test files** (they don't compile to WASM). Only the main package source files must use `tinywasm/json` exclusively.
+### Regla absoluta
+
+> Ningún archivo `.go` en `tinywasm/mcp` puede importar `encoding/json`.
+> Usar `tinywasm/json` con structs generados por `ormc`.
 
 ---
 
-## Stage 1 — Create test param structs
+## Estado actual
 
-**File**: `tests/handler_test.go`
+| Archivo | encoding/json | stdlib pendiente | Estado |
+|---|---|---|---|
+| `client.go` | ✗ | `context`, `strings` | ❌ Incompleto |
+| `types.go` | ✓ | — | ❌ Pendiente |
+| `tools.go` | ✓ | — | ❌ Pendiente |
+| `utils.go` | ✓ | — | ❌ Pendiente |
+| `handler.go` | ✓ | — | ❌ Pendiente |
+| `handler_ide.go` | ✓ | — | ❌ Pendiente |
+| `request_handler.go` | ✓ | — | ❌ Pendiente |
+| `server_http.go` | ✓ | — | ❌ Pendiente |
+| `transport_streamable_http.go` | ✓ | — | ❌ Pendiente |
+| `server.go` | ✓ | — | ❌ Pendiente |
+| `tests/model.go` | — | ✅ Creado |
+| `tests/model_orm.go` | — | ✅ Generado |
+| `tests/handler_test.go` | ✓ (permitido) | ⏳ Actualizar calls |
 
-Add `ormc:formonly` structs to replace the anonymous maps used as params:
+---
+
+## Dependencia bloqueante
+
+> **tinywasm/json v0.4.0 ✅**
+> `parser.go` ya no usa `map[string]any` ni `[]any`. Compilable con TinyGo.
+> Ver: `tinywasm/json/docs/PLAN.md`
+
+---
+
+## Stage 0 — Completar migración de client.go ❌
+
+`client.go` aún usa dos paquetes stdlib que deben reemplazarse:
+
+### 0.1 — Reemplazar `"strings"` con `tinywasm/fmt`
 
 ```go
+// Antes (NewClient)
+endpoint: strings.TrimSuffix(baseURL, "/") + "/mcp",
+
+// Después
+endpoint: fmt.Convert(baseURL).TrimSuffix("/").String() + "/mcp",
+```
+
+Eliminar import `"strings"`.
+
+### 0.2 — Reemplazar `"context"` con `tinywasm/context`
+
+```go
+// Antes
+import "context"
+func (c *Client) Call(ctx context.Context, ...) {
+func (c *Client) Dispatch(ctx context.Context, ...) {
+
+// Después
+import "github.com/tinywasm/context"
+func (c *Client) Call(ctx *context.Context, ...) {
+func (c *Client) Dispatch(ctx *context.Context, ...) {
+```
+
+Eliminar import `"context"`.
+
+---
+
+## Stage 1 — Actualizar test calls ⏳
+
+Los tests aún usan `map[string]string` / `map[string]any` como params. Los structs ya existen en `tests/model.go` y sus métodos en `tests/model_orm.go`.
+
+### 1.1 — TestHandler_OnAction_JSONRPCMethod (~línea 83)
+
+```go
+// Antes
+client.Dispatch(ctx, "tinywasm/action", map[string]string{"key": "foo", "value": "bar"})
+
+// Después
+client.Dispatch(ctx, "tinywasm/action", &actionParams{Key: "foo", Value: "bar"})
+```
+
+### 1.2 — TestHandler_ToolOutput_TextResult (~línea 166)
+
+```go
+// Antes
+client.Call(ctx, "tools/call", map[string]any{"name": "echo_tool"}, func(...) {
+
+// Después
+client.Call(ctx, "tools/call", &toolCallParams{Name: "echo_tool"}, func(...) {
+```
+
+### 1.3 — TestHandler_ToolRBAC_Denied (~línea 205)
+
+```go
+// Antes
+client.Call(ctx, "tools/call", map[string]any{"name": "secure_tool"}, func(...) {
+
+// Después
+client.Call(ctx, "tools/call", &toolCallParams{Name: "secure_tool"}, func(...) {
+```
+
+---
+
+## Stage 2 — Modelos para protocol types
+
+Los tipos del protocolo JSON-RPC que hoy usan `map[string]any` necesitan structs con `ormc`.
+
+### 2.1 — Crear `model.go` en el paquete raíz
+
+```go
+package mcp
+
 // ormc:formonly
-type actionParams struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+type metaFields struct {
+    ProgressToken string `json:"progressToken,omitempty"`
 }
 
 // ormc:formonly
-type toolCallParams struct {
-	Name string `json:"name"`
+type notificationParamsMeta struct {
+    Meta metaFields `json:"_meta,omitempty"`
+}
+
+// ormc:formonly
+type initializeParams struct {
+    ProtocolVersion string         `json:"protocolVersion"`
+    ClientInfo      implementationInfo `json:"clientInfo"`
+}
+
+// ormc:formonly
+type implementationInfo struct {
+    Name    string `json:"name"`
+    Version string `json:"version"`
+}
+
+// ormc:formonly
+type toolCallArguments struct {
+    Name      string `json:"name"`
+    Arguments string `json:"arguments,omitempty"`
+}
+
+// ormc:formonly
+type toolResultContent struct {
+    Type string `json:"type"`
+    Text string `json:"text,omitempty"`
 }
 ```
 
-Then run `ormc` from the `tests/` directory to generate `tests/handler_test_orm.go` with `Schema()` and `Pointers()` for these structs.
-
-**Important**: `ormc` scans for structs in `*model*.go` or `*_test.go` files. Since these are in a test file, you may need to create a `tests/model.go` file with the structs instead. After running `ormc`, the generated file will be `tests/model_orm.go`.
-
-### 1.1 — Install ormc
+### 2.2 — Ejecutar ormc
 
 ```bash
-go install github.com/tinywasm/orm/cmd/ormc@latest
+cd . && ormc
 ```
 
-### 1.2 — Create tests/model.go
-
-```go
-package mcp_test
-
-// ormc:formonly
-type actionParams struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
-// ormc:formonly
-type toolCallParams struct {
-	Name string `json:"name"`
-}
-```
-
-### 1.3 — Run ormc
-
-```bash
-cd tests && ormc
-```
-
-### 1.4 — Verify tests/model_orm.go
-
-Should contain `FormName()`, `Schema()`, `Pointers()` for both structs. No `TableName()`, no ORM methods.
+Genera `model_orm.go` con `Schema()` y `Pointers()` para todos los structs.
 
 ---
 
-## Stage 2 — Update test calls
+## Stage 3 — Migrar types.go
 
-**File**: `tests/handler_test.go`
+**Problema actual**: `Meta` y `NotificationParams` usan `MarshalJSON`/`UnmarshalJSON` con `map[string]any`.
 
-### 2.1 — TestHandler_OnAction_JSONRPCMethod (line ~83)
+**Estrategia**: Reemplazar los custom marshalers con los structs de Stage 2.
 
-Replace:
-```go
-client.Dispatch(context.Background(), "tinywasm/action", map[string]string{"key": "foo", "value": "bar"})
-```
-
-With:
-```go
-client.Dispatch(context.Background(), "tinywasm/action", &actionParams{Key: "foo", Value: "bar"})
-```
-
-### 2.2 — TestHandler_ToolOutput_TextResult (line ~166)
-
-Replace:
-```go
-client.Call(context.Background(), "tools/call", map[string]any{"name": "echo_tool"}, func(data []byte, err error) {
-```
-
-With:
-```go
-client.Call(context.Background(), "tools/call", &toolCallParams{Name: "echo_tool"}, func(data []byte, err error) {
-```
-
-### 2.3 — TestHandler_ToolRBAC_Denied (line ~205)
-
-Replace:
-```go
-client.Call(context.Background(), "tools/call", map[string]any{"name": "secure_tool"}, func(data []byte, err error) {
-```
-
-With:
-```go
-client.Call(context.Background(), "tools/call", &toolCallParams{Name: "secure_tool"}, func(data []byte, err error) {
-```
+- `Meta.MarshalJSON` → `tinywasm/json.Encode(&metaFields{...})`
+- `Meta.UnmarshalJSON` → `tinywasm/json.Decode(data, &metaFields{})`
+- `NotificationParams.MarshalJSON` → `tinywasm/json.Encode(&notificationParamsMeta{...})`
+- `NotificationParams.UnmarshalJSON` → `tinywasm/json.Decode(data, &notificationParamsMeta{})`
 
 ---
 
-## Stage 3 — Verify
+## Stage 4 — Migrar tools.go
+
+**Problema actual**: `CallToolRequest.BindArguments` hace `json.Unmarshal` a un `any` target. `CallToolResult` tiene custom marshalers.
+
+**Estrategia**:
+- `BindArguments(target fmt.Fielder)` — cambiar firma para aceptar `fmt.Fielder` en lugar de `any`
+- `CallToolResult` → usar `toolResultContent` struct para `MarshalJSON`/`UnmarshalJSON`
+- `NewToolResultJSON` → aceptar `fmt.Fielder` en lugar de genérico `T`
+
+---
+
+## Stage 5 — Migrar request_handler.go
+
+**Problema actual**: `json.Unmarshal` a structs del protocolo (`InitializeRequest`, `PingRequest`, `ListToolsRequest`, etc.).
+
+**Estrategia**:
+- Todos los tipos de request/response del protocolo deben implementar `fmt.Fielder`
+- Generarlos con `ormc` desde `model.go`
+- Reemplazar `json.Unmarshal(msg, &req)` con `tinywasm/json.Decode(msg, &req)`
+
+---
+
+## Stage 6 — Migrar server_http.go y transport_streamable_http.go
+
+**Problema actual**: `json.NewDecoder(r.Body).Decode(...)` y `json.NewEncoder(w).Encode(...)`.
+
+**Estrategia**:
+- `Decode`: `tinywasm/json.Decode(r.Body, target)` — soporta `io.Reader`
+- `Encode` de error response: crear `errorResponse` struct con `ormc:formonly`
+- `Encode` de response: el objeto de response debe implementar `fmt.Fielder`
+
+---
+
+## Stage 7 — Migrar utils.go y handler.go / handler_ide.go
+
+- `utils.go NewToolResultJSON`: refactorizar para recibir `fmt.Fielder`
+- `utils.go ParseCallToolResult`: usar `tinywasm/json.Decode`
+- `handler.go` / `handler_ide.go`: identificar usos residuales y migrar
+
+---
+
+## Stage 8 — Verificar
 
 ```bash
 gotest
 ```
 
-All tests must pass. Do NOT modify `client.go`, `model.go`, or `model_orm.go` — those are already correct.
+Ningún archivo debe importar `encoding/json`. Todos los tests deben pasar.
 
-## Forbidden Actions
+---
 
-- Do NOT modify any source files outside of `tests/`
-- Do NOT import `encoding/json` in non-test source files
-- Do NOT revert the client.go changes from the previous iteration
+## Acciones prohibidas
+
+- NO importar `encoding/json` en ningún archivo del paquete
+- NO importar `"context"` stdlib — usar `github.com/tinywasm/context`
+- NO importar `"strings"` stdlib — usar `tinywasm/fmt`
+- NO usar `map[string]any` ni `map[string]string` como destino de deserialización
+- NO revertir los cambios de `client.go`
+- NO modificar `fmt.Fielder` ni `tinywasm/json` para acomodar comportamientos de `encoding/json`
