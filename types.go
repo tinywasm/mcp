@@ -1,11 +1,7 @@
 package mcp
 
 import (
-	"encoding/json"
-	"fmt"
-	"maps"
-	"net/http"
-	"strconv"
+	"github.com/tinywasm/fmt"
 )
 
 type MCPMethod string
@@ -20,205 +16,112 @@ const (
 	MethodNotificationInitialized      = "notifications/initialized"
 )
 
-/* JSON-RPC types */
-
-// JSONRPCMessage represents either a JSONRPCRequest, JSONRPCNotification, JSONRPCResponse, or JSONRPCError
 type JSONRPCMessage any
 
 const LATEST_PROTOCOL_VERSION = "2024-11-05"
 
-var ValidProtocolVersions = []string{
+var validProtocolVersions = []string{
 	LATEST_PROTOCOL_VERSION,
 }
 
 const JSONRPC_VERSION = "2.0"
 
-type ProgressToken any
-
 type Cursor string
 
-type Meta struct {
-	ProgressToken    ProgressToken  `json:"progressToken,omitempty"`
-	AdditionalFields map[string]any `json:"-"`
-}
-
-func (m *Meta) MarshalJSON() ([]byte, error) {
-	raw := make(map[string]any)
-	if m.ProgressToken != nil {
-		raw["progressToken"] = m.ProgressToken
-	}
-	maps.Copy(raw, m.AdditionalFields)
-	return json.Marshal(raw)
-}
-
-func (m *Meta) UnmarshalJSON(data []byte) error {
-	raw := make(map[string]any)
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	m.ProgressToken = raw["progressToken"]
-	delete(raw, "progressToken")
-	m.AdditionalFields = raw
-	return nil
-}
-
-func NewMetaFromMap(m map[string]any) *Meta {
-	progressToken := m["progressToken"]
-	if progressToken != nil {
-		delete(m, "progressToken")
-	}
-	return &Meta{
-		ProgressToken:    progressToken,
-		AdditionalFields: m,
-	}
-}
-
-type Request struct {
-	Method string        `json:"method"`
-	Params RequestParams `json:"params,omitempty"`
-}
-
-type RequestParams struct {
-	Meta *Meta `json:"_meta,omitempty"`
-}
-
-type Notification struct {
-	Method string             `json:"method"`
-	Params NotificationParams `json:"params,omitempty"`
-}
-
-type NotificationParams struct {
-	Meta             map[string]any `json:"_meta,omitempty"`
-	AdditionalFields map[string]any `json:"-"`
-}
-
-func (p NotificationParams) MarshalJSON() ([]byte, error) {
-	m := make(map[string]any)
-	if p.Meta != nil {
-		m["_meta"] = p.Meta
-	}
-	for k, v := range p.AdditionalFields {
-		if k != "_meta" {
-			m[k] = v
-		}
-	}
-	return json.Marshal(m)
-}
-
-func (p *NotificationParams) UnmarshalJSON(data []byte) error {
-	var m map[string]any
-	if err := json.Unmarshal(data, &m); err != nil {
-		return err
-	}
-	if p.Meta == nil {
-		p.Meta = make(map[string]any)
-	}
-	if p.AdditionalFields == nil {
-		p.AdditionalFields = make(map[string]any)
-	}
-	for k, v := range m {
-		if k == "_meta" {
-			if meta, ok := v.(map[string]any); ok {
-				p.Meta = meta
-			}
-		} else {
-			p.AdditionalFields[k] = v
-		}
-	}
-	return nil
-}
-
-type Result struct {
-	Meta *Meta `json:"_meta,omitempty"`
-}
-
-type RequestId struct {
-	value any
-}
-
-func NewRequestId(value any) RequestId {
-	return RequestId{value: value}
-}
-
-func (r RequestId) Value() any {
-	return r.value
-}
-
-func (r RequestId) String() string {
-	switch v := r.value.(type) {
-	case string:
-		return "string:" + v
-	case int64:
-		return "int64:" + strconv.FormatInt(v, 10)
-	case float64:
-		if v == float64(int64(v)) {
-			return "int64:" + strconv.FormatInt(int64(v), 10)
-		}
-		return "float64:" + strconv.FormatFloat(v, 'f', -1, 64)
-	case nil:
-		return "<nil>"
-	default:
-		return "unknown:" + fmt.Sprintf("%v", v)
-	}
-}
-
-func (r RequestId) MarshalJSON() ([]byte, error) {
-	return json.Marshal(r.value)
-}
-
-func (r *RequestId) UnmarshalJSON(data []byte) error {
-	if string(data) == "null" {
-		r.value = nil
-		return nil
-	}
-	var s string
-	if err := json.Unmarshal(data, &s); err == nil {
-		r.value = s
-		return nil
-	}
-	var f float64
-	if err := json.Unmarshal(data, &f); err == nil {
-		if f == float64(int64(f)) {
-			r.value = int64(f)
-		} else {
-			r.value = f
-		}
-		return nil
-	}
-	return fmt.Errorf("invalid request id: %s", string(data))
-}
+type RequestId = string
 
 type JSONRPCRequest struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      RequestId   `json:"id"`
-	Params  any         `json:"params,omitempty"`
-	Header  http.Header `json:"-"`
-	Request
+	JSONRPC string    `json:"jsonrpc"`
+	ID      RequestId `json:"id"`
+	Method  string    `json:"method"`
+	Params  string    `json:"params,omitempty"`
+}
+
+func (m *JSONRPCRequest) Schema() []fmt.Field {
+	return []fmt.Field{
+		{Name: "jsonrpc", Type: fmt.FieldText},
+		{Name: "id", Type: fmt.FieldText},
+		{Name: "method", Type: fmt.FieldText},
+		{Name: "params", Type: fmt.FieldText, OmitEmpty: true},
+	}
+}
+
+func (m *JSONRPCRequest) Pointers() []any {
+	return []any{&m.JSONRPC, &m.ID, &m.Method, &m.Params}
 }
 
 type JSONRPCNotification struct {
 	JSONRPC string `json:"jsonrpc"`
-	Params  any    `json:"params,omitempty"`
-	Notification
+	Method  string `json:"method"`
+	Params  string `json:"params,omitempty"`
 }
 
-type JSONRPCResponse struct {
-	JSONRPC string               `json:"jsonrpc"`
-	ID      RequestId            `json:"id"`
-	Result  any                  `json:"result,omitempty"`
-	Error   *JSONRPCErrorDetails `json:"error,omitempty"`
+func (m *JSONRPCNotification) Schema() []fmt.Field {
+	return []fmt.Field{
+		{Name: "jsonrpc", Type: fmt.FieldText},
+		{Name: "method", Type: fmt.FieldText},
+		{Name: "params", Type: fmt.FieldText, OmitEmpty: true},
+	}
+}
+
+func (m *JSONRPCNotification) Pointers() []any {
+	return []any{&m.JSONRPC, &m.Method, &m.Params}
+}
+
+type JSONRPCResponseStruct struct {
+	JSONRPC string `json:"jsonrpc"`
+	ID      string `json:"id,omitempty"`
+	Result  string `json:"result,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+func (m *JSONRPCResponseStruct) Schema() []fmt.Field {
+	return []fmt.Field{
+		{Name: "jsonrpc", Type: fmt.FieldText},
+		{Name: "id", Type: fmt.FieldText, PK: true, OmitEmpty: true},
+		{Name: "result", Type: fmt.FieldText, OmitEmpty: true},
+		{Name: "error", Type: fmt.FieldText, OmitEmpty: true},
+	}
+}
+
+func (m *JSONRPCResponseStruct) Pointers() []any {
+	return []any{&m.JSONRPC, &m.ID, &m.Result, &m.Error}
 }
 
 type JSONRPCError struct {
-	JSONRPC string              `json:"jsonrpc"`
-	ID      RequestId           `json:"id"`
-	Error   JSONRPCErrorDetails `json:"error"`
+	JSONRPC string `json:"jsonrpc"`
+	ID      string `json:"id,omitempty"`
+	Error   string `json:"error"`
+}
+
+func (m *JSONRPCError) Schema() []fmt.Field {
+	return []fmt.Field{
+		{Name: "jsonrpc", Type: fmt.FieldText},
+		{Name: "id", Type: fmt.FieldText, PK: true, OmitEmpty: true},
+		{Name: "error", Type: fmt.FieldText},
+	}
+}
+
+func (m *JSONRPCError) Pointers() []any {
+	return []any{&m.JSONRPC, &m.ID, &m.Error}
 }
 
 type JSONRPCErrorDetails struct {
-	Code    int    `json:"code"`
+	Code    int64  `json:"code"`
 	Message string `json:"message"`
-	Data    any    `json:"data,omitempty"`
+	Data    string `json:"data,omitempty"`
+}
+
+func (m *JSONRPCErrorDetails) Schema() []fmt.Field {
+	return []fmt.Field{
+		{Name: "code", Type: fmt.FieldInt},
+		{Name: "message", Type: fmt.FieldText},
+		{Name: "data", Type: fmt.FieldText, OmitEmpty: true},
+	}
+}
+
+func (m *JSONRPCErrorDetails) Pointers() []any {
+	return []any{&m.Code, &m.Message, &m.Data}
 }
 
 const (
@@ -230,62 +133,21 @@ const (
 	REQUEST_INTERRUPTED = -32800
 )
 
-type EmptyResult Result
-
-type InitializeRequest struct {
-	Request
-	Params InitializeParams `json:"params"`
-	Header http.Header      `json:"-"`
-}
-
-type InitializeParams struct {
-	ProtocolVersion string             `json:"protocolVersion"`
-	Capabilities    ClientCapabilities `json:"capabilities"`
-	ClientInfo      Implementation     `json:"clientInfo"`
-}
-
-type InitializeResult struct {
-	Result
-	ProtocolVersion string             `json:"protocolVersion"`
-	Capabilities    ServerCapabilities `json:"capabilities"`
-	ServerInfo      Implementation     `json:"serverInfo"`
-	Instructions    string             `json:"instructions,omitempty"`
-}
-
-type ClientCapabilities struct {
-	Experimental map[string]any `json:"experimental,omitempty"`
-}
-
-type ServerCapabilities struct {
-	Experimental map[string]any    `json:"experimental,omitempty"`
-	Tools        *ToolsCapability `json:"tools,omitempty"`
-}
-
-type ToolsCapability struct {
-	ListChanged bool `json:"listChanged,omitempty"`
-}
-
-type Implementation struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-}
-
-type PingRequest struct {
-	Request
-	Header http.Header `json:"-"`
-}
-
-type PaginatedRequest struct {
-	Request
-	Params PaginatedParams `json:"params,omitempty"`
-}
-
 type PaginatedParams struct {
 	Cursor Cursor `json:"cursor,omitempty"`
 }
 
+func (m *PaginatedParams) Schema() []fmt.Field {
+	return []fmt.Field{
+		{Name: "cursor", Type: fmt.FieldText, OmitEmpty: true},
+	}
+}
+
+func (m *PaginatedParams) Pointers() []any {
+	return []any{&m.Cursor}
+}
+
 type PaginatedResult struct {
-	Result
 	NextCursor Cursor `json:"nextCursor,omitempty"`
 }
 
@@ -303,42 +165,7 @@ type Annotations struct {
 	LastModified string   `json:"lastModified,omitempty"`
 }
 
-type Content interface {
-	isContent()
-}
+type EmptyResult struct{}
 
-type TextContent struct {
-	Annotated
-	Meta *Meta  `json:"_meta,omitempty"`
-	Type string `json:"type"` // Must be "text"
-	Text string `json:"text"`
-}
-
-func (TextContent) isContent() {}
-
-type ImageContent struct {
-	Annotated
-	Meta *Meta  `json:"_meta,omitempty"`
-	Type string `json:"type"` // Must be "image"
-	Data string `json:"data"`
-	MIMEType string `json:"mimeType"`
-}
-
-func (ImageContent) isContent() {}
-
-type AudioContent struct {
-	Annotated
-	Meta *Meta  `json:"_meta,omitempty"`
-	Type string `json:"type"` // Must be "audio"
-	Data string `json:"data"`
-	MIMEType string `json:"mimeType"`
-}
-
-func (AudioContent) isContent() {}
-
-type ClientRequest any
-type ClientNotification any
-type ClientResult any
-type ServerRequest any
-type ServerNotification any
-type ServerResult any
+func (m *EmptyResult) Schema() []fmt.Field { return nil }
+func (m *EmptyResult) Pointers() []any    { return nil }
