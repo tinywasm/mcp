@@ -1,206 +1,65 @@
 package mcp
 
 import (
-	"encoding/json"
-	"fmt"
+	"github.com/tinywasm/fmt"
+	"github.com/tinywasm/json"
 )
 
-// ClientRequest types
-var (
-	_ ClientRequest = (*PingRequest)(nil)
-	_ ClientRequest = (*InitializeRequest)(nil)
-	_ ClientRequest = (*CallToolRequest)(nil)
-	_ ClientRequest = (*ListToolsRequest)(nil)
-)
-
-// ClientNotification types
-var (
-	_ ClientNotification = (*JSONRPCNotification)(nil)
-)
-
-// ClientResult types
-var (
-	_ ClientResult = (*EmptyResult)(nil)
-)
-
-// ServerRequest types
-var (
-	_ ServerRequest = (*PingRequest)(nil)
-)
-
-// ServerNotification types
-var (
-	_ ServerNotification = (*JSONRPCNotification)(nil)
-)
-
-// ServerResult types
-var (
-	_ ServerResult = (*EmptyResult)(nil)
-	_ ServerResult = (*InitializeResult)(nil)
-	_ ServerResult = (*CallToolResult)(nil)
-	_ ServerResult = (*ListToolsResult)(nil)
-)
-
-// Helper functions for type assertions
-
-func asType[T any](content any) (*T, bool) {
-	tc, ok := content.(T)
-	if !ok {
-		return nil, false
+func JSON(data fmt.Fielder) (*Result, error) {
+	var s string
+	if err := json.Encode(data, &s); err != nil {
+		return nil, err
 	}
-	return &tc, true
+	return &Result{Content: s}, nil
 }
 
-func AsTextContent(content any) (*TextContent, bool) {
-	return asType[TextContent](content)
+func ParseResult(raw []byte) (*Result, error) {
+	var result callToolResult
+	if err := json.Decode(raw, &result); err != nil {
+		return nil, err
+	}
+	return &Result{Content: result.Content, IsError: result.IsError}, nil
 }
 
-func AsImageContent(content any) (*ImageContent, bool) {
-	return asType[ImageContent](content)
+func GetText(r *Result) (string, error) {
+	var c textContent
+	if err := json.Decode([]byte(r.Content), &c); err != nil {
+		return "", err
+	}
+	return c.Text, nil
 }
 
-func AsAudioContent(content any) (*AudioContent, bool) {
-	return asType[AudioContent](content)
-}
-
-// Helper function for JSON-RPC
-
-func NewJSONRPCResultResponse(id RequestId, result any) JSONRPCResponse {
-	return JSONRPCResponse{
+func newResultResponse(id RequestId, result any) *JSONRPCResponseStruct {
+	var resJSON string
+	if f, ok := result.(fmt.Fielder); ok {
+		json.Encode(f, &resJSON)
+	}
+	return &JSONRPCResponseStruct{
 		JSONRPC: JSONRPC_VERSION,
 		ID:      id,
-		Result:  result,
+		Result:  resJSON,
 	}
 }
 
-func NewJSONRPCErrorDetails(code int, message string, data any) JSONRPCErrorDetails {
-	return JSONRPCErrorDetails{
-		Code:    code,
+func newErrorDetails(code int, message string, data any) *JSONRPCErrorDetails {
+	var dataJSON string
+	if f, ok := data.(fmt.Fielder); ok {
+		json.Encode(f, &dataJSON)
+	}
+	return &JSONRPCErrorDetails{
+		Code:    int64(code),
 		Message: message,
-		Data:    data,
+		Data:    dataJSON,
 	}
 }
 
-func NewJSONRPCError(id RequestId, code int, message string, data any) JSONRPCError {
-	return JSONRPCError{
+func newErrorResponse(id RequestId, code int, message string, data any) *JSONRPCError {
+	det := newErrorDetails(code, message, data)
+	var detJSON string
+	json.Encode(det, &detJSON)
+	return &JSONRPCError{
 		JSONRPC: JSONRPC_VERSION,
 		ID:      id,
-		Error:   NewJSONRPCErrorDetails(code, message, data),
-	}
-}
-
-func NewTextContent(text string) TextContent {
-	return TextContent{
-		Type: "text",
-		Text: text,
-	}
-}
-
-func NewImageContent(data, mimeType string) ImageContent {
-	return ImageContent{
-		Type:     "image",
-		Data:     data,
-		MIMEType: mimeType,
-	}
-}
-
-func NewAudioContent(data, mimeType string) AudioContent {
-	return AudioContent{
-		Type:     "audio",
-		Data:     data,
-		MIMEType: mimeType,
-	}
-}
-
-func NewToolResultText(text string) *CallToolResult {
-	return &CallToolResult{
-		Content: []Content{
-			TextContent{
-				Type: "text",
-				Text: text,
-			},
-		},
-	}
-}
-
-func NewToolResultJSON[T any](data T) (*CallToolResult, error) {
-	b, err := json.Marshal(data)
-	if err != nil {
-		return nil, fmt.Errorf("unable to marshal JSON: %w", err)
-	}
-	return &CallToolResult{
-		Content: []Content{
-			TextContent{
-				Type: "text",
-				Text: string(b),
-			},
-		},
-		StructuredContent: data,
-	}, nil
-}
-
-func NewToolResultError(text string) *CallToolResult {
-	return &CallToolResult{
-		Content: []Content{
-			TextContent{
-				Type: "text",
-				Text: text,
-			},
-		},
-		IsError: true,
-	}
-}
-
-func NewToolResultImage(text, base64Data, mimeType string) *CallToolResult {
-	return &CallToolResult{
-		Content: []Content{
-			TextContent{
-				Type: "text",
-				Text: text,
-			},
-			ImageContent{
-				Type:     "image",
-				Data:     base64Data,
-				MIMEType: mimeType,
-			},
-		},
-	}
-}
-
-func ParseCallToolResult(rawMessage *json.RawMessage) (*CallToolResult, error) {
-	if rawMessage == nil {
-		return nil, fmt.Errorf("response is nil")
-	}
-	var result CallToolResult
-	if err := json.Unmarshal(*rawMessage, &result); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-	return &result, nil
-}
-
-func ExtractString(data map[string]any, key string) string {
-	if value, ok := data[key]; ok {
-		if str, ok := value.(string); ok {
-			return str
-		}
-	}
-	return ""
-}
-
-func GetTextFromContent(content any) string {
-	switch c := content.(type) {
-	case TextContent:
-		return c.Text
-	case map[string]any:
-		if contentType, exists := c["type"]; exists && contentType == "text" {
-			if text, exists := c["text"].(string); exists {
-				return text
-			}
-		}
-		return fmt.Sprintf("%v", content)
-	case string:
-		return c
-	default:
-		return fmt.Sprintf("%v", content)
+		Error:   detJSON,
 	}
 }

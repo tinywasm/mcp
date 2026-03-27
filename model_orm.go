@@ -8,9 +8,9 @@ import (
 
 var _schemarpcRequest = []fmt.Field{
 		{Name: "jsonrpc", Type: fmt.FieldText},
-		{Name: "id", Type: fmt.FieldInt, PK: true},
+		{Name: "id", Type: fmt.FieldText, PK: true, OmitEmpty: true},
 		{Name: "method", Type: fmt.FieldText},
-		{Name: "params", Type: fmt.FieldText},
+		{Name: "params", Type: fmt.FieldText, OmitEmpty: true},
 	}
 
 func (m *rpcRequest) Schema() []fmt.Field { return _schemarpcRequest }
@@ -25,14 +25,230 @@ func (m *rpcRequest) Pointers() []any {
 }
 
 var _schemarpcResponse = []fmt.Field{
-		{Name: "result", Type: fmt.FieldText},
+		{Name: "jsonrpc", Type: fmt.FieldText},
+		{Name: "id", Type: fmt.FieldText, PK: true, OmitEmpty: true},
+		{Name: "result", Type: fmt.FieldText, OmitEmpty: true},
+		{Name: "error", Type: fmt.FieldText, OmitEmpty: true},
 	}
 
 func (m *rpcResponse) Schema() []fmt.Field { return _schemarpcResponse }
 
 func (m *rpcResponse) Pointers() []any {
 	return []any{
+		&m.JSONRPC,
+		&m.ID,
 		&m.Result,
+		&m.Error,
+	}
+}
+
+var _schemaideServerEntry = []fmt.Field{
+		{Name: "url", Type: fmt.FieldText},
+		{Name: "headers", Type: fmt.FieldText, OmitEmpty: true},
+	}
+
+func (m *ideServerEntry) Schema() []fmt.Field { return _schemaideServerEntry }
+
+func (m *ideServerEntry) Pointers() []any {
+	return []any{
+		&m.URL,
+		&m.Headers,
+	}
+}
+
+var _schemavscodeConfig = []fmt.Field{
+		{Name: "servers", Type: fmt.FieldText, OmitEmpty: true},
+	}
+
+func (m *vscodeConfig) Schema() []fmt.Field { return _schemavscodeConfig }
+
+func (m *vscodeConfig) Pointers() []any {
+	return []any{
+		&m.Servers,
+	}
+}
+
+var _schemaclaudeCodeConfig = []fmt.Field{
+		{Name: "mcpservers", Type: fmt.FieldText, OmitEmpty: true},
+	}
+
+func (m *claudeCodeConfig) Schema() []fmt.Field { return _schemaclaudeCodeConfig }
+
+func (m *claudeCodeConfig) Pointers() []any {
+	return []any{
+		&m.MCPServers,
+	}
+}
+
+var _schemajsonRPCError = []fmt.Field{
+		{Name: "code", Type: fmt.FieldInt},
+		{Name: "message", Type: fmt.FieldText},
+		{Name: "data", Type: fmt.FieldText, OmitEmpty: true},
+	}
+
+func (m *jsonRPCError) Schema() []fmt.Field { return _schemajsonRPCError }
+
+func (m *jsonRPCError) Pointers() []any {
+	return []any{
+		&m.Code,
+		&m.Message,
+		&m.Data,
+	}
+}
+
+var _schemainitializeParams = []fmt.Field{
+		{Name: "protocol_version", Type: fmt.FieldText},
+		{Name: "client_info", Type: fmt.FieldStruct},
+	}
+
+func (m *initializeParams) Schema() []fmt.Field { return _schemainitializeParams }
+
+func (m *initializeParams) Pointers() []any {
+	return []any{
+		&m.ProtocolVersion,
+		&m.ClientInfo,
+	}
+}
+
+var _schemaimplementationInfo = []fmt.Field{
+		{Name: "name", Type: fmt.FieldText},
+		{Name: "version", Type: fmt.FieldText},
+	}
+
+func (m *implementationInfo) Schema() []fmt.Field { return _schemaimplementationInfo }
+
+func (m *implementationInfo) Pointers() []any {
+	return []any{
+		&m.Name,
+		&m.Version,
+	}
+}
+
+var _schemainitializeResult = []fmt.Field{
+		{Name: "protocol_version", Type: fmt.FieldText},
+		{Name: "server_info", Type: fmt.FieldStruct},
+		{Name: "capabilities", Type: fmt.FieldText, OmitEmpty: true},
+	}
+
+func (m *initializeResult) Schema() []fmt.Field { return _schemainitializeResult }
+
+func (m *initializeResult) Pointers() []any {
+	return []any{
+		&m.ProtocolVersion,
+		&m.ServerInfo,
+		&m.Capabilities,
+	}
+}
+
+var _schemacallToolParams = []fmt.Field{
+		{Name: "name", Type: fmt.FieldText},
+		{Name: "arguments", Type: fmt.FieldText, OmitEmpty: true},
+	}
+
+func (m *callToolParams) Schema() []fmt.Field { return _schemacallToolParams }
+
+func (m *callToolParams) Pointers() []any {
+	return []any{
+		&m.Name,
+		&m.Arguments,
+	}
+}
+
+var _schemacallToolResult = []fmt.Field{
+		{Name: "is_error", Type: fmt.FieldBool, OmitEmpty: true},
+		{Name: "content", Type: fmt.FieldText},
+	}
+
+func (m *callToolResult) Schema() []fmt.Field { return _schemacallToolResult }
+
+func (m *callToolResult) Pointers() []any {
+	return []any{
+		&m.IsError,
+		&m.Content,
+	}
+}
+
+var _schematextContent = []fmt.Field{
+		{Name: "type", Type: fmt.FieldText},
+		{Name: "text", Type: fmt.FieldText},
+	}
+
+func (m *textContent) Schema() []fmt.Field { return _schematextContent }
+
+func (m *textContent) Pointers() []any {
+	return []any{
+		&m.Type,
+		&m.Text,
+	}
+}
+
+var _schematoolEntry = []fmt.Field{
+		{Name: "name", Type: fmt.FieldText},
+		{Name: "description", Type: fmt.FieldText, OmitEmpty: true},
+		{Name: "input_schema", Type: fmt.FieldText, OmitEmpty: true},
+	}
+
+func (m *toolEntry) Schema() []fmt.Field { return _schematoolEntry }
+
+func (m *toolEntry) Pointers() []any {
+	return []any{
+		&m.Name,
+		&m.Description,
+		&m.InputSchema,
+	}
+}
+
+var _schemalistToolsResult = []fmt.Field{
+		{Name: "tools", Type: fmt.FieldText},
+		{Name: "next_cursor", Type: fmt.FieldText, OmitEmpty: true},
+	}
+
+func (m *listToolsResult) Schema() []fmt.Field { return _schemalistToolsResult }
+
+func (m *listToolsResult) Pointers() []any {
+	return []any{
+		&m.Tools,
+		&m.NextCursor,
+	}
+}
+
+var _schemaerrorResponse = []fmt.Field{
+		{Name: "jsonrpc", Type: fmt.FieldText},
+		{Name: "id", Type: fmt.FieldText, PK: true, OmitEmpty: true},
+		{Name: "error", Type: fmt.FieldStruct},
+	}
+
+func (m *errorResponse) Schema() []fmt.Field { return _schemaerrorResponse }
+
+func (m *errorResponse) Pointers() []any {
+	return []any{
+		&m.JSONRPC,
+		&m.ID,
+		&m.Error,
+	}
+}
+
+var _schemaMeta = []fmt.Field{
+		{Name: "progress_token", Type: fmt.FieldText, OmitEmpty: true},
+	}
+
+func (m *Meta) Schema() []fmt.Field { return _schemaMeta }
+
+func (m *Meta) Pointers() []any {
+	return []any{
+		&m.ProgressToken,
+	}
+}
+
+var _schemaNotificationParams = []fmt.Field{
+		{Name: "meta", Type: fmt.FieldText, OmitEmpty: true},
+	}
+
+func (m *NotificationParams) Schema() []fmt.Field { return _schemaNotificationParams }
+
+func (m *NotificationParams) Pointers() []any {
+	return []any{
+		&m.Meta,
 	}
 }
 

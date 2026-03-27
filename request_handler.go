@@ -1,104 +1,126 @@
 package mcp
 
 import (
-	"context"
-	"encoding/json"
-	"net/http"
+	"github.com/tinywasm/context"
+	"github.com/tinywasm/json"
 )
 
-// HandleMessage processes an incoming JSON-RPC message and returns a response.
-func (s *MCPServer) HandleMessage(ctx context.Context, message json.RawMessage) JSONRPCMessage {
-	ctx = context.WithValue(ctx, serverKey{}, s)
+const (
+	CtxKeyUserID    = "mcp.user_id"
+	CtxKeySessionID = "mcp.session_id"
+	CtxKeyAuthToken = "mcp.auth_token"
+)
 
-	var baseMessage struct {
-		JSONRPC string    `json:"jsonrpc"`
-		Method  MCPMethod `json:"method"`
-		ID      any       `json:"id,omitempty"`
-		Result  any       `json:"result,omitempty"`
+func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMessage {
+	id := extractJSONString(message, "id")
+	method := extractJSONString(message, "method")
+	jsonrpc := extractJSONString(message, "jsonrpc")
+
+	if jsonrpc != JSONRPC_VERSION {
+		return createErrorResponse(id, INVALID_REQUEST, "Invalid JSON-RPC version")
 	}
-	if err := json.Unmarshal(message, &baseMessage); err != nil {
-		return createErrorResponse(nil, PARSE_ERROR, "Failed to parse message")
-	}
-	if baseMessage.JSONRPC != JSONRPC_VERSION {
-		return createErrorResponse(baseMessage.ID, INVALID_REQUEST, "Invalid JSON-RPC version")
-	}
-	if baseMessage.ID == nil {
+
+	if id == "" {
 		var notification JSONRPCNotification
-		if err := json.Unmarshal(message, &notification); err != nil {
-			return createErrorResponse(nil, PARSE_ERROR, "Failed to parse notification")
-		}
+		notification.JSONRPC = JSONRPC_VERSION
+		notification.Method = method
 		s.handleNotification(ctx, notification)
 		return nil
 	}
-	if baseMessage.Result != nil {
-		return nil
-	}
 
-	h := ctx.Value(requestHeader)
-	headers, ok := h.(http.Header)
-	if headers == nil || !ok {
-		headers = make(http.Header)
-	}
-
-	var reqErr *requestError
-	switch baseMessage.Method {
-	case MethodInitialize:
-		var request InitializeRequest
-		var result *InitializeResult
-		if unmarshalErr := json.Unmarshal(message, &request); unmarshalErr != nil {
-			reqErr = &requestError{id: baseMessage.ID, code: INVALID_REQUEST, err: &UnparsableMessageError{message: message, err: unmarshalErr, method: baseMessage.Method}}
-		} else {
-			request.Header = headers
-			result, reqErr = s.handleInitialize(ctx, baseMessage.ID, request)
+	if s.auth != nil {
+		token := ctx.Value(CtxKeyAuthToken)
+		userID, err := s.auth.Authorize(token)
+		if err != nil {
+			return createErrorResponse(id, -32001, "Unauthorized")
 		}
+		ctx.Set(CtxKeyUserID, userID)
+	}
+
+	switch MCPMethod(method) {
+	case MethodInitialize:
+		var p initializeParams
+		json.Decode(message, &p)
+		result, reqErr := s.handleInitialize(ctx, id, p)
 		if reqErr != nil {
 			return reqErr.ToJSONRPCError()
 		}
-		return createResponse(baseMessage.ID, *result)
+		return createResponse(id, result)
 
 	case MethodPing:
-		var request PingRequest
-		var result *EmptyResult
-		if unmarshalErr := json.Unmarshal(message, &request); unmarshalErr != nil {
-			reqErr = &requestError{id: baseMessage.ID, code: INVALID_REQUEST, err: &UnparsableMessageError{message: message, err: unmarshalErr, method: baseMessage.Method}}
-		} else {
-			request.Header = headers
-			result, reqErr = s.handlePing(ctx, baseMessage.ID, request)
-		}
+		result, reqErr := s.handlePing(ctx, id)
 		if reqErr != nil {
 			return reqErr.ToJSONRPCError()
 		}
-		return createResponse(baseMessage.ID, *result)
+		return createResponse(id, result)
 
 	case MethodToolsList:
-		var request ListToolsRequest
-		var result *ListToolsResult
-		if unmarshalErr := json.Unmarshal(message, &request); unmarshalErr != nil {
-			reqErr = &requestError{id: baseMessage.ID, code: INVALID_REQUEST, err: &UnparsableMessageError{message: message, err: unmarshalErr, method: baseMessage.Method}}
-		} else {
-			request.Header = headers
-			result, reqErr = s.handleListTools(ctx, baseMessage.ID, request)
-		}
+		var p PaginatedParams
+		json.Decode(message, &p)
+		result, reqErr := s.handleListTools(ctx, id, p)
 		if reqErr != nil {
 			return reqErr.ToJSONRPCError()
 		}
-		return createResponse(baseMessage.ID, *result)
+		return createResponse(id, result)
 
 	case MethodToolsCall:
-		var request CallToolRequest
-		var result *CallToolResult
-		if unmarshalErr := json.Unmarshal(message, &request); unmarshalErr != nil {
-			reqErr = &requestError{id: baseMessage.ID, code: INVALID_REQUEST, err: &UnparsableMessageError{message: message, err: unmarshalErr, method: baseMessage.Method}}
-		} else {
-			request.Header = headers
-			result, reqErr = s.handleToolCall(ctx, baseMessage.ID, request)
-		}
+		var p callToolParams
+		json.Decode(message, &p)
+		result, reqErr := s.handleToolCall(ctx, id, p)
 		if reqErr != nil {
 			return reqErr.ToJSONRPCError()
 		}
-		return createResponse(baseMessage.ID, *result)
+		return createResponse(id, result)
 
 	default:
-		return createErrorResponse(baseMessage.ID, METHOD_NOT_FOUND, "Method not found: "+string(baseMessage.Method))
+		if method == "" {
+			return createErrorResponse(id, PARSE_ERROR, "Failed to parse message")
+		}
+		return createErrorResponse(id, METHOD_NOT_FOUND, "Method not found: "+method)
+	}
+}
+
+func extractJSONString(data []byte, key string) string {
+	search := "\"" + key + "\":"
+	start := -1
+	for i := 0; i <= len(data)-len(search); i++ {
+		match := true
+		for j := 0; j < len(search); j++ {
+			if data[i+j] != search[j] {
+				match = false
+				break
+			}
+		}
+		if match {
+			start = i + len(search)
+			break
+		}
+	}
+	if start == -1 {
+		return ""
+	}
+	for start < len(data) && (data[start] == ' ' || data[start] == '\t' || data[start] == '\n' || data[start] == '\r') {
+		start++
+	}
+	if start >= len(data) {
+		return ""
+	}
+	if data[start] == '"' {
+		start++
+		end := start
+		for end < len(data) && data[end] != '"' {
+			if data[end] == '\\' && end+1 < len(data) {
+				end += 2
+				continue
+			}
+			end++
+		}
+		return string(data[start:end])
+	} else {
+		end := start
+		for end < len(data) && data[end] != ',' && data[end] != '}' && data[end] != ' ' && data[end] != '\t' && data[end] != '\n' && data[end] != '\r' {
+			end++
+		}
+		return string(data[start:end])
 	}
 }
