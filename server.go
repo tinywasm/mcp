@@ -130,14 +130,14 @@ type requestError struct {
 }
 
 func (e *requestError) Error() string { return e.err.Error() }
-func (e *requestError) ToJSONRPCError() *JSONRPCError {
+func (e *requestError) ToJSONRPCError() JSONRPCMessage {
 	return newErrorResponse(e.id, e.code, e.err.Error(), nil)
 }
 
-func createErrorResponse(id string, code int, message string) *JSONRPCError {
+func createErrorResponse(id string, code int, message string) JSONRPCMessage {
 	return newErrorResponse(id, code, message, nil)
 }
 
-func createResponse(id string, result fmt.Fielder) *JSONRPCResponseStruct {
+func createResponse(id string, result fmt.Fielder) JSONRPCMessage {
 	return newResultResponse(id, result)
 }

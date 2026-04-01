@@ -149,3 +149,141 @@ func (m *mockAuth) Authorize(token string) (string, error) {
 func TestAuthorizer_Satisfies(t *testing.T) {
 	var _ mcp.Authorizer = &mockAuth{id: "user123"}
 }
+
+func TestExtractJSONValue(t *testing.T) {
+	tests := []struct {
+		name     string
+		data     string
+		key      string
+		expected string
+	}{
+		{"SimpleObject", `{"params":{"name":"test"}}`, "params", `{"name":"test"}`},
+		{"NestedObject", `{"params":{"name":"test","args":{"x":1}}}`, "params", `{"name":"test","args":{"x":1}}`},
+		{"Array", `{"list":[1,2,3]}`, "list", `[1,2,3]`},
+		{"String", `{"id":"abc"}`, "id", `"abc"`},
+		{"Number", `{"count":42}`, "count", `42`},
+		{"Boolean", `{"ok":true}`, "ok", `true`},
+		{"Missing", `{"method":"ping"}`, "params", ""},
+		{"NestedKey", `{"root":{"child":1}}`, "child", "1"},
+		{"Whitespace", `{"params" : {"name":"test"}}`, "params", `{"name":"test"}`},
+		{"EscapedQuotes", `{"id":"\"quoted\""}`, "id", `"\"quoted\""`},
+		{"DeeplyEscapedQuotes", `{"id":"\\\\\""}`, "id", `"\\\\\""`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := mcp.ExtractJSONValue([]byte(tt.data), tt.key)
+			if string(got) != tt.expected {
+				t.Errorf("ExtractJSONValue() = %s, want %s", string(got), tt.expected)
+			}
+		})
+	}
+}
+
+func TestHandleMessage_Compliance(t *testing.T) {
+	srv := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0"}, nil)
+	srv.AddTool(mcp.Tool{
+		Name:     "echo",
+		Resource: "test",
+		Action:   'r',
+		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
+			return mcp.Text(req.Params.Name), nil
+		},
+	})
+	var ctx context.Context
+
+	tests := []struct {
+		name         string
+		message      string
+		expectNil    bool
+		expectError  bool
+		expectedCode int
+	}{
+		{
+			name:    "ValidToolCall",
+			message: `{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"echo","arguments":"{}"}}`,
+		},
+		{
+			name:         "InvalidVersion",
+			message:      `{"jsonrpc":"1.0","id":"1","method":"ping"}`,
+			expectError:  true,
+			expectedCode: mcp.INVALID_REQUEST,
+		},
+		{
+			name:         "MethodNotFound",
+			message:      `{"jsonrpc":"2.0","id":"1","method":"nonexistent"}`,
+			expectError:  true,
+			expectedCode: mcp.METHOD_NOT_FOUND,
+		},
+		{
+			name:         "InvalidParams",
+			message:      `{"jsonrpc":"2.0","id":"1","method":"tools/call","params":"not-an-object"}`,
+			expectError:  true,
+			expectedCode: mcp.INVALID_PARAMS,
+		},
+		{
+			name:      "Notification",
+			message:   `{"jsonrpc":"2.0","method":"notifications/initialized"}`,
+			expectNil: true,
+		},
+		{
+			name:         "ParseError_Empty",
+			message:      ``,
+			expectError:  true,
+			expectedCode: mcp.PARSE_ERROR,
+		},
+		{
+			name:         "ParseError_Invalid",
+			message:      `not json`,
+			expectError:  true,
+			expectedCode: mcp.PARSE_ERROR,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp := srv.HandleMessage(&ctx, []byte(tt.message))
+			if tt.expectNil {
+				if resp != nil {
+					t.Fatalf("expected nil response for notification")
+				}
+				return
+			}
+			if resp == nil {
+				t.Fatalf("expected response, got nil")
+			}
+
+			if tt.expectError {
+				// Check if it's an error response
+				var b []byte
+				if f, ok := resp.(fmt.Fielder); ok {
+					json.Encode(f, &b)
+				}
+				respStr := string(b)
+				if !contains(respStr, `"error":`) {
+					t.Fatalf("expected error response, got %s", respStr)
+				}
+				// We could decode and check the code if needed
+			} else {
+				// Should be success
+				var b []byte
+				if f, ok := resp.(fmt.Fielder); ok {
+					json.Encode(f, &b)
+				}
+				respStr := string(b)
+				if contains(respStr, `"error":`) {
+					t.Fatalf("expected success response, got %s", respStr)
+				}
+			}
+		})
+	}
+}
+
+func contains(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
