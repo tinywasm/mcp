@@ -12,7 +12,9 @@ const (
 	MethodNotificationInitialized      = "notifications/initialized"
 )
 
-type JSONRPCMessage any
+type JSONRPCMessage interface {
+	jsonrpcMessage()
+}
 
 const LATEST_PROTOCOL_VERSION = "2024-11-05"
 

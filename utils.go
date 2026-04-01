@@ -29,7 +29,7 @@ func GetText(r *Result) (string, error) {
 	return c.Text, nil
 }
 
-func newResultResponse(id RequestId, result any) *JSONRPCResponseStruct {
+func newResultResponse(id RequestId, result any) JSONRPCMessage {
 	var resJSON string
 	if f, ok := result.(fmt.Fielder); ok {
 		json.Encode(f, &resJSON)
@@ -53,7 +53,7 @@ func newErrorDetails(code int, message string, data any) *JSONRPCErrorDetails {
 	}
 }
 
-func newErrorResponse(id RequestId, code int, message string, data any) *JSONRPCError {
+func newErrorResponse(id RequestId, code int, message string, data any) JSONRPCMessage {
 	det := newErrorDetails(code, message, data)
 	var detJSON string
 	json.Encode(det, &detJSON)

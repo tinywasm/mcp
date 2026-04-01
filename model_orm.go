@@ -363,6 +363,22 @@ func ReadAllPaginatedParams(qb *orm.QB) ([]*PaginatedParams, error) {
 	return results, err
 }
 
+var _schemaEmptyResult = []fmt.Field{
+		{Name: "result", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+	}
+
+func (m *EmptyResult) Schema() []fmt.Field { return _schemaEmptyResult }
+
+func (m *EmptyResult) Pointers() []any {
+	return []any{
+		&m.Result,
+	}
+}
+
+func (m *EmptyResult) Validate(action byte) error {
+	return fmt.ValidateFields(action, m)
+}
+
 func (m *JSONRPCRequest) ModelName() string {
 	return "jsonrpcrequest"
 }

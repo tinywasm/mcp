@@ -110,7 +110,10 @@ type PaginatedParams struct {
 	Cursor Cursor `json:",omitempty"`
 }
 
-type EmptyResult struct{}
+// ormc:formonly
+type EmptyResult struct {
+	Result string `json:",omitempty"`
+}
 
 type JSONRPCRequest struct {
 	JSONRPC string
@@ -132,11 +135,15 @@ type JSONRPCResponseStruct struct {
 	Error   string `json:",omitempty"`
 }
 
+func (r *JSONRPCResponseStruct) jsonrpcMessage() {}
+
 type JSONRPCError struct {
 	JSONRPC string
 	ID      string `json:",omitempty"`
 	Error   string
 }
+
+func (e *JSONRPCError) jsonrpcMessage() {}
 
 type JSONRPCErrorDetails struct {
 	Code    int64
