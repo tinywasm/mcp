@@ -42,7 +42,9 @@ func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMess
 		if err != nil {
 			return createErrorResponse(id, -32001, "Unauthorized")
 		}
-		ctx.Set(CtxKeyUserID, userID)
+		if userID != "" {
+			ctx.Set(CtxKeyUserID, userID)
+		}
 	}
 
 	switch MCPMethod(method) {

@@ -18,26 +18,25 @@ type Server struct {
 	providers    []ToolProvider
 	auth         Authorizer
 	log          func(messages ...any)
-	apiKey       string
-	port         string
-	ideStatus    string
+	SSE          SSEPublisher
 }
 
 type Config struct {
 	Name    string
 	Version string
 	Auth    Authorizer
-	Port    string // HTTP port used to register IDE entries (e.g. "3030")
-	APIKey  string // Bearer token injected into IDE config headers
+	SSE     SSEPublisher
 }
 
-func NewServer(config Config, providers []ToolProvider) *Server {
+func NewServer(config Config, providers []ToolProvider) (*Server, error) {
+	if config.Auth == nil {
+		return nil, fmt.Err("mcp", "Auth is required — use mcp.OpenAuthorizer() for open access")
+	}
 	s := &Server{
 		name:      config.Name,
 		version:   config.Version,
 		auth:      config.Auth,
-		apiKey:    config.APIKey,
-		port:      config.Port,
+		SSE:       config.SSE,
 		tools:     make(map[string]Tool),
 		providers: providers,
 		log:       func(messages ...any) {},
@@ -45,11 +44,13 @@ func NewServer(config Config, providers []ToolProvider) *Server {
 	for _, p := range providers {
 		if p != nil {
 			for _, tool := range p.Tools() {
-				s.AddTool(tool)
+				if err := s.AddTool(tool); err != nil {
+					return nil, err
+				}
 			}
 		}
 	}
-	return s
+	return s, nil
 }
 
 func (s *Server) AddTool(tool Tool) error {
@@ -59,6 +60,17 @@ func (s *Server) AddTool(tool Tool) error {
 	s.mu.Lock()
 	s.tools[tool.Name] = tool
 	s.mu.Unlock()
+
+	if s.SSE != nil {
+		notification := JSONRPCNotification{
+			JSONRPC: JSONRPC_VERSION,
+			Method:  "notifications/tools/list_changed",
+		}
+		var data []byte
+		json.Encode(&notification, &data)
+		s.SSE.Publish(data, "mcp")
+	}
+
 	return nil
 }
 
@@ -113,6 +125,12 @@ func (s *Server) handleToolCall(ctx *context.Context, id string, params callTool
 	if !ok {
 		return nil, &requestError{id: id, code: INVALID_PARAMS, err: fmt.Err("mcp", "tool not found")}
 	}
+
+	userID := ctx.Value(CtxKeyUserID)
+	if !s.auth.Can(userID, tool.Resource, tool.Action) {
+		return nil, &requestError{id: id, code: -32001, err: fmt.Err("forbidden")}
+	}
+
 	req := Request{Params: params}
 	result, err := tool.Execute(ctx, req)
 	if err != nil {
@@ -121,7 +139,13 @@ func (s *Server) handleToolCall(ctx *context.Context, id string, params callTool
 	return result, nil
 }
 
-func (s *Server) handleNotification(ctx *context.Context, notification JSONRPCNotification) {}
+func (s *Server) handleNotification(ctx *context.Context, notification JSONRPCNotification) {
+	if s.SSE != nil {
+		var data []byte
+		json.Encode(&notification, &data)
+		s.SSE.Publish(data, "mcp")
+	}
+}
 
 type requestError struct {
 	id   string
