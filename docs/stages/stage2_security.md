@@ -2,24 +2,56 @@
 
 ### Problem
 `NewServer` accepts `Config.Auth == nil` silently. Any request passes without authentication.
+Additionally, `Config` still contains `Port` and `APIKey` which belong to `tinywasm/app`, not to the protocol layer.
 
-### Change
+### Changes
+
+#### A. `NewServer` returns error if Auth is nil
+
 ```go
-// NewServer returns error if config.Auth is nil — security must be explicit.
-// For local/trusted environments use mcp.OpenAuthorizer() as an explicit opt-in.
 func NewServer(config Config, providers []ToolProvider) (*Server, error) {
     if config.Auth == nil {
         return nil, fmt.Err("mcp", "Auth is required — use mcp.OpenAuthorizer() for open access")
     }
     // ...
+    return s, nil
 }
 ```
 
-### Impact on Consumers
-- `tinywasm/app` uses `mcpHandler.SetAuth(...)` post-construction — must migrate to `Config.Auth`
-- Every existing consumer must add `Auth` to their `Config`
+#### B. Remove `Port` and `APIKey` from Config and Server
 
-### Security Tests — Critical Edge Cases
+These fields belong to `tinywasm/app` (HTTP layer), not to the protocol core.
+
+```go
+// BEFORE
+type Config struct {
+    Name    string
+    Version string
+    Auth    Authorizer
+    Port    string   // REMOVE
+    APIKey  string   // REMOVE
+}
+
+// AFTER
+type Config struct {
+    Name    string
+    Version string
+    Auth    Authorizer
+}
+```
+
+Also remove from `Server` struct: `apiKey`, `port`, `ideStatus` fields.
+
+#### C. Delete handler_ide.go and handler_ide_wasm.go
+
+These files implement `ConfigureIDEs` which depends on `Port` and `APIKey`. This functionality was already decided to move to `tinywasm/app` (see Stage 1 cleanup notes). Delete these files entirely.
+
+### Impact on Consumers
+- `tinywasm/app` must handle `(*Server, error)` return from `NewServer`
+- `tinywasm/app` must provide `Port` and `APIKey` in its own config, not in `mcp.Config`
+- All existing consumers must add `Auth` to their `Config`
+
+### Security Tests
 
 ```
 TestNewServer_NilAuth_ReturnsError
@@ -37,12 +69,6 @@ TestHandleMessage_InvalidToken_Rejected
 TestHandleMessage_EmptyToken_Rejected
     → Authorization: Bearer  (empty) → error -32001
 
-TestHandleMessage_WrongScheme_Rejected
-    → Authorization: Basic xxx (not Bearer) → error -32001
-
-TestHandleMessage_TokenWithSpaces_Rejected
-    → token with spaces or control characters → error -32001
-
 TestHandleMessage_ValidToken_Passes
     → correct token → executes method
 
@@ -51,9 +77,13 @@ TestHandleMessage_OpenAuthorizer_NoHeader_Passes
 ```
 
 ### Steps
-- [ ] Change `NewServer` to `NewServer(config, providers) (*Server, error)`
-- [ ] Add security tests listed above
-- [ ] Add `NewTokenAuthorizer(apiKey string) Authorizer` to `mcp_auth.go`
-- [ ] Add `OpenAuthorizer() Authorizer` to `mcp_auth.go`
+- [ ] Change `NewServer` signature to `NewServer(config, providers) (*Server, error)`
+- [ ] Remove `Port`, `APIKey` from `Config` struct
+- [ ] Remove `port`, `apiKey`, `ideStatus` from `Server` struct
+- [ ] Delete handler_ide.go and handler_ide_wasm.go if they exist (ConfigureIDEs moves to app)
+- [ ] Add `NewTokenAuthorizer(apiKey string) Authorizer` to mcp_auth.go
+- [ ] Add `OpenAuthorizer() Authorizer` to mcp_auth.go
+- [ ] Add all security tests listed above
+- [ ] Verify existing tests compile (update test helpers to pass Auth)
 
-> **Note:** `SetAuth` post-construction was removed from the plan. It contradicts the "Auth required at startup" guarantee — if you can `SetAuth(nil)` after construction, the invariant is broken. Auth is immutable after `NewServer`.
+> **Note:** No `SetAuth` post-construction. Auth is immutable after `NewServer` — allowing mutation would break the "Auth required at startup" invariant.

@@ -1,8 +1,8 @@
 # PLAN: tinywasm/mcp — Corrections and Enhancements
 
 > Date: 2026-03-28
-> Updated: 2026-03-31
-> Status: In progress — partially completed (see progress by stage)
+> Updated: 2026-04-01
+> Status: Restarting from Stage 1.5 — all stages pending except Stage 1
 
 ---
 
