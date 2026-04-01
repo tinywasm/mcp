@@ -14,11 +14,11 @@ func JSON(data fmt.Fielder) (*Result, error) {
 }
 
 func ParseResult(raw []byte) (*Result, error) {
-	var result callToolResult
+	var result Result
 	if err := json.Decode(raw, &result); err != nil {
 		return nil, err
 	}
-	return &Result{Content: result.Content, IsError: result.IsError}, nil
+	return &result, nil
 }
 
 func GetText(r *Result) (string, error) {

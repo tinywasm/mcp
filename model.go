@@ -2,34 +2,34 @@ package mcp
 
 // ormc:formonly
 type rpcRequest struct {
-	JSONRPC string `json:"jsonrpc"`
-	ID      string `json:"id,omitempty"`
+	JSONRPC string
+	ID      string `json:",omitempty"`
 	Method  string
 	Params  string `json:",omitempty"`
 }
 
 // ormc:formonly
 type rpcResponse struct {
-	JSONRPC string `json:"jsonrpc"`
-	ID      string `json:"id,omitempty"`
+	JSONRPC string
+	ID      string `json:",omitempty"`
 	Result  string `json:",omitempty"`
 	Error   string `json:",omitempty"`
 }
 
 // ormc:formonly
 type ideServerEntry struct {
-	URL     string `json:"url"`
-	Headers string `json:"headers,omitempty"`
+	URL     string
+	Headers string `json:",omitempty"`
 }
 
 // ormc:formonly
 type vscodeConfig struct {
-	Servers string `json:"servers,omitempty"`
+	Servers string `json:",omitempty"`
 }
 
 // ormc:formonly
 type claudeCodeConfig struct {
-	MCPServers string `json:"mcpServers,omitempty"`
+	MCPServers string `json:",omitempty"`
 }
 
 // ormc:formonly
@@ -41,8 +41,8 @@ type jsonRPCError struct {
 
 // ormc:formonly
 type initializeParams struct {
-	ProtocolVersion string             `json:"protocolVersion"`
-	ClientInfo      implementationInfo `json:"clientInfo"`
+	ProtocolVersion string
+	ClientInfo      implementationInfo
 }
 
 // ormc:formonly
@@ -53,9 +53,9 @@ type implementationInfo struct {
 
 // ormc:formonly
 type initializeResult struct {
-	ProtocolVersion string             `json:"protocolVersion"`
-	ServerInfo      implementationInfo `json:"serverInfo"`
-	Capabilities    string             `json:",omitempty"`
+	ProtocolVersion string
+	ServerInfo      implementationInfo
+	Capabilities    string `json:",omitempty"`
 }
 
 // ormc:formonly
@@ -65,8 +65,8 @@ type callToolParams struct {
 }
 
 // ormc:formonly
-type callToolResult struct {
-	IsError bool   `json:"isError,omitempty"`
+type Result struct {
+	IsError bool `json:",omitempty"`
 	Content string
 }
 
@@ -80,28 +80,66 @@ type textContent struct {
 type toolEntry struct {
 	Name        string
 	Description string `json:",omitempty"`
-	InputSchema string `json:"inputSchema,omitempty"`
+	InputSchema string `json:",omitempty"`
 }
 
 // ormc:formonly
 type listToolsResult struct {
 	Tools      string
-	NextCursor string `json:"nextCursor,omitempty"`
+	NextCursor string `json:",omitempty"`
 }
 
 // ormc:formonly
 type errorResponse struct {
-	JSONRPC string       `json:"jsonrpc"`
-	ID      string       `json:"id,omitempty"`
+	JSONRPC string
+	ID      string `json:",omitempty"`
 	Error   jsonRPCError
 }
 
 // ormc:formonly
 type Meta struct {
-	ProgressToken string `json:"progressToken,omitempty"`
+	ProgressToken string `json:",omitempty"`
 }
 
 // ormc:formonly
 type NotificationParams struct {
-	Meta string `json:"_meta,omitempty"`
+	Meta string `json:",omitempty"`
+}
+
+type PaginatedParams struct {
+	Cursor Cursor `json:",omitempty"`
+}
+
+type EmptyResult struct{}
+
+type JSONRPCRequest struct {
+	JSONRPC string
+	ID      RequestId
+	Method  string
+	Params  string `json:",omitempty"`
+}
+
+type JSONRPCNotification struct {
+	JSONRPC string
+	Method  string
+	Params  string `json:",omitempty"`
+}
+
+type JSONRPCResponseStruct struct {
+	JSONRPC string
+	ID      string `json:",omitempty"`
+	Result  string `json:",omitempty"`
+	Error   string `json:",omitempty"`
+}
+
+type JSONRPCError struct {
+	JSONRPC string
+	ID      string `json:",omitempty"`
+	Error   string
+}
+
+type JSONRPCErrorDetails struct {
+	Code    int64
+	Message string
+	Data    string `json:",omitempty"`
 }

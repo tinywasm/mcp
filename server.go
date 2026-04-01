@@ -18,12 +18,17 @@ type Server struct {
 	providers    []ToolProvider
 	auth         Authorizer
 	log          func(messages ...any)
+	apiKey       string
+	port         string
+	ideStatus    string
 }
 
 type Config struct {
 	Name    string
 	Version string
 	Auth    Authorizer
+	Port    string // HTTP port used to register IDE entries (e.g. "3030")
+	APIKey  string // Bearer token injected into IDE config headers
 }
 
 func NewServer(config Config, providers []ToolProvider) *Server {
@@ -31,6 +36,8 @@ func NewServer(config Config, providers []ToolProvider) *Server {
 		name:      config.Name,
 		version:   config.Version,
 		auth:      config.Auth,
+		apiKey:    config.APIKey,
+		port:      config.Port,
 		tools:     make(map[string]Tool),
 		providers: providers,
 		log:       func(messages ...any) {},
@@ -46,7 +53,7 @@ func NewServer(config Config, providers []ToolProvider) *Server {
 }
 
 func (s *Server) AddTool(tool Tool) error {
-	if tool.Name == "" || tool.Resource == "" || tool.Action == 0 || tool.Run == nil {
+	if tool.Name == "" || tool.Resource == "" || tool.Action == 0 || tool.Execute == nil {
 		return fmt.Err("mcp", "invalid tool")
 	}
 	s.mu.Lock()
@@ -64,9 +71,9 @@ func (s *Server) handleInitialize(ctx *context.Context, id string, params initia
 		},
 	}
 	res.Capabilities = `{"tools":{"listChanged":true}}`
-	if SessionIDFromContext(ctx) == "" {
+	if ctx.Value(CtxKeySessionID) == "" {
 		uid, _ := unixid.NewUnixID()
-		ContextWithSessionID(ctx, uid.GetNewID())
+		ctx.Set(CtxKeySessionID, uid.GetNewID())
 	}
 	return res, nil
 }
@@ -107,7 +114,7 @@ func (s *Server) handleToolCall(ctx *context.Context, id string, params callTool
 		return nil, &requestError{id: id, code: INVALID_PARAMS, err: fmt.Err("mcp", "tool not found")}
 	}
 	req := Request{Params: params}
-	result, err := tool.Run(ctx, req)
+	result, err := tool.Execute(ctx, req)
 	if err != nil {
 		return &Result{IsError: true, Content: Text(err.Error()).Content}, nil
 	}
