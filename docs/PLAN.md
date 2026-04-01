@@ -1,76 +1,292 @@
-# PLAN: tinywasm/mcp — Corrections and Enhancements
+# PLAN: tinywasm/mcp — Pending Corrections
 
-> Date: 2026-03-28
-> Updated: 2026-04-01
-> Status: Restarting from Stage 1.5 — all stages pending except Stage 1
+> Date: 2026-04-01
+> Status: Ready for execution — Stage 2 first
 
 ---
 
-## Confirmed Design Decisions
+## Context
+
+Stages 1 and 1.5 were completed in a prior iteration. This plan covers the remaining work: security hardening, RBAC enforcement, SSE transport, and documentation rewrite.
+
+## Current State (verified 2026-04-01)
+
+| Item | Status |
+|------|--------|
+| `NewServer` returns `*Server` (no error) | Needs change |
+| `Config` has `Port`, `APIKey` | Must remove |
+| `Server` has `apiKey`, `port`, `ideStatus` | Must remove |
+| `handler_ide.go` + `handler_ide_wasm.go` exist | Must delete |
+| `Authorizer` only has `Authorize()` | Missing `Can()` |
+| `handleToolCall` skips RBAC | Must enforce |
+| No `SSEPublisher` interface | Must add |
+| `ARCHITECTURE.md` references deleted types | Must rewrite |
+| `README.md` references `HTTPHandler()`, `NewBearerAuth()` | Must fix |
+
+---
+
+## Confirmed Design Decisions (inherited)
 
 | Decision | Resolution |
 |----------|-----------|
-| Auth nil | `NewServer` returns error if `Config.Auth == nil`. No silent open access. |
-| RBAC Interface name | Merged into `Authorizer` (see Stage 3) — a single interface, not two. |
-| HTTP Transport | Streamable HTTP via `tinywasm/sse` injected by the consumer. |
-| SSE injection | `Config.SSE SSETransport` — consumer passes `*sse.SSEServer` directly. |
-| Dead code | Removed: `session.go`, `transport_interface.go`, `handler_ide.front.go`. |
-| `.back.go` files | Marked `//go:build ignore` — they don't compile, kept as reference. |
-| `ConfigureIDEs` | Reverting: extracted into `tinywasm/app` to preserve protocol purity. |
-| `RegisterMethod` | Deleted. App uses its own HTTP router for custom routes. |
-| `tinywasm/app` | Requires migration — separate plan in `tinywasm/app/docs/PLAN.md`. |
-| **JSON-RPC 2.0 strict** | `HandleMessage` ALWAYS returns a valid JSON-RPC 2.0 response or nil (notification). No exceptions. See Stage 1.5. |
-| **No HTTP ownership** | `mcp` never owns HTTP routing. `HTTPHandler`, `RegisterRoutes`, `HTTPEngine` belong to `tinywasm/app`. `mcp` only exposes `HandleMessage(ctx, []byte) JSONRPCMessage`. |
-
----
-
-## Compatibility Status: tinywasm/user
-
-The functions `GenerateAPIToken`, `ValidateJWT`, `CanExecute`, `InjectIdentity` are **documented but not implemented** in `tinywasm/user`. Only the following exists:
-- `m.HasPermission(userID, resource string, action byte) (bool, error)` ✅
-
-Stage 3 of this plan and the `tinywasm/user` plan must be coordinated.
-
----
-
-## Implementation Stages
-
-For an orderly execution and review, the plan has been divided into the following modules:
-
-### [Stage 1 — Cleanup ✅ COMPLETED](stages/stage1_cleanup.md)
-Removal of dead code and recovery of critical functions.
-
-### [Stage 1.5 — Strict JSON-RPC 2.0 Responses](stages/stage1_5_jsonrpc_strict.md)
-Guarantee every `HandleMessage` call returns valid JSON-RPC 2.0. Typed response interface, param validation, no silent failures.
-
-### [Stage 2 — Startup Security](stages/stage2_security.md)
-Ensuring the server doesn't start without an explicit security configuration.
-
-### [Stage 3 — Mandatory RBAC (Unified Authorizer)](stages/stage3_rbac.md)
-Implementation of role-based access control integrating Auth and RBAC.
-
-### [Stage 4 — SSE Transport (Streamable HTTP)](stages/stage4_sse.md)
-Support for streaming responses via Server-Sent Events.
-
-### [Stage 5 — Documentation](stages/stage5_documentation.md)
-Updating README and ARCHITECTURE.md to reflect the new state of the package.
+| Auth nil | `NewServer` returns error if `Config.Auth == nil` |
+| Authorizer | Single interface with `Authorize()` + `Can()` |
+| HTTP Transport | Streamable HTTP via `tinywasm/sse` injected by consumer |
+| SSE injection | `Config.SSE SSEPublisher` — consumer passes `*sse.SSEServer` |
+| No HTTP ownership | `mcp` never owns HTTP routing. Only exposes `HandleMessage()` |
+| ConfigureIDEs | Moves to `tinywasm/app` — delete from mcp |
 
 ---
 
 ## Execution Order
 
 ```
-Stage 1 ✅ → Stage 1.5 → Stage 2 → Stage 3 → Stage 4 → Stage 5
+Stage 2 → Stage 3 → Stage 4 → Stage 5
 ```
 
-Stages 2 and 3 are blockers for Stage 4 because `HTTPHandler` depends on `Authorizer` having `Can()`.
+Stages 2 and 3 are blockers for Stage 4 because SSE publishing depends on `Authorizer` having `Can()`.
 
 ---
 
-## External Dependencies Added
+## Stage 2 — Startup Security
+
+### Goal
+`NewServer` must reject nil Auth. Remove HTTP-layer fields (`Port`, `APIKey`) that belong to `tinywasm/app`. Delete `ConfigureIDEs` from mcp.
+
+### Changes
+
+**A. `NewServer` returns `(*Server, error)`**
+
+```go
+func NewServer(config Config, providers []ToolProvider) (*Server, error) {
+    if config.Auth == nil {
+        return nil, fmt.Err("mcp", "Auth is required — use mcp.OpenAuthorizer() for open access")
+    }
+    // ... existing logic ...
+    return s, nil
+}
+```
+
+**B. Clean Config and Server structs**
+
+Remove from `Config`: `Port`, `APIKey`
+Remove from `Server`: `apiKey`, `port`, `ideStatus`
+
+Final Config:
+```go
+type Config struct {
+    Name    string
+    Version string
+    Auth    Authorizer
+}
+```
+
+**C. Delete IDE files**
+
+Delete `handler_ide.go` and `handler_ide_wasm.go`. `ConfigureIDEs` moves to `tinywasm/app`.
+
+**D. Add built-in Authorizer implementations in mcp_auth.go**
+
+```go
+func NewTokenAuthorizer(apiKey string) Authorizer
+func OpenAuthorizer() Authorizer
+```
+
+Both implement `Can()` returning `true` always (Stage 3 adds the full interface).
+
+### Tests
+
+```
+TestNewServer_NilAuth_ReturnsError
+TestNewServer_OpenAuthorizer_Starts
+TestNewServer_TokenAuthorizer_Starts
+TestHandleMessage_NoAuthToken_Rejected      (TokenAuthorizer)
+TestHandleMessage_InvalidToken_Rejected     (TokenAuthorizer)
+TestHandleMessage_ValidToken_Passes         (TokenAuthorizer)
+TestHandleMessage_OpenAuthorizer_NoToken_Passes
+```
+
+### Steps
+- [ ] Change `NewServer` signature to return `(*Server, error)`
+- [ ] Add nil Auth validation in `NewServer`
+- [ ] Remove `Port`, `APIKey` from `Config`
+- [ ] Remove `port`, `apiKey`, `ideStatus` from `Server`
+- [ ] Delete `handler_ide.go`
+- [ ] Delete `handler_ide_wasm.go`
+- [ ] Add `NewTokenAuthorizer(apiKey)` and `OpenAuthorizer()` in mcp_auth.go
+- [ ] Update all tests to handle `(*Server, error)` return and pass Auth
+- [ ] Add security tests listed above
+
+### Impact on Consumers
+- `tinywasm/app` must handle `(*Server, error)` return
+- `tinywasm/app` must own `Port`, `APIKey`, and `ConfigureIDEs` logic
+- All consumers must provide `Auth` in Config
+
+---
+
+## Stage 3 — Mandatory RBAC (Unified Authorizer)
+
+### Goal
+Extend `Authorizer` with `Can()`. Enforce RBAC check in `handleToolCall` before `Execute`.
+
+### Changes
+
+**A. Extend Authorizer interface**
+
+```go
+type Authorizer interface {
+    Authorize(token string) (userID string, err error)
+    Can(userID, resource string, action byte) bool
+}
+```
+
+**B. Update built-in implementations**
+
+`NewTokenAuthorizer` and `OpenAuthorizer` — `Can()` always returns `true`.
+
+**C. Enforce in handleToolCall**
+
+```go
+func (s *Server) handleToolCall(ctx *context.Context, id string, params callToolParams) (*Result, *requestError) {
+    tool, ok := s.tools[params.Name]
+    if !ok {
+        return nil, &requestError{id: id, code: INVALID_PARAMS, err: fmt.Err("mcp", "tool not found")}
+    }
+
+    userID := ctx.Value(CtxKeyUserID)
+    if !s.auth.Can(userID, tool.Resource, tool.Action) {
+        return nil, &requestError{id: id, code: -32001, err: fmt.Err("mcp", "forbidden")}
+    }
+
+    req := Request{Params: params}
+    result, err := tool.Execute(ctx, req)
+    if err != nil {
+        return &Result{IsError: true, Content: Text(err.Error()).Content}, nil
+    }
+    return result, nil
+}
+```
+
+### Tests
+
+```
+TestHandleToolCall_Can_False_Rejected
+TestHandleToolCall_Can_True_Executes
+TestHandleToolCall_WrongAction_Rejected
+TestHandleToolCall_WrongResource_Rejected
+TestHandleToolCall_CanNeverCalledIfAuthorizeFails
+TestHandleToolCall_ExecuteNeverCalledIfCanFalse
+TestConcurrentToolCalls_DifferentUsers
+```
+
+### Steps
+- [ ] Add `Can(userID, resource string, action byte) bool` to `Authorizer` interface
+- [ ] Update `NewTokenAuthorizer` — `Can` always returns `true`
+- [ ] Update `OpenAuthorizer` — `Can` always returns `true`
+- [ ] Add RBAC check in `handleToolCall` before `Execute`
+- [ ] Add all RBAC tests listed above
+- [ ] Update mockAuth in tests to implement `Can()`
+
+---
+
+## Stage 4 — SSE Transport (Streamable HTTP)
+
+### Goal
+Inject `tinywasm/sse` via interface for streaming notifications. Consumer owns HTTP routing.
+
+### Changes
+
+**A. SSEPublisher interface** (build `!wasm`)
+
+```go
+type SSEPublisher interface {
+    Publish(data []byte, channel string)
+}
+```
+
+**B. Add to Config**
+
+```go
+type Config struct {
+    Name    string
+    Version string
+    Auth    Authorizer
+    SSE     SSEPublisher  // optional — nil means no streaming
+}
+```
+
+**C. Use in notification handlers**
+
+When SSE is present, `s.sse.Publish(...)` on tool list changes and other notifications.
+
+### Tests
+
+```
+TestHandleMessage_WithSSE_PublishesNotification
+TestHandleMessage_WithoutSSE_NoPublish
+TestConfig_SSENil_Accepted
+```
+
+### Steps
+- [ ] Add `SSEPublisher` interface in a `server_sse.go` file (build `!wasm`)
+- [ ] Add `SSE SSEPublisher` field to `Config` and `Server`
+- [ ] Use `s.sse.Publish(...)` in notification handlers when SSE is present
+- [ ] Verify `*sse.SSEServer` satisfies `SSEPublisher` without adapter
+- [ ] Add all SSE tests listed above
+
+---
+
+## Stage 5 — Documentation
+
+### Goal
+ARCHITECTURE.md and README.md must reflect the actual code after stages 2-4.
+
+### ARCHITECTURE.md — Full Rewrite
+
+Remove references to: `MCPServer`, `ProtocolTool`, `SSEHub`, `Handler`, `session.go`, `handler.go`, `handler_executor.go`, `transport_streamable_http.go`, `tool_builders.go`, `request_handler.go` (as router — it's now inline in server).
+
+Document current files:
+- server.go — `Server`, `Config`, `NewServer`, `HandleMessage`, tool handlers
+- request_handler.go — `HandleMessage` dispatch, `ExtractJSONValue`, JSON extraction
+- mcp_auth.go — `Authorizer`, `NewTokenAuthorizer`, `OpenAuthorizer`
+- provider.go — `Tool`, `ToolProvider`, `Request`, `Result`
+- tools.go — `toolEntry`, `InputSchema`, wire format
+- types.go — JSON-RPC 2.0 types, error codes
+- model.go / model_orm.go — data models
+- client.go — MCP client
+- constants.go — protocol constants
+- errors.go — error helpers
+- utils.go — result helpers (`Text`, `JSON`, `GetText`)
+- logger.go — logging interface
+
+Add diagrams:
+- Auth + RBAC flow
+- Streamable HTTP flow with SSE
+
+### README.md — Updates
+
+- Remove `srv.HTTPHandler()` (doesn't exist — consumer owns HTTP)
+- Remove `user.NewBearerAuth(secret)` — replace with `NewTokenAuthorizer` / `OpenAuthorizer` / `userModule.MCPAuthorizer()`
+- Add `ormc` installation section
+- Add SSE section
+- Fix API reference table
+
+### Steps
+- [ ] Rewrite ARCHITECTURE.md with current file structure
+- [ ] Add auth + RBAC flow diagram
+- [ ] Add SSE flow diagram
+- [ ] Update README: auth section with actual implementations
+- [ ] Update README: remove `HTTPHandler()` reference
+- [ ] Update README: add `ormc` install section
+- [ ] Update README: add SSE section
+- [ ] Update README: fix API reference table
+
+---
+
+## External Dependencies
 
 | Package | Stage | Reason |
 |---------|-------|--------|
-| `github.com/tinywasm/sse` | Stage 4 | `SSETransport` interface + `HTTPHandler` |
+| `github.com/tinywasm/sse` | Stage 4 | `SSEPublisher` interface satisfaction |
 
-Note: the dependency is only in `!wasm` builds. The protocol core remains without external dependencies.
+Note: dependency only in `!wasm` builds. Protocol core remains dependency-free.
