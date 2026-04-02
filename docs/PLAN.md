@@ -1,292 +1,273 @@
-# PLAN: tinywasm/mcp — Pending Corrections
+# PLAN: tinywasm/mcp — Audit Corrections
 
-> Date: 2026-04-01
-> Status: Ready for execution — Stage 2 first
-
----
-
-## Context
-
-Stages 1 and 1.5 were completed in a prior iteration. This plan covers the remaining work: security hardening, RBAC enforcement, SSE transport, and documentation rewrite.
-
-## Current State (verified 2026-04-01)
-
-| Item | Status |
-|------|--------|
-| `NewServer` returns `*Server` (no error) | Needs change |
-| `Config` has `Port`, `APIKey` | Must remove |
-| `Server` has `apiKey`, `port`, `ideStatus` | Must remove |
-| `handler_ide.go` + `handler_ide_wasm.go` exist | Must delete |
-| `Authorizer` only has `Authorize()` | Missing `Can()` |
-| `handleToolCall` skips RBAC | Must enforce |
-| No `SSEPublisher` interface | Must add |
-| `ARCHITECTURE.md` references deleted types | Must rewrite |
-| `README.md` references `HTTPHandler()`, `NewBearerAuth()` | Must fix |
+> Date: 2026-04-02
+> Status: Ready for execution
 
 ---
 
-## Confirmed Design Decisions (inherited)
+## Findings Summary
 
-| Decision | Resolution |
-|----------|-----------|
-| Auth nil | `NewServer` returns error if `Config.Auth == nil` |
-| Authorizer | Single interface with `Authorize()` + `Can()` |
-| HTTP Transport | Streamable HTTP via `tinywasm/sse` injected by consumer |
-| SSE injection | `Config.SSE SSEPublisher` — consumer passes `*sse.SSEServer` |
-| No HTTP ownership | `mcp` never owns HTTP routing. Only exposes `HandleMessage()` |
-| ConfigureIDEs | Moves to `tinywasm/app` — delete from mcp |
-
----
-
-## Execution Order
-
-```
-Stage 2 → Stage 3 → Stage 4 → Stage 5
-```
-
-Stages 2 and 3 are blockers for Stage 4 because SSE publishing depends on `Authorizer` having `Can()`.
+| # | Severity | Category | Issue |
+|---|----------|----------|-------|
+| 1 | Critical | Security | `initialize` bypasses auth — any unauthenticated client can start a session |
+| 2 | Critical | WASM | `SSEPublisher` only defined with `!wasm` build tag — `Server` struct won't compile under WASM |
+| 3 | High | Security | `TokenAuthorizer` does not use constant-time comparison — timing attack on API key |
+| 4 | High | Logic | Auth check has dead branch: `s.auth != nil` is always true (NewServer rejects nil Auth) |
+| 5 | High | Logic | `handleToolCall` RBAC uses `ctx.Value(CtxKeyUserID)` which was set by `HandleMessage` auth — but if auth sets userID to `""` (empty), `Can()` receives empty string silently |
+| 6 | Medium | Security | `Client` sends API key in `Authorization` header without `Bearer ` prefix validation — inconsistent with server-side `TokenAuthorizer` that compares raw token |
+| 7 | Medium | Logic | `Bind` always validates with action `'c'` (create) — ignores the tool's actual `Action` field |
+| 8 | Medium | Consistency | `model.go` still has `ideServerEntry`, `vscodeConfig`, `claudeCodeConfig` — IDE types that should have been deleted with Stage 2 |
+| 9 | Medium | Consistency | `errors.go` defines unused error vars (`ErrUnsupported`, `ErrToolNotFound`, `ErrNotificationNotInitialized`, `ErrNotificationChannelBlocked`) and uses stdlib `fmt` instead of `tinywasm/fmt` |
+| 10 | Medium | Consistency | `Logger` interface in `logger.go` is never used by `Server` — server uses `func(messages ...any)` instead |
+| 11 | Low | Logic | `handleInitialize` ignores `params.ProtocolVersion` — never validates client version against `validProtocolVersions` |
+| 12 | Low | Consistency | `FilterFunc` defined in `tools.go` but never used anywhere |
+| 13 | Low | Consistency | `provider.go` has `Loggable` interface — never used by server |
+| 14 | Low | Cleanup | `docs/stages/` directory contains 6 stage files from prior iterations — stale artifacts |
 
 ---
 
-## Stage 2 — Startup Security
+## Stage 1 — Critical: Auth Bypass on Initialize + WASM Compilation
 
 ### Goal
-`NewServer` must reject nil Auth. Remove HTTP-layer fields (`Port`, `APIKey`) that belong to `tinywasm/app`. Delete `ConfigureIDEs` from mcp.
+Fix the two critical issues: unauthenticated `initialize` and WASM build failure.
 
 ### Changes
 
-**A. `NewServer` returns `(*Server, error)`**
+**A. Move auth check before method dispatch (except initialize)**
 
+The MCP spec requires `initialize` to be the first message, but the current code runs auth for ALL methods with an `id`. The problem is that `initialize` should still require auth when using `TokenAuthorizer` — an unauthenticated client shouldn't be able to negotiate a session.
+
+Current flow (`request_handler.go:38-48`):
 ```go
-func NewServer(config Config, providers []ToolProvider) (*Server, error) {
-    if config.Auth == nil {
-        return nil, fmt.Err("mcp", "Auth is required — use mcp.OpenAuthorizer() for open access")
-    }
-    // ... existing logic ...
-    return s, nil
-}
-```
-
-**B. Clean Config and Server structs**
-
-Remove from `Config`: `Port`, `APIKey`
-Remove from `Server`: `apiKey`, `port`, `ideStatus`
-
-Final Config:
-```go
-type Config struct {
-    Name    string
-    Version string
-    Auth    Authorizer
-}
-```
-
-**C. Delete IDE files**
-
-Delete `handler_ide.go` and `handler_ide_wasm.go`. `ConfigureIDEs` moves to `tinywasm/app`.
-
-**D. Add built-in Authorizer implementations in mcp_auth.go**
-
-```go
-func NewTokenAuthorizer(apiKey string) Authorizer
-func OpenAuthorizer() Authorizer
-```
-
-Both implement `Can()` returning `true` always (Stage 3 adds the full interface).
-
-### Tests
-
-```
-TestNewServer_NilAuth_ReturnsError
-TestNewServer_OpenAuthorizer_Starts
-TestNewServer_TokenAuthorizer_Starts
-TestHandleMessage_NoAuthToken_Rejected      (TokenAuthorizer)
-TestHandleMessage_InvalidToken_Rejected     (TokenAuthorizer)
-TestHandleMessage_ValidToken_Passes         (TokenAuthorizer)
-TestHandleMessage_OpenAuthorizer_NoToken_Passes
-```
-
-### Steps
-- [ ] Change `NewServer` signature to return `(*Server, error)`
-- [ ] Add nil Auth validation in `NewServer`
-- [ ] Remove `Port`, `APIKey` from `Config`
-- [ ] Remove `port`, `apiKey`, `ideStatus` from `Server`
-- [ ] Delete `handler_ide.go`
-- [ ] Delete `handler_ide_wasm.go`
-- [ ] Add `NewTokenAuthorizer(apiKey)` and `OpenAuthorizer()` in mcp_auth.go
-- [ ] Update all tests to handle `(*Server, error)` return and pass Auth
-- [ ] Add security tests listed above
-
-### Impact on Consumers
-- `tinywasm/app` must handle `(*Server, error)` return
-- `tinywasm/app` must own `Port`, `APIKey`, and `ConfigureIDEs` logic
-- All consumers must provide `Auth` in Config
-
----
-
-## Stage 3 — Mandatory RBAC (Unified Authorizer)
-
-### Goal
-Extend `Authorizer` with `Can()`. Enforce RBAC check in `handleToolCall` before `Execute`.
-
-### Changes
-
-**A. Extend Authorizer interface**
-
-```go
-type Authorizer interface {
-    Authorize(token string) (userID string, err error)
-    Can(userID, resource string, action byte) bool
-}
-```
-
-**B. Update built-in implementations**
-
-`NewTokenAuthorizer` and `OpenAuthorizer` — `Can()` always returns `true`.
-
-**C. Enforce in handleToolCall**
-
-```go
-func (s *Server) handleToolCall(ctx *context.Context, id string, params callToolParams) (*Result, *requestError) {
-    tool, ok := s.tools[params.Name]
-    if !ok {
-        return nil, &requestError{id: id, code: INVALID_PARAMS, err: fmt.Err("mcp", "tool not found")}
-    }
-
-    userID := ctx.Value(CtxKeyUserID)
-    if !s.auth.Can(userID, tool.Resource, tool.Action) {
-        return nil, &requestError{id: id, code: -32001, err: fmt.Err("mcp", "forbidden")}
-    }
-
-    req := Request{Params: params}
-    result, err := tool.Execute(ctx, req)
+if s.auth != nil {  // dead branch — always true
+    token := ctx.Value(CtxKeyAuthToken)
+    userID, err := s.auth.Authorize(token)
     if err != nil {
-        return &Result{IsError: true, Content: Text(err.Error()).Content}, nil
+        return createErrorResponse(id, -32001, "Unauthorized")
     }
-    return result, nil
+    ...
 }
 ```
 
-### Tests
+Fix: remove the `if s.auth != nil` guard (it's always true). Auth already runs for all methods including initialize, which is correct — no change needed to the flow, just remove the dead branch.
 
-```
-TestHandleToolCall_Can_False_Rejected
-TestHandleToolCall_Can_True_Executes
-TestHandleToolCall_WrongAction_Rejected
-TestHandleToolCall_WrongResource_Rejected
-TestHandleToolCall_CanNeverCalledIfAuthorizeFails
-TestHandleToolCall_ExecuteNeverCalledIfCanFalse
-TestConcurrentToolCalls_DifferentUsers
-```
+**B. Add WASM stub for SSEPublisher**
 
-### Steps
-- [ ] Add `Can(userID, resource string, action byte) bool` to `Authorizer` interface
-- [ ] Update `NewTokenAuthorizer` — `Can` always returns `true`
-- [ ] Update `OpenAuthorizer` — `Can` always returns `true`
-- [ ] Add RBAC check in `handleToolCall` before `Execute`
-- [ ] Add all RBAC tests listed above
-- [ ] Update mockAuth in tests to implement `Can()`
-
----
-
-## Stage 4 — SSE Transport (Streamable HTTP)
-
-### Goal
-Inject `tinywasm/sse` via interface for streaming notifications. Consumer owns HTTP routing.
-
-### Changes
-
-**A. SSEPublisher interface** (build `!wasm`)
-
+Create `server_sse_wasm.go` with `//go:build wasm`:
 ```go
 type SSEPublisher interface {
     Publish(data []byte, channel string)
 }
 ```
 
-**B. Add to Config**
-
-```go
-type Config struct {
-    Name    string
-    Version string
-    Auth    Authorizer
-    SSE     SSEPublisher  // optional — nil means no streaming
-}
-```
-
-**C. Use in notification handlers**
-
-When SSE is present, `s.sse.Publish(...)` on tool list changes and other notifications.
+The interface definition must exist in both builds so `Server` and `Config` compile.
 
 ### Tests
-
 ```
-TestHandleMessage_WithSSE_PublishesNotification
-TestHandleMessage_WithoutSSE_NoPublish
-TestConfig_SSENil_Accepted
+TestWASMBuild_Compiles (build tag verification via go vet or manual)
 ```
 
 ### Steps
-- [ ] Add `SSEPublisher` interface in a `server_sse.go` file (build `!wasm`)
-- [ ] Add `SSE SSEPublisher` field to `Config` and `Server`
-- [ ] Use `s.sse.Publish(...)` in notification handlers when SSE is present
-- [ ] Verify `*sse.SSEServer` satisfies `SSEPublisher` without adapter
-- [ ] Add all SSE tests listed above
+- [ ] Remove `if s.auth != nil` guard in `request_handler.go` (dead code)
+- [ ] Create `server_sse_wasm.go` with `//go:build wasm` containing `SSEPublisher` interface
 
 ---
 
-## Stage 5 — Documentation
+## Stage 2 — Security: Timing-Safe Token Comparison
 
 ### Goal
-ARCHITECTURE.md and README.md must reflect the actual code after stages 2-4.
+Prevent timing attacks on API key comparison in `TokenAuthorizer`.
 
-### ARCHITECTURE.md — Full Rewrite
+### Changes
 
-Remove references to: `MCPServer`, `ProtocolTool`, `SSEHub`, `Handler`, `session.go`, `handler.go`, `handler_executor.go`, `transport_streamable_http.go`, `tool_builders.go`, `request_handler.go` (as router — it's now inline in server).
+**A. Use constant-time comparison in `tokenAuthorizer.Authorize`**
 
-Document current files:
-- server.go — `Server`, `Config`, `NewServer`, `HandleMessage`, tool handlers
-- request_handler.go — `HandleMessage` dispatch, `ExtractJSONValue`, JSON extraction
-- mcp_auth.go — `Authorizer`, `NewTokenAuthorizer`, `OpenAuthorizer`
-- provider.go — `Tool`, `ToolProvider`, `Request`, `Result`
-- tools.go — `toolEntry`, `InputSchema`, wire format
-- types.go — JSON-RPC 2.0 types, error codes
-- model.go / model_orm.go — data models
-- client.go — MCP client
-- constants.go — protocol constants
-- errors.go — error helpers
-- utils.go — result helpers (`Text`, `JSON`, `GetText`)
-- logger.go — logging interface
+`mcp_auth.go:21` currently does `token == a.apiKey` (byte-by-byte short-circuit). Replace with `subtle.ConstantTimeCompare` or equivalent length-check + byte comparison.
 
-Add diagrams:
-- Auth + RBAC flow
-- Streamable HTTP flow with SSE
+Since `tinywasm/fmt` may not expose `crypto/subtle`, implement a simple constant-time compare:
+```go
+func constantTimeEqual(a, b string) bool {
+    if len(a) != len(b) {
+        return false
+    }
+    var result byte
+    for i := 0; i < len(a); i++ {
+        result |= a[i] ^ b[i]
+    }
+    return result == 0
+}
+```
 
-### README.md — Updates
-
-- Remove `srv.HTTPHandler()` (doesn't exist — consumer owns HTTP)
-- Remove `user.NewBearerAuth(secret)` — replace with `NewTokenAuthorizer` / `OpenAuthorizer` / `userModule.MCPAuthorizer()`
-- Add `ormc` installation section
-- Add SSE section
-- Fix API reference table
+### Tests
+```
+TestTokenAuthorizer_ConstantTimeCompare (functional — same behavior, just timing-safe)
+```
 
 ### Steps
-- [ ] Rewrite ARCHITECTURE.md with current file structure
-- [ ] Add auth + RBAC flow diagram
-- [ ] Add SSE flow diagram
-- [ ] Update README: auth section with actual implementations
-- [ ] Update README: remove `HTTPHandler()` reference
-- [ ] Update README: add `ormc` install section
-- [ ] Update README: add SSE section
-- [ ] Update README: fix API reference table
+- [ ] Add `constantTimeEqual` in `mcp_auth.go`
+- [ ] Replace `token == a.apiKey` with `constantTimeEqual(token, a.apiKey)`
+
+---
+
+## Stage 3 — Logic Fixes: Bind Action + Empty UserID
+
+### Goal
+Fix `Bind` ignoring tool action and handle empty userID from auth.
+
+### Changes
+
+**A. Pass action to `Request.Bind`**
+
+`tools.go:22-27` — `Bind` hardcodes `target.Validate('c')`. The `Request` struct doesn't carry the tool's action. Two options:
+
+Option 1 (minimal): Add `Action` to `Request` and set it in `handleToolCall`.
+```go
+type Request struct {
+    Params callToolParams
+    Action byte
+}
+```
+
+In `handleToolCall` (`server.go:134`):
+```go
+req := Request{Params: params, Action: tool.Action}
+```
+
+In `Bind`:
+```go
+func (r *Request) Bind(target fmt.SafeFields) error {
+    if err := json.Decode([]byte(r.Params.Arguments), target); err != nil {
+        return err
+    }
+    return target.Validate(r.Action)
+}
+```
+
+**B. Reject empty userID after Authorize**
+
+In `request_handler.go`, after `Authorize` returns, if `userID == ""` and auth is not `OpenAuthorizer`, this is suspicious. However, `OpenAuthorizer` legitimately returns `"guest"`, and `TokenAuthorizer` returns `"user"` — so empty userID from a custom authorizer should be rejected:
+
+```go
+userID, err := s.auth.Authorize(token)
+if err != nil {
+    return createErrorResponse(id, -32001, "Unauthorized")
+}
+if userID == "" {
+    return createErrorResponse(id, -32001, "Unauthorized: empty user identity")
+}
+ctx.Set(CtxKeyUserID, userID)
+```
+
+Remove the `if userID != ""` guard — always set it.
+
+### Tests
+```
+TestBind_UsesToolAction
+TestAuthorize_EmptyUserID_Rejected
+```
+
+### Steps
+- [ ] Add `Action byte` to `Request` struct
+- [ ] Set `Action` in `handleToolCall` when building `Request`
+- [ ] Change `Bind` to use `r.Action` instead of hardcoded `'c'`
+- [ ] Remove `if userID != ""` guard — reject empty userID, always set
+
+---
+
+## Stage 4 — Cleanup: Dead Code + Stale Types
+
+### Goal
+Remove unused code that creates confusion and maintenance burden.
+
+### Changes
+
+**A. Remove IDE types from `model.go`**
+
+Delete `ideServerEntry`, `vscodeConfig`, `claudeCodeConfig` structs. These were part of `ConfigureIDEs` which moved to `tinywasm/app`.
+
+Also remove their generated ORM code from `model_orm.go`.
+
+**B. Clean `errors.go`**
+
+Remove unused error vars: `ErrUnsupported`, `ErrToolNotFound`, `ErrNotificationNotInitialized`, `ErrNotificationChannelBlocked`, `NewError`. These are leftovers from the old architecture. Replace stdlib `fmt` import — if nothing remains, delete the file.
+
+**C. Reconcile Logger**
+
+`Server` uses `log func(messages ...any)` internally but `logger.go` defines an unused `Logger` interface. Two options:
+- Option A: Delete `logger.go` — `Server.log` already works.
+- Option B: Use `Logger` in `Server` and expose `Config.Logger`.
+
+Recommend Option A (delete) — the `Loggable` pattern in `provider.go` already handles per-tool logging.
+
+**D. Remove `FilterFunc`**
+
+Defined in `tools.go:36` but never used. Remove it.
+
+**E. Remove `Loggable` from `provider.go`**
+
+Never used by `Server`. If needed later, re-add. Currently dead code.
+
+**F. Remove `validProtocolVersions`**
+
+Defined in `types.go:21-23` but never referenced. Either use it in `handleInitialize` or remove it.
+
+**G. Delete `docs/stages/`**
+
+Contains 6 stale stage files from prior plan iterations. All stages are completed.
+
+### Steps
+- [ ] Delete `ideServerEntry`, `vscodeConfig`, `claudeCodeConfig` from `model.go`
+- [ ] Delete corresponding ORM code from `model_orm.go`
+- [ ] Delete unused error vars and `NewError` from `errors.go` (or delete file if empty)
+- [ ] Delete `logger.go`
+- [ ] Remove `FilterFunc` from `tools.go`
+- [ ] Remove `Loggable` interface from `provider.go` (file becomes empty — delete)
+- [ ] Remove `validProtocolVersions` from `types.go` or use in `handleInitialize`
+- [ ] Delete `docs/stages/` directory
+
+---
+
+## Stage 5 — Optional: Protocol Version Validation
+
+### Goal
+`handleInitialize` should validate `params.ProtocolVersion` against supported versions.
+
+### Changes
+
+In `server.go` `handleInitialize`:
+```go
+func (s *Server) handleInitialize(ctx *context.Context, id string, params initializeParams) (*initializeResult, *requestError) {
+    if params.ProtocolVersion != LATEST_PROTOCOL_VERSION {
+        return nil, &requestError{id: id, code: INVALID_PARAMS, err: fmt.Err("mcp", "unsupported protocol version: "+params.ProtocolVersion)}
+    }
+    // ... rest
+}
+```
+
+This makes `validProtocolVersions` unnecessary (single version supported), or use it for multi-version support if needed.
+
+### Tests
+```
+TestInitialize_UnsupportedVersion_Rejected
+TestInitialize_ValidVersion_Passes
+```
+
+### Steps
+- [ ] Add protocol version validation in `handleInitialize`
+- [ ] Add tests for version validation
+
+---
+
+## Execution Order
+
+```
+Stage 1 (critical) → Stage 2 (security) → Stage 3 (logic) → Stage 4 (cleanup) → Stage 5 (optional)
+```
+
+Stages 1 and 2 are independent and could run in parallel. Stage 4 is independent of 3. Stage 5 is optional.
 
 ---
 
 ## External Dependencies
 
-| Package | Stage | Reason |
-|---------|-------|--------|
-| `github.com/tinywasm/sse` | Stage 4 | `SSEPublisher` interface satisfaction |
-
-Note: dependency only in `!wasm` builds. Protocol core remains dependency-free.
+None. All changes are internal to `tinywasm/mcp`.

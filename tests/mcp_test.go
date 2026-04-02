@@ -9,9 +9,25 @@ import (
 	"github.com/tinywasm/mcp"
 )
 
+// mockAuth implements mcp.Authorizer for testing
+type mockAuth struct {
+	id string
+}
+
+func (m *mockAuth) Authorize(token string) (string, error) {
+	return m.id, nil
+}
+
+func (m *mockAuth) Can(userID, resource string, action byte) bool {
+	if userID == "forbidden-user" {
+		return false
+	}
+	return true
+}
+
 // TestAddTool_Valid verifies tool registration succeeds with valid Tool
 func TestAddTool_Valid(t *testing.T) {
-	srv := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0"}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
 	err := srv.AddTool(mcp.Tool{
 		Name:        "search",
 		Description: "Search items",
@@ -28,7 +44,7 @@ func TestAddTool_Valid(t *testing.T) {
 
 // TestAddTool_MissingRBAC verifies AddTool rejects tools without Resource or Action
 func TestAddTool_MissingRBAC(t *testing.T) {
-	srv := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0"}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
 	err := srv.AddTool(mcp.Tool{
 		Name: "search",
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
@@ -42,7 +58,7 @@ func TestAddTool_MissingRBAC(t *testing.T) {
 
 // TestAddTool_MissingRun verifies AddTool rejects tools without Run handler
 func TestAddTool_MissingRun(t *testing.T) {
-	srv := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0"}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
 	err := srv.AddTool(mcp.Tool{
 		Name:     "search",
 		Resource: "items",
@@ -55,7 +71,7 @@ func TestAddTool_MissingRun(t *testing.T) {
 
 // TestHandleMessage_Ping verifies ping request returns valid response
 func TestHandleMessage_Ping(t *testing.T) {
-	srv := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0"}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
 	var ctx context.Context
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"ping"}`)
 	resp := srv.HandleMessage(&ctx, req)
@@ -81,7 +97,7 @@ func TestHandleMessage_Ping(t *testing.T) {
 
 // TestHandleMessage_Initialize verifies initialize request returns server info
 func TestHandleMessage_Initialize(t *testing.T) {
-	srv := mcp.NewServer(mcp.Config{Name: "test-server", Version: "2.0.0"}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test-server", Version: "2.0.0", Auth: mcp.OpenAuthorizer()}, nil)
 	var ctx context.Context
 	req := []byte(`{"jsonrpc":"2.0","id":"init-1","method":"initialize","params":"{\"protocolVersion\":\"2024-11-05\",\"clientInfo\":{\"name\":\"test-client\",\"version\":\"1.0\"}}"}`)
 	resp := srv.HandleMessage(&ctx, req)
@@ -133,18 +149,6 @@ func TestJSONResult(t *testing.T) {
 	}
 }
 
-// mockAuth implements mcp.Authorizer for testing
-type mockAuth struct {
-	id string
-}
-
-func (m *mockAuth) Authorize(token string) (string, error) {
-	if token == "valid" {
-		return m.id, nil
-	}
-	return "", fmt.Err("mcp", "auth", "unauthorized")
-}
-
 // TestAuthorizer_Satisfies compile-time check that mockAuth implements Authorizer
 func TestAuthorizer_Satisfies(t *testing.T) {
 	var _ mcp.Authorizer = &mockAuth{id: "user123"}
@@ -181,7 +185,7 @@ func TestExtractJSONValue(t *testing.T) {
 }
 
 func TestHandleMessage_Compliance(t *testing.T) {
-	srv := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0"}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:     "echo",
 		Resource: "test",
@@ -286,4 +290,77 @@ func contains(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func TestNewServer_NilAuth_ReturnsError(t *testing.T) {
+	_, err := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0"}, nil)
+	if err == nil {
+		t.Fatal("expected error for nil Auth")
+	}
+}
+
+func TestHandleToolCall_Can_False_Rejected(t *testing.T) {
+	auth := &mockAuth{id: "forbidden-user"}
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: auth}, nil)
+	srv.AddTool(mcp.Tool{
+		Name:     "secret",
+		Resource: "secrets",
+		Action:   'r',
+		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
+			return mcp.Text("secret data"), nil
+		},
+	})
+
+	var ctx context.Context
+	ctx.Set(mcp.CtxKeyUserID, "forbidden-user")
+
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"secret","arguments":"{}"}}`)
+	resp := srv.HandleMessage(&ctx, req)
+
+	if resp == nil {
+		t.Fatal("expected response")
+	}
+
+	var b []byte
+	if f, ok := resp.(fmt.Fielder); ok {
+		json.Encode(f, &b)
+	}
+	respStr := string(b)
+	if !contains(respStr, `-32001`) || !contains(respStr, "forbidden") {
+		t.Fatalf("expected forbidden error, got %s", respStr)
+	}
+}
+
+type mockSSE struct {
+	lastData    []byte
+	lastChannel string
+}
+
+func (m *mockSSE) Publish(data []byte, channel string) {
+	m.lastData = data
+	m.lastChannel = channel
+}
+
+func TestHandleMessage_WithSSE_PublishesNotification(t *testing.T) {
+	sse := &mockSSE{}
+	srv, _ := mcp.NewServer(mcp.Config{
+		Name:    "test",
+		Version: "1.0.0",
+		Auth:    mcp.OpenAuthorizer(),
+		SSE:     sse,
+	}, nil)
+
+	var ctx context.Context
+	req := []byte(`{"jsonrpc":"2.0","method":"notifications/initialized"}`)
+	srv.HandleMessage(&ctx, req)
+
+	if string(sse.lastData) == "" {
+		t.Fatal("expected SSE publication")
+	}
+	if sse.lastChannel != "mcp" {
+		t.Fatalf("expected channel 'mcp', got %s", sse.lastChannel)
+	}
+	if !contains(string(sse.lastData), "notifications/initialized") {
+		t.Fatalf("expected notification data, got %s", string(sse.lastData))
+	}
 }
