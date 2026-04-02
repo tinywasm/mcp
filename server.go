@@ -75,6 +75,9 @@ func (s *Server) AddTool(tool Tool) error {
 }
 
 func (s *Server) handleInitialize(ctx *context.Context, id string, params initializeParams) (*initializeResult, *requestError) {
+	if params.ProtocolVersion != LATEST_PROTOCOL_VERSION {
+		return nil, &requestError{id: id, code: INVALID_PARAMS, err: fmt.Err("mcp", "unsupported protocol version: "+params.ProtocolVersion)}
+	}
 	res := &initializeResult{
 		ProtocolVersion: LATEST_PROTOCOL_VERSION,
 		ServerInfo: implementationInfo{
@@ -131,7 +134,7 @@ func (s *Server) handleToolCall(ctx *context.Context, id string, params callTool
 		return nil, &requestError{id: id, code: -32001, err: fmt.Err("forbidden")}
 	}
 
-	req := Request{Params: params}
+	req := Request{Params: params, Action: tool.Action}
 	result, err := tool.Execute(ctx, req)
 	if err != nil {
 		return &Result{IsError: true, Content: Text(err.Error()).Content}, nil

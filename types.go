@@ -18,10 +18,6 @@ type JSONRPCMessage interface {
 
 const LATEST_PROTOCOL_VERSION = "2024-11-05"
 
-var validProtocolVersions = []string{
-	LATEST_PROTOCOL_VERSION,
-}
-
 const JSONRPC_VERSION = "2.0"
 
 type Cursor string

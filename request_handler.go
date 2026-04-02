@@ -36,16 +36,15 @@ func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMess
 		return nil
 	}
 
-	if s.auth != nil {
-		token := ctx.Value(CtxKeyAuthToken)
-		userID, err := s.auth.Authorize(token)
-		if err != nil {
-			return createErrorResponse(id, -32001, "Unauthorized")
-		}
-		if userID != "" {
-			ctx.Set(CtxKeyUserID, userID)
-		}
+	token := ctx.Value(CtxKeyAuthToken)
+	userID, err := s.auth.Authorize(token)
+	if err != nil {
+		return createErrorResponse(id, -32001, "Unauthorized")
 	}
+	if userID == "" {
+		return createErrorResponse(id, -32001, "Unauthorized: empty user identity")
+	}
+	ctx.Set(CtxKeyUserID, userID)
 
 	switch MCPMethod(method) {
 	case MethodInitialize:

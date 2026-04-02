@@ -8,6 +8,7 @@ import (
 
 type Request struct {
 	Params callToolParams
+	Action byte
 }
 
 type Tool struct {
@@ -23,7 +24,7 @@ func (r *Request) Bind(target fmt.SafeFields) error {
 	if err := json.Decode([]byte(r.Params.Arguments), target); err != nil {
 		return err
 	}
-	return target.Validate('c')
+	return target.Validate(r.Action)
 }
 
 func Text(text string) *Result {
@@ -32,8 +33,6 @@ func Text(text string) *Result {
 	_ = json.Encode(c, &s)
 	return &Result{Content: s}
 }
-
-type FilterFunc func(ctx *context.Context, tool Tool) bool
 
 type ToolProvider interface {
 	Tools() []Tool

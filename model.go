@@ -17,22 +17,6 @@ type rpcResponse struct {
 }
 
 // ormc:formonly
-type ideServerEntry struct {
-	URL     string
-	Headers string `json:",omitempty"`
-}
-
-// ormc:formonly
-type vscodeConfig struct {
-	Servers string `json:",omitempty"`
-}
-
-// ormc:formonly
-type claudeCodeConfig struct {
-	MCPServers string `json:",omitempty"`
-}
-
-// ormc:formonly
 type jsonRPCError struct {
 	Code    int64
 	Message string

@@ -52,56 +52,6 @@ func (m *rpcResponse) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
 }
 
-var _schemaideServerEntry = []fmt.Field{
-		{Name: "url", Type: fmt.FieldText, Widget: input.Text()},
-		{Name: "headers", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
-	}
-
-func (m *ideServerEntry) Schema() []fmt.Field { return _schemaideServerEntry }
-
-func (m *ideServerEntry) Pointers() []any {
-	return []any{
-		&m.URL,
-		&m.Headers,
-	}
-}
-
-func (m *ideServerEntry) Validate(action byte) error {
-	return fmt.ValidateFields(action, m)
-}
-
-var _schemavscodeConfig = []fmt.Field{
-		{Name: "servers", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
-	}
-
-func (m *vscodeConfig) Schema() []fmt.Field { return _schemavscodeConfig }
-
-func (m *vscodeConfig) Pointers() []any {
-	return []any{
-		&m.Servers,
-	}
-}
-
-func (m *vscodeConfig) Validate(action byte) error {
-	return fmt.ValidateFields(action, m)
-}
-
-var _schemaclaudeCodeConfig = []fmt.Field{
-		{Name: "mcpservers", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
-	}
-
-func (m *claudeCodeConfig) Schema() []fmt.Field { return _schemaclaudeCodeConfig }
-
-func (m *claudeCodeConfig) Pointers() []any {
-	return []any{
-		&m.MCPServers,
-	}
-}
-
-func (m *claudeCodeConfig) Validate(action byte) error {
-	return fmt.ValidateFields(action, m)
-}
-
 var _schemajsonRPCError = []fmt.Field{
 		{Name: "code", Type: fmt.FieldInt, Widget: input.Number()},
 		{Name: "message", Type: fmt.FieldText, Widget: input.Text()},
