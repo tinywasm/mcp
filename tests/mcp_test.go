@@ -9,22 +9,6 @@ import (
 	"github.com/tinywasm/mcp"
 )
 
-// mockAuth implements mcp.Authorizer for testing
-type mockAuth struct {
-	id string
-}
-
-func (m *mockAuth) Authorize(token string) (string, error) {
-	return m.id, nil
-}
-
-func (m *mockAuth) Can(userID, resource string, action byte) bool {
-	if userID == "forbidden-user" {
-		return false
-	}
-	return true
-}
-
 // TestAddTool_Valid verifies tool registration succeeds with valid Tool
 func TestAddTool_Valid(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
@@ -283,15 +267,6 @@ func TestHandleMessage_Compliance(t *testing.T) {
 	}
 }
 
-func contains(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
 func TestNewServer_NilAuth_ReturnsError(t *testing.T) {
 	_, err := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0"}, nil)
 	if err == nil {
@@ -329,16 +304,6 @@ func TestHandleToolCall_Can_False_Rejected(t *testing.T) {
 	if !contains(respStr, `-32001`) || !contains(respStr, "forbidden") {
 		t.Fatalf("expected forbidden error, got %s", respStr)
 	}
-}
-
-type mockSSE struct {
-	lastData    []byte
-	lastChannel string
-}
-
-func (m *mockSSE) Publish(data []byte, channel string) {
-	m.lastData = data
-	m.lastChannel = channel
 }
 
 func TestHandleMessage_WithSSE_PublishesNotification(t *testing.T) {

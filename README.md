@@ -25,8 +25,8 @@ go install github.com/tinywasm/orm/cmd/ormc@latest
 // Tool arguments are plain structs with validation tags
 // ormc generates Schema(), Pointers(), Validate() automatically
 type SearchArgs struct {
-    Query string `validate:"required,min=1,max=255"`
-    Limit int64  `validate:"min=1,max=100"`
+    Query string `input:"required,min=1,max=255"`
+    Limit int64  `input:"min=1,max=100"`
 }
 ```
 
@@ -125,8 +125,6 @@ srv, err := mcp.NewServer(mcp.Config{
 
 When SSE is present, tool list changes and notifications are published automatically. When nil, no streaming occurs.
 
-SSE is only available in non-WASM builds (`//go:build !wasm`).
-
 ---
 
 ## ToolProvider
@@ -139,13 +137,13 @@ type CatalogProvider struct {
 }
 
 type CatalogSearchArgs struct {
-    Query    string `validate:"required,min=1,max=255"`
-    Category string `validate:"max=50"`
+    Query    string `input:"required,min=1,max=255"`
+    Category string `input:"max=50"`
 }
 
 type CatalogUpdateArgs struct {
-    ProductID string  `validate:"required"`
-    Price     float64 `validate:"required,min=0"`
+    ProductID string  `input:"required"`
+    Price     float64 `input:"required,min=0"`
 }
 
 func (p *CatalogProvider) Tools() []mcp.Tool {
