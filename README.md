@@ -12,6 +12,14 @@ Lean Go implementation of the [Model Context Protocol](https://modelcontextproto
 go get github.com/tinywasm/mcp
 ```
 
+### ormc (code generation)
+
+Tools use `ormc` for automatic `Schema()`, `Pointers()`, and `Validate()` generation:
+
+```bash
+go install github.com/tinywasm/orm/cmd/ormc@latest
+```
+
 ## Quickstart
 
 ### 1. Define tool arguments with validation (using ormc)
@@ -40,11 +48,14 @@ func handleSearch(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 ### 3. Register and serve
 
 ```go
-srv := mcp.NewServer(mcp.Config{
+srv, err := mcp.NewServer(mcp.Config{
     Name:    "my-server",
     Version: "1.0.0",
-    Auth:    myAuth, // implements mcp.Authorizer
+    Auth:    mcp.NewTokenAuthorizer("my-secret-key"),
 }, nil)
+if err != nil {
+    log.Fatal(err)
+}
 
 srv.AddTool(mcp.Tool{
     Name:        "search",
@@ -55,7 +66,14 @@ srv.AddTool(mcp.Tool{
     Execute:     handleSearch,
 })
 
-http.Handle("/mcp", srv.HTTPHandler())
+// Consumer owns HTTP routing — use HandleMessage directly
+http.HandleFunc("/mcp", func(w http.ResponseWriter, r *http.Request) {
+    body, _ := io.ReadAll(r.Body)
+    ctx := context.New()
+    ctx.Set(mcp.CtxKeyAuthToken, r.Header.Get("Authorization"))
+    resp := srv.HandleMessage(&ctx, body)
+    // encode resp as JSON and write to w
+})
 http.ListenAndServe(":3030", nil)
 ```
 
@@ -71,16 +89,46 @@ text, err := mcp.GetText(result)              // extract text
 
 ## Authorizer
 
-mcp defines the interface; implementation lives in `tinywasm/user`:
+mcp provides built-in implementations and accepts custom ones:
 
 ```go
 type Authorizer interface {
     Authorize(token string) (userID string, err error)
+    Can(userID, resource string, action byte) bool
 }
 
-// In your app:
-auth := user.NewBearerAuth(secret) // satisfies mcp.Authorizer
+// Built-in:
+auth := mcp.NewTokenAuthorizer("my-api-key") // token-based, Can() always true
+auth := mcp.OpenAuthorizer()                  // no auth, Can() always true
+
+// Custom (e.g. from tinywasm/user):
+auth := userModule.MCPAuthorizer()            // satisfies mcp.Authorizer
 ```
+
+Auth is required — `NewServer` returns error if `Config.Auth == nil`. Use `mcp.OpenAuthorizer()` for open access.
+
+---
+
+## SSE (Streamable HTTP)
+
+Optional streaming via `SSEPublisher` interface. The consumer creates the SSE server and injects it:
+
+```go
+import "github.com/tinywasm/sse"
+
+sseServer := sse.New()
+
+srv, err := mcp.NewServer(mcp.Config{
+    Name:    "my-server",
+    Version: "1.0.0",
+    Auth:    mcp.NewTokenAuthorizer("secret"),
+    SSE:     sseServer, // *sse.SSEServer satisfies mcp.SSEPublisher
+}, providers)
+```
+
+When SSE is present, tool list changes and notifications are published automatically. When nil, no streaming occurs.
+
+SSE is only available in non-WASM builds (`//go:build !wasm`).
 
 ---
 
@@ -134,7 +182,7 @@ func (p *CatalogProvider) handleSearch(ctx *context.Context, req mcp.Request) (*
 }
 
 // Pass providers to NewServer
-srv := mcp.NewServer(config, []mcp.ToolProvider{&CatalogProvider{db: db}})
+srv, err := mcp.NewServer(config, []mcp.ToolProvider{&CatalogProvider{db: db}})
 ```
 
 ---
@@ -147,8 +195,8 @@ are excluded automatically.
 In browser mode, call the handler directly — no HTTP server needed:
 
 ```go
-handler := mcp.NewServer(config, providers)
-response := handler.HandleMessage(&ctx, message)
+srv, err := mcp.NewServer(config, providers)
+response := srv.HandleMessage(&ctx, message)
 ```
 
 ---
@@ -157,22 +205,25 @@ response := handler.HandleMessage(&ctx, message)
 
 | Symbol | Description |
 |--------|-------------|
-| `NewServer(config, providers)` | Create MCP server |
+| `NewServer(config, providers)` | Create MCP server — returns `(*Server, error)` |
 | `Server.AddTool(tool)` | Register a single tool |
-| `Server.HTTPHandler()` | HTTP endpoint (server-only) |
 | `Server.HandleMessage(ctx, msg)` | Process JSON-RPC message (WASM-safe) |
 | `Tool{Name, Description, InputSchema, Resource, Action, Execute}` | Tool definition |
 | `ToolProvider` | Interface: `Tools() []Tool` |
-| `Authorizer` | Interface: `Authorize(token) (userID, error)` |
+| `Authorizer` | Interface: `Authorize(token) (userID, error)`, `Can(userID, resource, action) bool` |
+| `SSEPublisher` | Interface: `Publish(data, channel)` (build `!wasm`) |
+| `NewTokenAuthorizer(apiKey)` | Token-based authorizer |
+| `OpenAuthorizer()` | Open access authorizer |
 | `Request` | Incoming tool call |
 | `Request.Bind(target)` | Decode + validate arguments |
 | `Result` | Tool call result |
 | `Text(s)` | Create text result |
 | `JSON(data)` | Create JSON result |
 | `GetText(result)` | Extract text from result |
-| `Config` | Server configuration |
-| `FilterFunc` | Filter tools by context |
-| `CtxKeySessionID` | Context key for session ID (`ctx.Set` / `ctx.Value`) |
+| `Config` | Server configuration: `Name`, `Version`, `Auth`, `SSE` |
+| `CtxKeySessionID` | Context key for session ID |
+| `CtxKeyUserID` | Context key for authenticated user ID |
+| `CtxKeyAuthToken` | Context key for auth token |
 
 ---
 
