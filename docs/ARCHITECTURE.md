@@ -41,6 +41,8 @@ Consumer (tinywasm/app)
 
 ## Auth + RBAC Flow
 
+![Auth + RBAC Flow](img/auth_flow.svg)
+
 ```
 HandleMessage(ctx, raw)
     │

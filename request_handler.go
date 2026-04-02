@@ -36,16 +36,15 @@ func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMess
 		return nil
 	}
 
-	if s.auth != nil {
-		token := ctx.Value(CtxKeyAuthToken)
-		userID, err := s.auth.Authorize(token)
-		if err != nil {
-			return createErrorResponse(id, -32001, "Unauthorized")
-		}
-		if userID != "" {
-			ctx.Set(CtxKeyUserID, userID)
-		}
+	token := ctx.Value(CtxKeyAuthToken)
+	userID, err := s.auth.Authorize(token)
+	if err != nil {
+		return createErrorResponse(id, -32001, "Unauthorized")
 	}
+	if userID == "" {
+		return createErrorResponse(id, -32001, "Unauthorized: empty user identity")
+	}
+	ctx.Set(CtxKeyUserID, userID)
 
 	switch MCPMethod(method) {
 	case MethodInitialize:
@@ -68,14 +67,7 @@ func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMess
 		return createResponse(id, result)
 
 	case MethodToolsList:
-		raw := ExtractJSONValue(message, "params")
-		var p PaginatedParams
-		if raw != nil {
-			if err := json.Decode(raw, &p); err != nil {
-				return createErrorResponse(id, INVALID_PARAMS, "Invalid params: "+err.Error())
-			}
-		}
-		result, reqErr := s.handleListTools(ctx, id, p)
+		result, reqErr := s.handleListTools(ctx, id)
 		if reqErr != nil {
 			return reqErr.ToJSONRPCError()
 		}
