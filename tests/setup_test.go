@@ -1,7 +1,6 @@
 package mcp_test
 
 import (
-	"github.com/tinywasm/context"
 	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/json"
 	"github.com/tinywasm/mcp"
@@ -88,15 +87,4 @@ func encodeResponse(resp mcp.JSONRPCMessage) string {
 		json.Encode(f, &b)
 	}
 	return string(b)
-}
-
-func newEchoTool() mcp.Tool {
-	return mcp.Tool{
-		Name:     "echo",
-		Resource: "test",
-		Action:   'r',
-		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
-			return mcp.Text("ok"), nil
-		},
-	}
 }
