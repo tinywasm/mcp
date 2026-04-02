@@ -97,7 +97,7 @@ func (s *Server) handlePing(ctx *context.Context, id string) (*EmptyResult, *req
 	return &EmptyResult{}, nil
 }
 
-func (s *Server) handleListTools(ctx *context.Context, id string, params PaginatedParams) (*listToolsResult, *requestError) {
+func (s *Server) handleListTools(ctx *context.Context, id string) (*listToolsResult, *requestError) {
 	s.mu.RLock()
 	var toolsJSON string
 	toolsJSON = "["

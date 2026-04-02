@@ -272,47 +272,6 @@ func (m *NotificationParams) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
 }
 
-func (m *PaginatedParams) ModelName() string {
-	return "paginated_params"
-}
-
-var _schemaPaginatedParams = []fmt.Field{
-		{Name: "cursor", Type: fmt.FieldStruct, OmitEmpty: true},
-	}
-
-func (m *PaginatedParams) Schema() []fmt.Field { return _schemaPaginatedParams }
-
-func (m *PaginatedParams) Pointers() []any {
-	return []any{
-		&m.Cursor,
-	}
-}
-
-var PaginatedParams_ = struct {
-	ModelName string
-	Cursor string
-}{
-	ModelName: "paginated_params",
-	Cursor: "cursor",
-}
-
-func ReadOnePaginatedParams(qb *orm.QB, model *PaginatedParams) (*PaginatedParams, error) {
-	err := qb.ReadOne()
-	if err != nil {
-		return nil, err
-	}
-	return model, nil
-}
-
-func ReadAllPaginatedParams(qb *orm.QB) ([]*PaginatedParams, error) {
-	var results []*PaginatedParams
-	err := qb.ReadAll(
-		func() fmt.Model { return &PaginatedParams{} },
-		func(m fmt.Model) { results = append(results, m.(*PaginatedParams)) },
-	)
-	return results, err
-}
-
 var _schemaEmptyResult = []fmt.Field{
 		{Name: "result", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
 	}

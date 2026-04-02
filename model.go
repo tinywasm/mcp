@@ -90,10 +90,6 @@ type NotificationParams struct {
 	Meta string `json:",omitempty"`
 }
 
-type PaginatedParams struct {
-	Cursor Cursor `json:",omitempty"`
-}
-
 // ormc:formonly
 type EmptyResult struct {
 	Result string `json:",omitempty"`

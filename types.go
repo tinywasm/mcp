@@ -20,8 +20,6 @@ const LATEST_PROTOCOL_VERSION = "2024-11-05"
 
 const JSONRPC_VERSION = "2.0"
 
-type Cursor string
-
 type RequestId = string
 
 const (

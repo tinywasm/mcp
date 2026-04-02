@@ -67,14 +67,7 @@ func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMess
 		return createResponse(id, result)
 
 	case MethodToolsList:
-		raw := ExtractJSONValue(message, "params")
-		var p PaginatedParams
-		if raw != nil {
-			if err := json.Decode(raw, &p); err != nil {
-				return createErrorResponse(id, INVALID_PARAMS, "Invalid params: "+err.Error())
-			}
-		}
-		result, reqErr := s.handleListTools(ctx, id, p)
+		result, reqErr := s.handleListTools(ctx, id)
 		if reqErr != nil {
 			return reqErr.ToJSONRPCError()
 		}
