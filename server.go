@@ -121,7 +121,7 @@ func (s *Server) handleListTools(ctx *context.Context, id string) (*listToolsRes
 	return &listToolsResult{Tools: toolsJSON}, nil
 }
 
-func (s *Server) handleToolCall(ctx *context.Context, id string, params callToolParams) (*Result, *requestError) {
+func (s *Server) handleToolCall(ctx *context.Context, id string, params CallToolParams) (*Result, *requestError) {
 	s.mu.RLock()
 	tool, ok := s.tools[params.Name]
 	s.mu.RUnlock()

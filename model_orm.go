@@ -128,21 +128,21 @@ func (m *initializeResult) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
 }
 
-var _schemacallToolParams = []fmt.Field{
+var _schemaCallToolParams = []fmt.Field{
 		{Name: "name", Type: fmt.FieldText, Widget: input.Text()},
 		{Name: "arguments", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
 	}
 
-func (m *callToolParams) Schema() []fmt.Field { return _schemacallToolParams }
+func (m *CallToolParams) Schema() []fmt.Field { return _schemaCallToolParams }
 
-func (m *callToolParams) Pointers() []any {
+func (m *CallToolParams) Pointers() []any {
 	return []any{
 		&m.Name,
 		&m.Arguments,
 	}
 }
 
-func (m *callToolParams) Validate(action byte) error {
+func (m *CallToolParams) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
 }
 
@@ -164,21 +164,21 @@ func (m *Result) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
 }
 
-var _schematextContent = []fmt.Field{
+var _schemaTextContent = []fmt.Field{
 		{Name: "type", Type: fmt.FieldText, Widget: input.Text()},
 		{Name: "text", Type: fmt.FieldText, Widget: input.Text()},
 	}
 
-func (m *textContent) Schema() []fmt.Field { return _schematextContent }
+func (m *TextContent) Schema() []fmt.Field { return _schemaTextContent }
 
-func (m *textContent) Pointers() []any {
+func (m *TextContent) Pointers() []any {
 	return []any{
 		&m.Type,
 		&m.Text,
 	}
 }
 
-func (m *textContent) Validate(action byte) error {
+func (m *TextContent) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
 }
 

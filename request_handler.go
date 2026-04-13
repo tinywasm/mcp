@@ -75,7 +75,7 @@ func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMess
 
 	case MethodToolsCall:
 		raw := ExtractJSONValue(message, "params")
-		var p callToolParams
+		var p CallToolParams
 		if err := json.Decode(raw, &p); err != nil {
 			return createErrorResponse(id, INVALID_PARAMS, "Invalid params: "+err.Error())
 		}

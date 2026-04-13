@@ -7,7 +7,7 @@ import (
 )
 
 type Request struct {
-	Params callToolParams
+	Params CallToolParams
 	Action byte
 }
 
@@ -28,7 +28,7 @@ func (r *Request) Bind(target fmt.SafeFields) error {
 }
 
 func Text(text string) *Result {
-	c := &textContent{Type: "text", Text: text}
+	c := &TextContent{Type: "text", Text: text}
 	var s string
 	_ = json.Encode(c, &s)
 	return &Result{Content: s}

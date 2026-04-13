@@ -43,7 +43,7 @@ type initializeResult struct {
 }
 
 // ormc:formonly
-type callToolParams struct {
+type CallToolParams struct {
 	Name      string
 	Arguments string `json:",omitempty"`
 }
@@ -55,7 +55,7 @@ type Result struct {
 }
 
 // ormc:formonly
-type textContent struct {
+type TextContent struct {
 	Type string
 	Text string
 }

@@ -22,7 +22,7 @@ func ParseResult(raw []byte) (*Result, error) {
 }
 
 func GetText(r *Result) (string, error) {
-	var c textContent
+	var c TextContent
 	if err := json.Decode([]byte(r.Content), &c); err != nil {
 		return "", err
 	}
