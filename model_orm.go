@@ -4,7 +4,6 @@ package mcp
 
 import (
 	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/orm"
 	"github.com/tinywasm/form/input"
 )
 
@@ -17,14 +16,15 @@ var _schemarpcRequest = []fmt.Field{
 
 func (m *rpcRequest) Schema() []fmt.Field { return _schemarpcRequest }
 
-func (m *rpcRequest) Pointers() []any {
-	return []any{
-		&m.JSONRPC,
-		&m.ID,
-		&m.Method,
-		&m.Params,
-	}
-}
+func (m *rpcRequest) Pointers() []any { return []any{&m.JSONRPC, &m.ID, &m.Method, &m.Params} }
+
+type rpcRequestList []*rpcRequest
+
+func (s *rpcRequestList) Schema() []fmt.Field { return nil }
+func (s *rpcRequestList) Pointers() []any     { return nil }
+func (s *rpcRequestList) Len() int             { return len(*s) }
+func (s *rpcRequestList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *rpcRequestList) Append() fmt.Fielder  { v := &rpcRequest{}; *s = append(*s, v); return v }
 
 func (m *rpcRequest) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
@@ -39,14 +39,15 @@ var _schemarpcResponse = []fmt.Field{
 
 func (m *rpcResponse) Schema() []fmt.Field { return _schemarpcResponse }
 
-func (m *rpcResponse) Pointers() []any {
-	return []any{
-		&m.JSONRPC,
-		&m.ID,
-		&m.Result,
-		&m.Error,
-	}
-}
+func (m *rpcResponse) Pointers() []any { return []any{&m.JSONRPC, &m.ID, &m.Result, &m.Error} }
+
+type rpcResponseList []*rpcResponse
+
+func (s *rpcResponseList) Schema() []fmt.Field { return nil }
+func (s *rpcResponseList) Pointers() []any     { return nil }
+func (s *rpcResponseList) Len() int             { return len(*s) }
+func (s *rpcResponseList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *rpcResponseList) Append() fmt.Fielder  { v := &rpcResponse{}; *s = append(*s, v); return v }
 
 func (m *rpcResponse) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
@@ -60,13 +61,15 @@ var _schemajsonRPCError = []fmt.Field{
 
 func (m *jsonRPCError) Schema() []fmt.Field { return _schemajsonRPCError }
 
-func (m *jsonRPCError) Pointers() []any {
-	return []any{
-		&m.Code,
-		&m.Message,
-		&m.Data,
-	}
-}
+func (m *jsonRPCError) Pointers() []any { return []any{&m.Code, &m.Message, &m.Data} }
+
+type jsonRPCErrorList []*jsonRPCError
+
+func (s *jsonRPCErrorList) Schema() []fmt.Field { return nil }
+func (s *jsonRPCErrorList) Pointers() []any     { return nil }
+func (s *jsonRPCErrorList) Len() int             { return len(*s) }
+func (s *jsonRPCErrorList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *jsonRPCErrorList) Append() fmt.Fielder  { v := &jsonRPCError{}; *s = append(*s, v); return v }
 
 func (m *jsonRPCError) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
@@ -79,12 +82,15 @@ var _schemainitializeParams = []fmt.Field{
 
 func (m *initializeParams) Schema() []fmt.Field { return _schemainitializeParams }
 
-func (m *initializeParams) Pointers() []any {
-	return []any{
-		&m.ProtocolVersion,
-		&m.ClientInfo,
-	}
-}
+func (m *initializeParams) Pointers() []any { return []any{&m.ProtocolVersion, &m.ClientInfo} }
+
+type initializeParamsList []*initializeParams
+
+func (s *initializeParamsList) Schema() []fmt.Field { return nil }
+func (s *initializeParamsList) Pointers() []any     { return nil }
+func (s *initializeParamsList) Len() int             { return len(*s) }
+func (s *initializeParamsList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *initializeParamsList) Append() fmt.Fielder  { v := &initializeParams{}; *s = append(*s, v); return v }
 
 func (m *initializeParams) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
@@ -97,12 +103,15 @@ var _schemaimplementationInfo = []fmt.Field{
 
 func (m *implementationInfo) Schema() []fmt.Field { return _schemaimplementationInfo }
 
-func (m *implementationInfo) Pointers() []any {
-	return []any{
-		&m.Name,
-		&m.Version,
-	}
-}
+func (m *implementationInfo) Pointers() []any { return []any{&m.Name, &m.Version} }
+
+type implementationInfoList []*implementationInfo
+
+func (s *implementationInfoList) Schema() []fmt.Field { return nil }
+func (s *implementationInfoList) Pointers() []any     { return nil }
+func (s *implementationInfoList) Len() int             { return len(*s) }
+func (s *implementationInfoList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *implementationInfoList) Append() fmt.Fielder  { v := &implementationInfo{}; *s = append(*s, v); return v }
 
 func (m *implementationInfo) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
@@ -116,13 +125,15 @@ var _schemainitializeResult = []fmt.Field{
 
 func (m *initializeResult) Schema() []fmt.Field { return _schemainitializeResult }
 
-func (m *initializeResult) Pointers() []any {
-	return []any{
-		&m.ProtocolVersion,
-		&m.ServerInfo,
-		&m.Capabilities,
-	}
-}
+func (m *initializeResult) Pointers() []any { return []any{&m.ProtocolVersion, &m.ServerInfo, &m.Capabilities} }
+
+type initializeResultList []*initializeResult
+
+func (s *initializeResultList) Schema() []fmt.Field { return nil }
+func (s *initializeResultList) Pointers() []any     { return nil }
+func (s *initializeResultList) Len() int             { return len(*s) }
+func (s *initializeResultList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *initializeResultList) Append() fmt.Fielder  { v := &initializeResult{}; *s = append(*s, v); return v }
 
 func (m *initializeResult) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
@@ -135,12 +146,15 @@ var _schemaCallToolParams = []fmt.Field{
 
 func (m *CallToolParams) Schema() []fmt.Field { return _schemaCallToolParams }
 
-func (m *CallToolParams) Pointers() []any {
-	return []any{
-		&m.Name,
-		&m.Arguments,
-	}
-}
+func (m *CallToolParams) Pointers() []any { return []any{&m.Name, &m.Arguments} }
+
+type CallToolParamsList []*CallToolParams
+
+func (s *CallToolParamsList) Schema() []fmt.Field { return nil }
+func (s *CallToolParamsList) Pointers() []any     { return nil }
+func (s *CallToolParamsList) Len() int             { return len(*s) }
+func (s *CallToolParamsList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *CallToolParamsList) Append() fmt.Fielder  { v := &CallToolParams{}; *s = append(*s, v); return v }
 
 func (m *CallToolParams) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
@@ -153,12 +167,15 @@ var _schemaResult = []fmt.Field{
 
 func (m *Result) Schema() []fmt.Field { return _schemaResult }
 
-func (m *Result) Pointers() []any {
-	return []any{
-		&m.IsError,
-		&m.Content,
-	}
-}
+func (m *Result) Pointers() []any { return []any{&m.IsError, &m.Content} }
+
+type ResultList []*Result
+
+func (s *ResultList) Schema() []fmt.Field { return nil }
+func (s *ResultList) Pointers() []any     { return nil }
+func (s *ResultList) Len() int             { return len(*s) }
+func (s *ResultList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *ResultList) Append() fmt.Fielder  { v := &Result{}; *s = append(*s, v); return v }
 
 func (m *Result) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
@@ -171,12 +188,15 @@ var _schemaTextContent = []fmt.Field{
 
 func (m *TextContent) Schema() []fmt.Field { return _schemaTextContent }
 
-func (m *TextContent) Pointers() []any {
-	return []any{
-		&m.Type,
-		&m.Text,
-	}
-}
+func (m *TextContent) Pointers() []any { return []any{&m.Type, &m.Text} }
+
+type TextContentList []*TextContent
+
+func (s *TextContentList) Schema() []fmt.Field { return nil }
+func (s *TextContentList) Pointers() []any     { return nil }
+func (s *TextContentList) Len() int             { return len(*s) }
+func (s *TextContentList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *TextContentList) Append() fmt.Fielder  { v := &TextContent{}; *s = append(*s, v); return v }
 
 func (m *TextContent) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
@@ -190,13 +210,15 @@ var _schematoolEntry = []fmt.Field{
 
 func (m *toolEntry) Schema() []fmt.Field { return _schematoolEntry }
 
-func (m *toolEntry) Pointers() []any {
-	return []any{
-		&m.Name,
-		&m.Description,
-		&m.InputSchema,
-	}
-}
+func (m *toolEntry) Pointers() []any { return []any{&m.Name, &m.Description, &m.InputSchema} }
+
+type toolEntryList []*toolEntry
+
+func (s *toolEntryList) Schema() []fmt.Field { return nil }
+func (s *toolEntryList) Pointers() []any     { return nil }
+func (s *toolEntryList) Len() int             { return len(*s) }
+func (s *toolEntryList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *toolEntryList) Append() fmt.Fielder  { v := &toolEntry{}; *s = append(*s, v); return v }
 
 func (m *toolEntry) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
@@ -209,12 +231,15 @@ var _schemalistToolsResult = []fmt.Field{
 
 func (m *listToolsResult) Schema() []fmt.Field { return _schemalistToolsResult }
 
-func (m *listToolsResult) Pointers() []any {
-	return []any{
-		&m.Tools,
-		&m.NextCursor,
-	}
-}
+func (m *listToolsResult) Pointers() []any { return []any{&m.Tools, &m.NextCursor} }
+
+type listToolsResultList []*listToolsResult
+
+func (s *listToolsResultList) Schema() []fmt.Field { return nil }
+func (s *listToolsResultList) Pointers() []any     { return nil }
+func (s *listToolsResultList) Len() int             { return len(*s) }
+func (s *listToolsResultList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *listToolsResultList) Append() fmt.Fielder  { v := &listToolsResult{}; *s = append(*s, v); return v }
 
 func (m *listToolsResult) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
@@ -228,13 +253,15 @@ var _schemaerrorResponse = []fmt.Field{
 
 func (m *errorResponse) Schema() []fmt.Field { return _schemaerrorResponse }
 
-func (m *errorResponse) Pointers() []any {
-	return []any{
-		&m.JSONRPC,
-		&m.ID,
-		&m.Error,
-	}
-}
+func (m *errorResponse) Pointers() []any { return []any{&m.JSONRPC, &m.ID, &m.Error} }
+
+type errorResponseList []*errorResponse
+
+func (s *errorResponseList) Schema() []fmt.Field { return nil }
+func (s *errorResponseList) Pointers() []any     { return nil }
+func (s *errorResponseList) Len() int             { return len(*s) }
+func (s *errorResponseList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *errorResponseList) Append() fmt.Fielder  { v := &errorResponse{}; *s = append(*s, v); return v }
 
 func (m *errorResponse) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
@@ -246,11 +273,15 @@ var _schemaMeta = []fmt.Field{
 
 func (m *Meta) Schema() []fmt.Field { return _schemaMeta }
 
-func (m *Meta) Pointers() []any {
-	return []any{
-		&m.ProgressToken,
-	}
-}
+func (m *Meta) Pointers() []any { return []any{&m.ProgressToken} }
+
+type MetaList []*Meta
+
+func (s *MetaList) Schema() []fmt.Field { return nil }
+func (s *MetaList) Pointers() []any     { return nil }
+func (s *MetaList) Len() int             { return len(*s) }
+func (s *MetaList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *MetaList) Append() fmt.Fielder  { v := &Meta{}; *s = append(*s, v); return v }
 
 func (m *Meta) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
@@ -262,11 +293,15 @@ var _schemaNotificationParams = []fmt.Field{
 
 func (m *NotificationParams) Schema() []fmt.Field { return _schemaNotificationParams }
 
-func (m *NotificationParams) Pointers() []any {
-	return []any{
-		&m.Meta,
-	}
-}
+func (m *NotificationParams) Pointers() []any { return []any{&m.Meta} }
+
+type NotificationParamsList []*NotificationParams
+
+func (s *NotificationParamsList) Schema() []fmt.Field { return nil }
+func (s *NotificationParamsList) Pointers() []any     { return nil }
+func (s *NotificationParamsList) Len() int             { return len(*s) }
+func (s *NotificationParamsList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *NotificationParamsList) Append() fmt.Fielder  { v := &NotificationParams{}; *s = append(*s, v); return v }
 
 func (m *NotificationParams) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
@@ -278,266 +313,129 @@ var _schemaEmptyResult = []fmt.Field{
 
 func (m *EmptyResult) Schema() []fmt.Field { return _schemaEmptyResult }
 
-func (m *EmptyResult) Pointers() []any {
-	return []any{
-		&m.Result,
-	}
-}
+func (m *EmptyResult) Pointers() []any { return []any{&m.Result} }
+
+type EmptyResultList []*EmptyResult
+
+func (s *EmptyResultList) Schema() []fmt.Field { return nil }
+func (s *EmptyResultList) Pointers() []any     { return nil }
+func (s *EmptyResultList) Len() int             { return len(*s) }
+func (s *EmptyResultList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *EmptyResultList) Append() fmt.Fielder  { v := &EmptyResult{}; *s = append(*s, v); return v }
 
 func (m *EmptyResult) Validate(action byte) error {
 	return fmt.ValidateFields(action, m)
 }
 
-func (m *JSONRPCRequest) ModelName() string {
-	return "jsonrpcrequest"
-}
-
 var _schemaJSONRPCRequest = []fmt.Field{
-		{Name: "jsonrpc", Type: fmt.FieldText},
-		{Name: "id", Type: fmt.FieldStruct, DB: &fmt.FieldDB{PK: true}},
-		{Name: "method", Type: fmt.FieldText},
-		{Name: "params", Type: fmt.FieldText, OmitEmpty: true},
+		{Name: "jsonrpc", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "id", Type: fmt.FieldStruct},
+		{Name: "method", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "params", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
 	}
 
 func (m *JSONRPCRequest) Schema() []fmt.Field { return _schemaJSONRPCRequest }
 
-func (m *JSONRPCRequest) Pointers() []any {
-	return []any{
-		&m.JSONRPC,
-		&m.ID,
-		&m.Method,
-		&m.Params,
-	}
-}
+func (m *JSONRPCRequest) Pointers() []any { return []any{&m.JSONRPC, &m.ID, &m.Method, &m.Params} }
 
-var JSONRPCRequest_ = struct {
-	ModelName string
-	JSONRPC string
-	ID string
-	Method string
-	Params string
-}{
-	ModelName: "jsonrpcrequest",
-	JSONRPC: "jsonrpc",
-	ID: "id",
-	Method: "method",
-	Params: "params",
-}
+type JSONRPCRequestList []*JSONRPCRequest
 
-func ReadOneJSONRPCRequest(qb *orm.QB, model *JSONRPCRequest) (*JSONRPCRequest, error) {
-	err := qb.ReadOne()
-	if err != nil {
-		return nil, err
-	}
-	return model, nil
-}
+func (s *JSONRPCRequestList) Schema() []fmt.Field { return nil }
+func (s *JSONRPCRequestList) Pointers() []any     { return nil }
+func (s *JSONRPCRequestList) Len() int             { return len(*s) }
+func (s *JSONRPCRequestList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *JSONRPCRequestList) Append() fmt.Fielder  { v := &JSONRPCRequest{}; *s = append(*s, v); return v }
 
-func ReadAllJSONRPCRequest(qb *orm.QB) ([]*JSONRPCRequest, error) {
-	var results []*JSONRPCRequest
-	err := qb.ReadAll(
-		func() fmt.Model { return &JSONRPCRequest{} },
-		func(m fmt.Model) { results = append(results, m.(*JSONRPCRequest)) },
-	)
-	return results, err
-}
-
-func (m *JSONRPCNotification) ModelName() string {
-	return "jsonrpcnotification"
+func (m *JSONRPCRequest) Validate(action byte) error {
+	return fmt.ValidateFields(action, m)
 }
 
 var _schemaJSONRPCNotification = []fmt.Field{
-		{Name: "jsonrpc", Type: fmt.FieldText},
-		{Name: "method", Type: fmt.FieldText},
-		{Name: "params", Type: fmt.FieldText, OmitEmpty: true},
+		{Name: "jsonrpc", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "method", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "params", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
 	}
 
 func (m *JSONRPCNotification) Schema() []fmt.Field { return _schemaJSONRPCNotification }
 
-func (m *JSONRPCNotification) Pointers() []any {
-	return []any{
-		&m.JSONRPC,
-		&m.Method,
-		&m.Params,
-	}
-}
+func (m *JSONRPCNotification) Pointers() []any { return []any{&m.JSONRPC, &m.Method, &m.Params} }
 
-var JSONRPCNotification_ = struct {
-	ModelName string
-	JSONRPC string
-	Method string
-	Params string
-}{
-	ModelName: "jsonrpcnotification",
-	JSONRPC: "jsonrpc",
-	Method: "method",
-	Params: "params",
-}
+type JSONRPCNotificationList []*JSONRPCNotification
 
-func ReadOneJSONRPCNotification(qb *orm.QB, model *JSONRPCNotification) (*JSONRPCNotification, error) {
-	err := qb.ReadOne()
-	if err != nil {
-		return nil, err
-	}
-	return model, nil
-}
+func (s *JSONRPCNotificationList) Schema() []fmt.Field { return nil }
+func (s *JSONRPCNotificationList) Pointers() []any     { return nil }
+func (s *JSONRPCNotificationList) Len() int             { return len(*s) }
+func (s *JSONRPCNotificationList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *JSONRPCNotificationList) Append() fmt.Fielder  { v := &JSONRPCNotification{}; *s = append(*s, v); return v }
 
-func ReadAllJSONRPCNotification(qb *orm.QB) ([]*JSONRPCNotification, error) {
-	var results []*JSONRPCNotification
-	err := qb.ReadAll(
-		func() fmt.Model { return &JSONRPCNotification{} },
-		func(m fmt.Model) { results = append(results, m.(*JSONRPCNotification)) },
-	)
-	return results, err
-}
-
-func (m *JSONRPCResponseStruct) ModelName() string {
-	return "jsonrpcresponse_struct"
+func (m *JSONRPCNotification) Validate(action byte) error {
+	return fmt.ValidateFields(action, m)
 }
 
 var _schemaJSONRPCResponseStruct = []fmt.Field{
-		{Name: "jsonrpc", Type: fmt.FieldText},
-		{Name: "id", Type: fmt.FieldText, DB: &fmt.FieldDB{PK: true}, OmitEmpty: true},
-		{Name: "result", Type: fmt.FieldText, OmitEmpty: true},
-		{Name: "error", Type: fmt.FieldText, OmitEmpty: true},
+		{Name: "jsonrpc", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "id", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "result", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "error", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
 	}
 
 func (m *JSONRPCResponseStruct) Schema() []fmt.Field { return _schemaJSONRPCResponseStruct }
 
-func (m *JSONRPCResponseStruct) Pointers() []any {
-	return []any{
-		&m.JSONRPC,
-		&m.ID,
-		&m.Result,
-		&m.Error,
-	}
-}
+func (m *JSONRPCResponseStruct) Pointers() []any { return []any{&m.JSONRPC, &m.ID, &m.Result, &m.Error} }
 
-var JSONRPCResponseStruct_ = struct {
-	ModelName string
-	JSONRPC string
-	ID string
-	Result string
-	Error string
-}{
-	ModelName: "jsonrpcresponse_struct",
-	JSONRPC: "jsonrpc",
-	ID: "id",
-	Result: "result",
-	Error: "error",
-}
+type JSONRPCResponseStructList []*JSONRPCResponseStruct
 
-func ReadOneJSONRPCResponseStruct(qb *orm.QB, model *JSONRPCResponseStruct) (*JSONRPCResponseStruct, error) {
-	err := qb.ReadOne()
-	if err != nil {
-		return nil, err
-	}
-	return model, nil
-}
+func (s *JSONRPCResponseStructList) Schema() []fmt.Field { return nil }
+func (s *JSONRPCResponseStructList) Pointers() []any     { return nil }
+func (s *JSONRPCResponseStructList) Len() int             { return len(*s) }
+func (s *JSONRPCResponseStructList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *JSONRPCResponseStructList) Append() fmt.Fielder  { v := &JSONRPCResponseStruct{}; *s = append(*s, v); return v }
 
-func ReadAllJSONRPCResponseStruct(qb *orm.QB) ([]*JSONRPCResponseStruct, error) {
-	var results []*JSONRPCResponseStruct
-	err := qb.ReadAll(
-		func() fmt.Model { return &JSONRPCResponseStruct{} },
-		func(m fmt.Model) { results = append(results, m.(*JSONRPCResponseStruct)) },
-	)
-	return results, err
-}
-
-func (m *JSONRPCError) ModelName() string {
-	return "jsonrpcerror"
+func (m *JSONRPCResponseStruct) Validate(action byte) error {
+	return fmt.ValidateFields(action, m)
 }
 
 var _schemaJSONRPCError = []fmt.Field{
-		{Name: "jsonrpc", Type: fmt.FieldText},
-		{Name: "id", Type: fmt.FieldText, DB: &fmt.FieldDB{PK: true}, OmitEmpty: true},
-		{Name: "error", Type: fmt.FieldText},
+		{Name: "jsonrpc", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "id", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "error", Type: fmt.FieldText, Widget: input.Text()},
 	}
 
 func (m *JSONRPCError) Schema() []fmt.Field { return _schemaJSONRPCError }
 
-func (m *JSONRPCError) Pointers() []any {
-	return []any{
-		&m.JSONRPC,
-		&m.ID,
-		&m.Error,
-	}
-}
+func (m *JSONRPCError) Pointers() []any { return []any{&m.JSONRPC, &m.ID, &m.Error} }
 
-var JSONRPCError_ = struct {
-	ModelName string
-	JSONRPC string
-	ID string
-	Error string
-}{
-	ModelName: "jsonrpcerror",
-	JSONRPC: "jsonrpc",
-	ID: "id",
-	Error: "error",
-}
+type JSONRPCErrorList []*JSONRPCError
 
-func ReadOneJSONRPCError(qb *orm.QB, model *JSONRPCError) (*JSONRPCError, error) {
-	err := qb.ReadOne()
-	if err != nil {
-		return nil, err
-	}
-	return model, nil
-}
+func (s *JSONRPCErrorList) Schema() []fmt.Field { return nil }
+func (s *JSONRPCErrorList) Pointers() []any     { return nil }
+func (s *JSONRPCErrorList) Len() int             { return len(*s) }
+func (s *JSONRPCErrorList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *JSONRPCErrorList) Append() fmt.Fielder  { v := &JSONRPCError{}; *s = append(*s, v); return v }
 
-func ReadAllJSONRPCError(qb *orm.QB) ([]*JSONRPCError, error) {
-	var results []*JSONRPCError
-	err := qb.ReadAll(
-		func() fmt.Model { return &JSONRPCError{} },
-		func(m fmt.Model) { results = append(results, m.(*JSONRPCError)) },
-	)
-	return results, err
-}
-
-func (m *JSONRPCErrorDetails) ModelName() string {
-	return "jsonrpcerror_details"
+func (m *JSONRPCError) Validate(action byte) error {
+	return fmt.ValidateFields(action, m)
 }
 
 var _schemaJSONRPCErrorDetails = []fmt.Field{
-		{Name: "code", Type: fmt.FieldInt},
-		{Name: "message", Type: fmt.FieldText},
-		{Name: "data", Type: fmt.FieldText, OmitEmpty: true},
+		{Name: "code", Type: fmt.FieldInt, Widget: input.Number()},
+		{Name: "message", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "data", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
 	}
 
 func (m *JSONRPCErrorDetails) Schema() []fmt.Field { return _schemaJSONRPCErrorDetails }
 
-func (m *JSONRPCErrorDetails) Pointers() []any {
-	return []any{
-		&m.Code,
-		&m.Message,
-		&m.Data,
-	}
-}
+func (m *JSONRPCErrorDetails) Pointers() []any { return []any{&m.Code, &m.Message, &m.Data} }
 
-var JSONRPCErrorDetails_ = struct {
-	ModelName string
-	Code string
-	Message string
-	Data string
-}{
-	ModelName: "jsonrpcerror_details",
-	Code: "code",
-	Message: "message",
-	Data: "data",
-}
+type JSONRPCErrorDetailsList []*JSONRPCErrorDetails
 
-func ReadOneJSONRPCErrorDetails(qb *orm.QB, model *JSONRPCErrorDetails) (*JSONRPCErrorDetails, error) {
-	err := qb.ReadOne()
-	if err != nil {
-		return nil, err
-	}
-	return model, nil
-}
+func (s *JSONRPCErrorDetailsList) Schema() []fmt.Field { return nil }
+func (s *JSONRPCErrorDetailsList) Pointers() []any     { return nil }
+func (s *JSONRPCErrorDetailsList) Len() int             { return len(*s) }
+func (s *JSONRPCErrorDetailsList) At(i int) fmt.Fielder { return (*s)[i] }
+func (s *JSONRPCErrorDetailsList) Append() fmt.Fielder  { v := &JSONRPCErrorDetails{}; *s = append(*s, v); return v }
 
-func ReadAllJSONRPCErrorDetails(qb *orm.QB) ([]*JSONRPCErrorDetails, error) {
-	var results []*JSONRPCErrorDetails
-	err := qb.ReadAll(
-		func() fmt.Model { return &JSONRPCErrorDetails{} },
-		func(m fmt.Model) { results = append(results, m.(*JSONRPCErrorDetails)) },
-	)
-	return results, err
+func (m *JSONRPCErrorDetails) Validate(action byte) error {
+	return fmt.ValidateFields(action, m)
 }
 

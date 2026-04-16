@@ -98,8 +98,8 @@ func TestHandleToolCall_ExecuteReturnsError_IsErrorTrue(t *testing.T) {
 	resp := srv.HandleMessage(&ctx, req)
 
 	respStr := encodeResponse(resp)
-	if !contains(respStr, "is_error") {
-		t.Fatalf("expected response with is_error, got %s", respStr)
+	if !contains(respStr, "isError") {
+		t.Fatalf("expected response with isError, got %s", respStr)
 	}
 }
 

@@ -36,6 +36,20 @@ func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMess
 		return nil
 	}
 
+	// Handle initialize without auth
+	if MCPMethod(method) == MethodInitialize {
+		raw := ExtractJSONValue(message, "params")
+		var p initializeParams
+		if err := json.Decode(raw, &p); err != nil {
+			return createErrorResponse(id, INVALID_PARAMS, "Invalid params: "+err.Error())
+		}
+		result, reqErr := s.handleInitialize(ctx, id, p)
+		if reqErr != nil {
+			return reqErr.ToJSONRPCError()
+		}
+		return createResponse(id, result)
+	}
+
 	token := ctx.Value(CtxKeyAuthToken)
 	userID, err := s.auth.Authorize(token)
 	if err != nil {
@@ -47,18 +61,6 @@ func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMess
 	ctx.Set(CtxKeyUserID, userID)
 
 	switch MCPMethod(method) {
-	case MethodInitialize:
-		raw := ExtractJSONValue(message, "params")
-		var p initializeParams
-		if err := json.Decode(raw, &p); err != nil {
-			return createErrorResponse(id, INVALID_PARAMS, "Invalid params: "+err.Error())
-		}
-		result, reqErr := s.handleInitialize(ctx, id, p)
-		if reqErr != nil {
-			return reqErr.ToJSONRPCError()
-		}
-		return createResponse(id, result)
-
 	case MethodPing:
 		result, reqErr := s.handlePing(ctx, id)
 		if reqErr != nil {

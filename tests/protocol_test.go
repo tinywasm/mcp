@@ -10,7 +10,7 @@ import (
 func TestInitialize_UnsupportedVersion_Rejected(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
 	var ctx context.Context
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocol_version":"1.0","client_info":{"name":"test","version":"1"}}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"1.0","clientInfo":{"name":"test","version":"1"}}}`)
 	resp := srv.HandleMessage(&ctx, req)
 
 	respStr := encodeResponse(resp)
@@ -22,7 +22,7 @@ func TestInitialize_UnsupportedVersion_Rejected(t *testing.T) {
 func TestInitialize_ValidVersion_ReturnsServerInfo(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{Name: "my-server", Version: "2.3.4", Auth: mcp.OpenAuthorizer()}, nil)
 	var ctx context.Context
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocol_version":"2024-11-05","client_info":{"name":"test","version":"1"}}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1"}}}`)
 	resp := srv.HandleMessage(&ctx, req)
 
 	respStr := encodeResponse(resp)
@@ -37,7 +37,7 @@ func TestInitialize_ValidVersion_ReturnsServerInfo(t *testing.T) {
 func TestInitialize_GeneratesSessionID(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
 	var ctx context.Context
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocol_version":"2024-11-05","client_info":{"name":"test","version":"1"}}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1"}}}`)
 	srv.HandleMessage(&ctx, req)
 
 	sessionID := ctx.Value(mcp.CtxKeySessionID)
@@ -50,7 +50,7 @@ func TestInitialize_ExistingSessionID_Preserved(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
 	var ctx context.Context
 	ctx.Set(mcp.CtxKeySessionID, "existing-session")
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocol_version":"2024-11-05","client_info":{"name":"test","version":"1"}}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1"}}}`)
 	srv.HandleMessage(&ctx, req)
 
 	sessionID := ctx.Value(mcp.CtxKeySessionID)
