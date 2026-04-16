@@ -25,8 +25,8 @@ type jsonRPCError struct {
 
 // ormc:formonly
 type initializeParams struct {
-	ProtocolVersion string             ``
-	ClientInfo      implementationInfo ``
+	ProtocolVersion string             `json:"protocolVersion"`
+	ClientInfo      implementationInfo `json:"clientInfo"`
 }
 
 // ormc:formonly
@@ -37,8 +37,8 @@ type implementationInfo struct {
 
 // ormc:formonly
 type initializeResult struct {
-	ProtocolVersion string             ``
-	ServerInfo      implementationInfo ``
+	ProtocolVersion string             `json:"protocolVersion"`
+	ServerInfo      implementationInfo `json:"serverInfo"`
 	Capabilities    string             `json:",omitempty"`
 }
 
@@ -50,7 +50,7 @@ type CallToolParams struct {
 
 // ormc:formonly
 type Result struct {
-	IsError bool   `json:",omitempty"`
+	IsError bool   `json:"isError,omitempty"`
 	Content string
 }
 
@@ -64,13 +64,13 @@ type TextContent struct {
 type toolEntry struct {
 	Name        string
 	Description string `json:",omitempty"`
-	InputSchema string `json:",omitempty"`
+	InputSchema string `json:"inputSchema,omitempty"`
 }
 
 // ormc:formonly
 type listToolsResult struct {
 	Tools      string
-	NextCursor string `json:",omitempty"`
+	NextCursor string `json:"nextCursor,omitempty"`
 }
 
 // ormc:formonly
@@ -82,7 +82,7 @@ type errorResponse struct {
 
 // ormc:formonly
 type Meta struct {
-	ProgressToken string `json:",omitempty"`
+	ProgressToken string `json:"progressToken,omitempty"`
 }
 
 // ormc:formonly

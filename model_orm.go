@@ -76,8 +76,8 @@ func (m *jsonRPCError) Validate(action byte) error {
 }
 
 var _schemainitializeParams = []fmt.Field{
-		{Name: "protocol_version", Type: fmt.FieldText, Widget: input.Text()},
-		{Name: "client_info", Type: fmt.FieldStruct},
+		{Name: "protocolVersion", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "clientInfo", Type: fmt.FieldStruct},
 	}
 
 func (m *initializeParams) Schema() []fmt.Field { return _schemainitializeParams }
@@ -118,8 +118,8 @@ func (m *implementationInfo) Validate(action byte) error {
 }
 
 var _schemainitializeResult = []fmt.Field{
-		{Name: "protocol_version", Type: fmt.FieldText, Widget: input.Text()},
-		{Name: "server_info", Type: fmt.FieldStruct},
+		{Name: "protocolVersion", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "serverInfo", Type: fmt.FieldStruct},
 		{Name: "capabilities", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
 	}
 
@@ -161,7 +161,7 @@ func (m *CallToolParams) Validate(action byte) error {
 }
 
 var _schemaResult = []fmt.Field{
-		{Name: "is_error", Type: fmt.FieldBool, OmitEmpty: true, Widget: input.Checkbox()},
+		{Name: "isError", Type: fmt.FieldBool, OmitEmpty: true, Widget: input.Checkbox()},
 		{Name: "content", Type: fmt.FieldText, Widget: input.Text()},
 	}
 
@@ -205,7 +205,7 @@ func (m *TextContent) Validate(action byte) error {
 var _schematoolEntry = []fmt.Field{
 		{Name: "name", Type: fmt.FieldText, Widget: input.Text()},
 		{Name: "description", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
-		{Name: "input_schema", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "inputSchema", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
 	}
 
 func (m *toolEntry) Schema() []fmt.Field { return _schematoolEntry }
@@ -226,7 +226,7 @@ func (m *toolEntry) Validate(action byte) error {
 
 var _schemalistToolsResult = []fmt.Field{
 		{Name: "tools", Type: fmt.FieldText, Widget: input.Text()},
-		{Name: "next_cursor", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "nextCursor", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
 	}
 
 func (m *listToolsResult) Schema() []fmt.Field { return _schemalistToolsResult }
@@ -268,7 +268,7 @@ func (m *errorResponse) Validate(action byte) error {
 }
 
 var _schemaMeta = []fmt.Field{
-		{Name: "progress_token", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "progressToken", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
 	}
 
 func (m *Meta) Schema() []fmt.Field { return _schemaMeta }
