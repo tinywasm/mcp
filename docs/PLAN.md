@@ -1,97 +1,59 @@
-# PLAN: Eliminar double-encoding en respuestas JSON-RPC
+# PLAN: Usar FieldRaw para campos JSON inline
 
-## Problema
+## Contexto
 
-Las respuestas MCP tienen el campo `result` double-encoded (JSON string en lugar de JSON object), lo que impide que Claude Code parsee las tools correctamente.
+`tinywasm/fmt` v0.23.3 añadió `FieldRaw`. `tinywasm/json` y `tinywasm/orm` lo implementarán. Una vez publicados, `tinywasm/mcp` solo necesita añadir el tag `raw` a los campos que contienen JSON pre-serializado y regenerar `model_orm.go`.
 
-**Respuesta actual:**
-```json
-{"jsonrpc":"2.0","id":"1","result":"{\"tools\":\"[{\\\"name\\\":\\\"start_development\\\"}]\"}"}
-```
+## Prerequisitos
 
-**Respuesta esperada por spec MCP:**
-```json
-{"jsonrpc":"2.0","id":"1","result":{"tools":[{"name":"start_development",...}]}}
-```
+- `tinywasm/json` publicado con soporte `FieldRaw` en encode/decode
+- `tinywasm/orm` publicado con detección de `json:",raw"`
 
-## Causa raíz
+## Campos a actualizar en `model.go`
 
-Dos puntos de double-encoding en cadena:
-
-### 1. `utils.go` — `newResultResponse` encodea el resultado a `string`
+Los campos que contienen JSON y hoy causan double-encoding:
 
 ```go
-func newResultResponse(id RequestId, result any) JSONRPCMessage {
-    var resJSON string
-    json.Encode(f, &resJSON)          // encodea a string
-    return &JSONRPCResponseStruct{
-        Result: resJSON,              // string guardado en campo string
-    }
+// JSONRPCResponseStruct — result y error son objetos JSON
+type JSONRPCResponseStruct struct {
+    JSONRPC string `json:"jsonrpc"`
+    ID      string `json:"id,omitempty"`
+    Result  string `json:"result,omitempty,raw"`
+    Error   string `json:"error,omitempty,raw"`
 }
-```
 
-Cuando `daemon.go` encodea `JSONRPCResponseStruct` completo, el campo `Result string` se vuelve a encodear → string dentro de string.
+// JSONRPCError — error es un objeto JSON
+type JSONRPCError struct {
+    JSONRPC string `json:"jsonrpc"`
+    ID      string `json:"id,omitempty"`
+    Error   string `json:"error,raw"`
+}
 
-### 2. `listToolsResult.Tools` y campos similares son `string` conteniendo JSON
-
-```go
+// listToolsResult — tools es un array JSON
 type listToolsResult struct {
-    Tools      string  // contiene "[{...}]" como string
-    NextCursor string
+    Tools      string `json:"tools,raw"`
+    NextCursor string `json:"nextCursor,omitempty"`
+}
+
+// Result — content es un objeto/array JSON
+type Result struct {
+    IsError bool   `json:"isError,omitempty"`
+    Content string `json:"content,raw"`
 }
 ```
 
-El array de tools se serializa a string antes de meterse en `listToolsResult`, luego ese string se encodea de nuevo al serializar la respuesta completa.
+## Acción
 
-## Fix
+1. Actualizar dependencias a las nuevas versiones de `json` y `orm`
+2. Añadir `,raw` a los campos listados en `model.go`
+3. Regenerar: `go generate ./...`
+4. Verificar respuesta MCP sin double-encoding:
 
-### Opción A — `result` como JSON raw en la respuesta (recomendada)
+```bash
+curl -s -X POST http://localhost:3030/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 
-`JSONRPCResponseStruct.Result` debe ser `json.RawMessage` (bytes raw) en lugar de `string`, para que `tinywasm/json` lo emita tal cual sin re-encodear:
-
-Pero `tinywasm/json` trabaja con `fmt.Fielder` y `string`. La solución dentro del ecosistema es que `newResultResponse` construya el JSON de la respuesta completa directamente como bytes, sin pasar por un struct intermedio:
-
-```go
-func newResultResponse(id RequestId, result fmt.Fielder) []byte {
-    var resultJSON []byte
-    json.Encode(result, &resultJSON)
-    // construir la respuesta manualmente con el result como objeto inline
-    idJSON := fmt.Sprintf("%q", id)
-    return fmt.Sprintf(`{"jsonrpc":"2.0","id":%s,"result":%s}`, idJSON, resultJSON)
-}
+# Esperado:
+# {"jsonrpc":"2.0","id":"1","result":{"tools":[{"name":"start_development",...}]}}
 ```
-
-`JSONRPCMessage` pasaría a retornar `[]byte` en lugar de un `fmt.Fielder`.
-
-### Opción B — Adaptar `tinywasm/json` para emitir un campo string como raw JSON
-
-Añadir en `tinywasm/fmt` un tipo de campo `FieldRaw` que `tinywasm/json` emita sin quotes. Los campos `Result`, `Error`, `Tools` usarían `FieldRaw` en su schema. El ORM generaría el tipo correcto cuando el campo tenga tag `json:",raw"` o similar.
-
-## Impacto adicional: `error` también está double-encoded
-
-```go
-func newErrorResponse(...) JSONRPCMessage {
-    json.Encode(det, &detJSON)   // string
-    return &JSONRPCError{
-        Error: detJSON,          // string re-encodeado
-    }
-}
-```
-
-Mismo patrón — debe emitirse como objeto inline.
-
-## Recomendación
-
-**Opción A** — construir las respuestas JSON-RPC directamente como bytes en `newResultResponse` y `newErrorResponse`, sin struct intermedio. Es el cambio más quirúrgico: solo afecta `utils.go` y el tipo de retorno de `JSONRPCMessage`. No requiere cambios en `tinywasm/json` ni en el ORM.
-
-El tipo `JSONRPCMessage` cambiaría de interfaz a `[]byte`:
-
-```go
-// Antes
-type JSONRPCMessage interface { jsonrpcMessage() }
-
-// Después  
-type JSONRPCMessage []byte
-```
-
-Y `HandleMessage` retornaría `[]byte` directamente, simplificando también el handler en `daemon.go`.
