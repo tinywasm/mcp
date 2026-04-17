@@ -9,9 +9,9 @@ import (
 
 var _schemarpcRequest = []fmt.Field{
 		{Name: "jsonrpc", Type: fmt.FieldText, Widget: input.Text()},
-		{Name: "id", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "id", Type: fmt.FieldText, Widget: input.Text()},
 		{Name: "method", Type: fmt.FieldText, Widget: input.Text()},
-		{Name: "params", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "params", Type: fmt.FieldText, Widget: input.Text()},
 	}
 
 func (m *rpcRequest) Schema() []fmt.Field { return _schemarpcRequest }
@@ -32,9 +32,9 @@ func (m *rpcRequest) Validate(action byte) error {
 
 var _schemarpcResponse = []fmt.Field{
 		{Name: "jsonrpc", Type: fmt.FieldText, Widget: input.Text()},
-		{Name: "id", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
-		{Name: "result", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
-		{Name: "error", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "id", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "result", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "error", Type: fmt.FieldText, Widget: input.Text()},
 	}
 
 func (m *rpcResponse) Schema() []fmt.Field { return _schemarpcResponse }
@@ -56,7 +56,7 @@ func (m *rpcResponse) Validate(action byte) error {
 var _schemajsonRPCError = []fmt.Field{
 		{Name: "code", Type: fmt.FieldInt, Widget: input.Number()},
 		{Name: "message", Type: fmt.FieldText, Widget: input.Text()},
-		{Name: "data", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "data", Type: fmt.FieldText, Widget: input.Text()},
 	}
 
 func (m *jsonRPCError) Schema() []fmt.Field { return _schemajsonRPCError }
@@ -162,7 +162,7 @@ func (m *CallToolParams) Validate(action byte) error {
 
 var _schemaResult = []fmt.Field{
 		{Name: "isError", Type: fmt.FieldBool, OmitEmpty: true, Widget: input.Checkbox()},
-		{Name: "content", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "content", Type: fmt.FieldRaw, Widget: input.Text()},
 	}
 
 func (m *Result) Schema() []fmt.Field { return _schemaResult }
@@ -225,7 +225,7 @@ func (m *toolEntry) Validate(action byte) error {
 }
 
 var _schemalistToolsResult = []fmt.Field{
-		{Name: "tools", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "tools", Type: fmt.FieldRaw, Widget: input.Text()},
 		{Name: "nextCursor", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
 	}
 
@@ -375,8 +375,8 @@ func (m *JSONRPCNotification) Validate(action byte) error {
 var _schemaJSONRPCResponseStruct = []fmt.Field{
 		{Name: "jsonrpc", Type: fmt.FieldText, Widget: input.Text()},
 		{Name: "id", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
-		{Name: "result", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
-		{Name: "error", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "result", Type: fmt.FieldRaw, OmitEmpty: true, Widget: input.Text()},
+		{Name: "error", Type: fmt.FieldRaw, OmitEmpty: true, Widget: input.Text()},
 	}
 
 func (m *JSONRPCResponseStruct) Schema() []fmt.Field { return _schemaJSONRPCResponseStruct }
@@ -398,7 +398,7 @@ func (m *JSONRPCResponseStruct) Validate(action byte) error {
 var _schemaJSONRPCError = []fmt.Field{
 		{Name: "jsonrpc", Type: fmt.FieldText, Widget: input.Text()},
 		{Name: "id", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
-		{Name: "error", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "error", Type: fmt.FieldRaw, Widget: input.Text()},
 	}
 
 func (m *JSONRPCError) Schema() []fmt.Field { return _schemaJSONRPCError }
