@@ -222,4 +222,13 @@ response := srv.HandleMessage(&ctx, message)
 
 ---
 
-See [docs/WHY_ARQ.md](docs/WHY_ARQ.md) for architecture decisions and trade-offs.
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | What & Why — abstract design, constraints, file map, key interfaces |
+| [docs/SKILL.md](docs/SKILL.md) | LLM-friendly condensed reference — types, patterns, constraints |
+| [docs/WHY_ARQ.md](docs/WHY_ARQ.md) | Architecture decisions, pros/cons, key trade-offs |
+| [docs/PLAN.md](docs/PLAN.md) | Pending: migrate to `FieldRaw` for inline JSON fields |
+| [docs/diagrams/architecture.md](docs/diagrams/architecture.md) | Architecture overview diagram |
+| [docs/diagrams/request_flow.md](docs/diagrams/request_flow.md) | Request dispatch + auth flow diagram |
