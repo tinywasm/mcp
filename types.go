@@ -16,7 +16,12 @@ type JSONRPCMessage interface {
 	jsonrpcMessage()
 }
 
-const LATEST_PROTOCOL_VERSION = "2024-11-05"
+var SupportedProtocolVersions = []string{
+	"2025-11-25",
+	"2024-11-05",
+}
+
+const LATEST_PROTOCOL_VERSION = "2025-11-25"
 
 const JSONRPC_VERSION = "2.0"
 

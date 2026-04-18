@@ -53,6 +53,18 @@ func NewServer(config Config, providers []ToolProvider) (*Server, error) {
 	return s, nil
 }
 
+func negotiateVersion(clientVersion string) (string, bool) {
+	for _, v := range SupportedProtocolVersions {
+		if v == clientVersion {
+			return v, true
+		}
+	}
+	if clientVersion > LATEST_PROTOCOL_VERSION {
+		return LATEST_PROTOCOL_VERSION, true
+	}
+	return "", false
+}
+
 func (s *Server) AddTool(tool Tool) error {
 	if tool.Name == "" || tool.Resource == "" || tool.Action == 0 || tool.Execute == nil {
 		return fmt.Err("mcp", "invalid tool")
@@ -75,11 +87,12 @@ func (s *Server) AddTool(tool Tool) error {
 }
 
 func (s *Server) handleInitialize(ctx *context.Context, id string, params initializeParams) (*initializeResult, *requestError) {
-	if params.ProtocolVersion != LATEST_PROTOCOL_VERSION {
+	agreedVersion, ok := negotiateVersion(params.ProtocolVersion)
+	if !ok {
 		return nil, &requestError{id: id, code: INVALID_PARAMS, err: fmt.Err("mcp", "unsupported protocol version: "+params.ProtocolVersion)}
 	}
 	res := &initializeResult{
-		ProtocolVersion: LATEST_PROTOCOL_VERSION,
+		ProtocolVersion: agreedVersion,
 		ServerInfo: implementationInfo{
 			Name:    s.name,
 			Version: s.version,

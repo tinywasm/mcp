@@ -22,22 +22,22 @@ func TestInitialize_UnsupportedVersion_Rejected(t *testing.T) {
 func TestInitialize_ValidVersion_ReturnsServerInfo(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{Name: "my-server", Version: "2.3.4", Auth: mcp.OpenAuthorizer()}, nil)
 	var ctx context.Context
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1"}}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"test","version":"1"}}}`)
 	resp := srv.HandleMessage(&ctx, req)
 
 	respStr := encodeResponse(resp)
 	if !contains(respStr, "my-server") || !contains(respStr, "2.3.4") {
 		t.Fatalf("expected server info in response, got %s", respStr)
 	}
-	if !contains(respStr, "2024-11-05") {
-		t.Fatalf("expected protocol version in response, got %s", respStr)
+	if !contains(respStr, "2025-11-25") {
+		t.Fatalf("expected protocol version 2025-11-25 in response, got %s", respStr)
 	}
 }
 
 func TestInitialize_GeneratesSessionID(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
 	var ctx context.Context
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1"}}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"test","version":"1"}}}`)
 	srv.HandleMessage(&ctx, req)
 
 	sessionID := ctx.Value(mcp.CtxKeySessionID)
@@ -50,12 +50,42 @@ func TestInitialize_ExistingSessionID_Preserved(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
 	var ctx context.Context
 	ctx.Set(mcp.CtxKeySessionID, "existing-session")
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1"}}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"test","version":"1"}}}`)
 	srv.HandleMessage(&ctx, req)
 
 	sessionID := ctx.Value(mcp.CtxKeySessionID)
 	if sessionID != "existing-session" {
 		t.Fatalf("expected session ID 'existing-session' to be preserved, got %q", sessionID)
+	}
+}
+
+func TestInitialize_OlderSupportedVersion_Accepted(t *testing.T) {
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	var ctx context.Context
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1"}}}`)
+	resp := srv.HandleMessage(&ctx, req)
+
+	respStr := encodeResponse(resp)
+	if !contains(respStr, "2024-11-05") {
+		t.Fatalf("expected protocol version 2024-11-05 in response, got %s", respStr)
+	}
+	if contains(respStr, "error") {
+		t.Fatalf("expected no error for supported version, got %s", respStr)
+	}
+}
+
+func TestInitialize_NewerUnknownVersion_DowngradesGracefully(t *testing.T) {
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	var ctx context.Context
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2099-12-31","clientInfo":{"name":"test","version":"1"}}}`)
+	resp := srv.HandleMessage(&ctx, req)
+
+	respStr := encodeResponse(resp)
+	if !contains(respStr, "2025-11-25") {
+		t.Fatalf("expected server to respond with latest version 2025-11-25, got %s", respStr)
+	}
+	if contains(respStr, "error") {
+		t.Fatalf("expected no error for newer unknown version, got %s", respStr)
 	}
 }
 
