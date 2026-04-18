@@ -1,5 +1,7 @@
 package mcp
 
+import "github.com/tinywasm/fmt"
+
 // ormc:formonly
 type rpcRequest struct {
 	JSONRPC string
@@ -39,7 +41,7 @@ type implementationInfo struct {
 type initializeResult struct {
 	ProtocolVersion string             `json:"protocolVersion"`
 	ServerInfo      implementationInfo `json:"serverInfo"`
-	Capabilities    string             `json:",raw"`
+	Capabilities    fmt.RawJSON
 }
 
 // ormc:formonly
@@ -50,8 +52,8 @@ type CallToolParams struct {
 
 // ormc:formonly
 type Result struct {
-	IsError bool   `json:"isError,omitempty"`
-	Content string `json:",raw"`
+	IsError bool        `json:"isError,omitempty"`
+	Content fmt.RawJSON
 }
 
 // ormc:formonly
@@ -69,7 +71,7 @@ type toolEntry struct {
 
 // ormc:formonly
 type listToolsResult struct {
-	Tools      string `json:",raw"`
+	Tools      fmt.RawJSON
 	NextCursor string `json:"nextCursor,omitempty"`
 }
 
@@ -114,8 +116,8 @@ type JSONRPCNotification struct {
 type JSONRPCResponseStruct struct {
 	JSONRPC string
 	ID      string
-	Result  string `json:",omitempty,raw"`
-	Error   string `json:",omitempty,raw"`
+	Result  fmt.RawJSON `json:",omitempty"`
+	Error   fmt.RawJSON `json:",omitempty"`
 }
 
 func (r *JSONRPCResponseStruct) jsonrpcMessage() {}
@@ -124,7 +126,7 @@ func (r *JSONRPCResponseStruct) jsonrpcMessage() {}
 type JSONRPCError struct {
 	JSONRPC string
 	ID      string `json:",omitempty"`
-	Error   string `json:",omitempty,raw"`
+	Error   fmt.RawJSON `json:",omitempty"`
 }
 
 func (e *JSONRPCError) jsonrpcMessage() {}

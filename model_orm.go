@@ -120,7 +120,7 @@ func (m *implementationInfo) Validate(action byte) error {
 var _schemainitializeResult = []fmt.Field{
 		{Name: "protocolVersion", Type: fmt.FieldText, Widget: input.Text()},
 		{Name: "serverInfo", Type: fmt.FieldStruct},
-		{Name: "capabilities", Type: fmt.FieldRaw, Widget: input.Text()},
+		{Name: "capabilities", Type: fmt.FieldRaw},
 	}
 
 func (m *initializeResult) Schema() []fmt.Field { return _schemainitializeResult }
@@ -162,7 +162,7 @@ func (m *CallToolParams) Validate(action byte) error {
 
 var _schemaResult = []fmt.Field{
 		{Name: "isError", Type: fmt.FieldBool, OmitEmpty: true, Widget: input.Checkbox()},
-		{Name: "content", Type: fmt.FieldRaw, Widget: input.Text()},
+		{Name: "content", Type: fmt.FieldRaw},
 	}
 
 func (m *Result) Schema() []fmt.Field { return _schemaResult }
@@ -225,7 +225,7 @@ func (m *toolEntry) Validate(action byte) error {
 }
 
 var _schemalistToolsResult = []fmt.Field{
-		{Name: "tools", Type: fmt.FieldRaw, Widget: input.Text()},
+		{Name: "tools", Type: fmt.FieldRaw},
 		{Name: "nextCursor", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
 	}
 
@@ -375,8 +375,8 @@ func (m *JSONRPCNotification) Validate(action byte) error {
 var _schemaJSONRPCResponseStruct = []fmt.Field{
 		{Name: "jsonrpc", Type: fmt.FieldText, Widget: input.Text()},
 		{Name: "id", Type: fmt.FieldText, Widget: input.Text()},
-		{Name: "result", Type: fmt.FieldRaw, OmitEmpty: true, Widget: input.Text()},
-		{Name: "error", Type: fmt.FieldRaw, OmitEmpty: true, Widget: input.Text()},
+		{Name: "result", Type: fmt.FieldRaw, OmitEmpty: true},
+		{Name: "error", Type: fmt.FieldRaw, OmitEmpty: true},
 	}
 
 func (m *JSONRPCResponseStruct) Schema() []fmt.Field { return _schemaJSONRPCResponseStruct }
@@ -398,7 +398,7 @@ func (m *JSONRPCResponseStruct) Validate(action byte) error {
 var _schemaJSONRPCError = []fmt.Field{
 		{Name: "jsonrpc", Type: fmt.FieldText, Widget: input.Text()},
 		{Name: "id", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
-		{Name: "error", Type: fmt.FieldRaw, Widget: input.Text()},
+		{Name: "error", Type: fmt.FieldRaw, OmitEmpty: true},
 	}
 
 func (m *JSONRPCError) Schema() []fmt.Field { return _schemaJSONRPCError }
