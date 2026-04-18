@@ -39,19 +39,19 @@ type implementationInfo struct {
 type initializeResult struct {
 	ProtocolVersion string             `json:"protocolVersion"`
 	ServerInfo      implementationInfo `json:"serverInfo"`
-	Capabilities    string             `json:"omitempty"`
+	Capabilities    string             `json:",raw"`
 }
 
 // ormc:formonly
 type CallToolParams struct {
 	Name      string
-	Arguments string `json:"omitempty"`
+	Arguments string `json:",omitempty"`
 }
 
 // ormc:formonly
 type Result struct {
 	IsError bool   `json:"isError,omitempty"`
-	Content string `json:"raw"`
+	Content string `json:",raw"`
 }
 
 // ormc:formonly
@@ -63,20 +63,20 @@ type TextContent struct {
 // ormc:formonly
 type toolEntry struct {
 	Name        string
-	Description string `json:"omitempty"`
+	Description string `json:",omitempty"`
 	InputSchema string `json:"inputSchema,omitempty"`
 }
 
 // ormc:formonly
 type listToolsResult struct {
-	Tools      string `json:"raw"`
+	Tools      string `json:",raw"`
 	NextCursor string `json:"nextCursor,omitempty"`
 }
 
 // ormc:formonly
 type errorResponse struct {
 	JSONRPC string
-	ID      string `json:"omitempty"`
+	ID      string `json:",omitempty"`
 	Error   jsonRPCError
 }
 
@@ -87,12 +87,12 @@ type Meta struct {
 
 // ormc:formonly
 type NotificationParams struct {
-	Meta string `json:"omitempty"`
+	Meta string `json:",omitempty"`
 }
 
 // ormc:formonly
 type EmptyResult struct {
-	Result string `json:"omitempty"`
+	Result string `json:",omitempty"`
 }
 
 // ormc:formonly
@@ -100,22 +100,22 @@ type JSONRPCRequest struct {
 	JSONRPC string
 	ID      RequestId
 	Method  string
-	Params  string `json:"omitempty"`
+	Params  string `json:",omitempty"`
 }
 
 // ormc:formonly
 type JSONRPCNotification struct {
 	JSONRPC string
 	Method  string
-	Params  string `json:"omitempty"`
+	Params  string `json:",omitempty"`
 }
 
 // ormc:formonly
 type JSONRPCResponseStruct struct {
 	JSONRPC string
 	ID      string
-	Result  string
-	Error   string
+	Result  string `json:",omitempty,raw"`
+	Error   string `json:",omitempty,raw"`
 }
 
 func (r *JSONRPCResponseStruct) jsonrpcMessage() {}
@@ -123,8 +123,8 @@ func (r *JSONRPCResponseStruct) jsonrpcMessage() {}
 // ormc:formonly
 type JSONRPCError struct {
 	JSONRPC string
-	ID      string `json:"omitempty"`
-	Error   string `json:"raw"`
+	ID      string `json:",omitempty"`
+	Error   string `json:",omitempty,raw"`
 }
 
 func (e *JSONRPCError) jsonrpcMessage() {}
@@ -133,5 +133,5 @@ func (e *JSONRPCError) jsonrpcMessage() {}
 type JSONRPCErrorDetails struct {
 	Code    int64
 	Message string
-	Data    string `json:"omitempty"`
+	Data    string `json:",omitempty"`
 }

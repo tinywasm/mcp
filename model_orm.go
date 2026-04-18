@@ -120,7 +120,7 @@ func (m *implementationInfo) Validate(action byte) error {
 var _schemainitializeResult = []fmt.Field{
 		{Name: "protocolVersion", Type: fmt.FieldText, Widget: input.Text()},
 		{Name: "serverInfo", Type: fmt.FieldStruct},
-		{Name: "capabilities", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "capabilities", Type: fmt.FieldRaw, Widget: input.Text()},
 	}
 
 func (m *initializeResult) Schema() []fmt.Field { return _schemainitializeResult }
@@ -374,7 +374,7 @@ func (m *JSONRPCNotification) Validate(action byte) error {
 
 var _schemaJSONRPCResponseStruct = []fmt.Field{
 		{Name: "jsonrpc", Type: fmt.FieldText, Widget: input.Text()},
-		{Name: "id", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "id", Type: fmt.FieldText, Widget: input.Text()},
 		{Name: "result", Type: fmt.FieldRaw, OmitEmpty: true, Widget: input.Text()},
 		{Name: "error", Type: fmt.FieldRaw, OmitEmpty: true, Widget: input.Text()},
 	}
