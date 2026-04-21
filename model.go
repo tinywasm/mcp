@@ -14,7 +14,7 @@ type rpcRequest struct {
 type rpcResponse struct {
 	JSONRPC string
 	ID      string
-	Result  string
+	Result  fmt.RawJSON
 	Error   string
 }
 
