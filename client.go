@@ -47,7 +47,7 @@ func (c *Client) Call(ctx *context.Context, method string, params any, callback 
 			callback(nil, err)
 			return
 		}
-		if envelope.Result == "" {
+		if len(envelope.Result) == 0 {
 			callback(nil, nil)
 			return
 		}

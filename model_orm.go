@@ -33,7 +33,7 @@ func (m *rpcRequest) Validate(action byte) error {
 var _schemarpcResponse = []fmt.Field{
 		{Name: "jsonrpc", Type: fmt.FieldText, Widget: input.Text()},
 		{Name: "id", Type: fmt.FieldText, Widget: input.Text()},
-		{Name: "result", Type: fmt.FieldText, Widget: input.Text()},
+		{Name: "result", Type: fmt.FieldRaw},
 		{Name: "error", Type: fmt.FieldText, Widget: input.Text()},
 	}
 
