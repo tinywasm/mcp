@@ -28,9 +28,9 @@ func (r *Request) Bind(target fmt.SafeFields) error {
 }
 
 func Text(text string) *Result {
-	c := &TextContent{Type: "text", Text: text}
+	list := TextContentList{&TextContent{Type: "text", Text: text}}
 	var s string
-	_ = json.Encode(c, &s)
+	_ = json.Encode(&list, &s)
 	return &Result{Content: s}
 }
 

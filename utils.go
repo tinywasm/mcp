@@ -10,6 +10,9 @@ func JSON(data fmt.Fielder) (*Result, error) {
 	if err := json.Encode(data, &s); err != nil {
 		return nil, err
 	}
+	if len(s) > 0 && s[0] != '[' {
+		s = "[" + s + "]"
+	}
 	return &Result{Content: s}, nil
 }
 
@@ -22,11 +25,14 @@ func ParseResult(raw []byte) (*Result, error) {
 }
 
 func GetText(r *Result) (string, error) {
-	var c TextContent
-	if err := json.Decode([]byte(r.Content), &c); err != nil {
+	var list TextContentList
+	if err := json.Decode([]byte(r.Content), &list); err != nil {
 		return "", err
 	}
-	return c.Text, nil
+	if len(list) == 0 {
+		return "", fmt.Err("mcp", "empty content array")
+	}
+	return list[0].Text, nil
 }
 
 func newResultResponse(id RequestId, result any) JSONRPCMessage {
