@@ -120,6 +120,79 @@ func TestTextRoundTrip(t *testing.T) {
 	}
 }
 
+// TestToolCall_ContentIsArray verifica que la respuesta de tools/call
+// devuelva content como array JSON, no como objeto.
+// Bug C: tools.go Text() produce objeto {"type":"text","text":"..."} en lugar de array.
+func TestToolCall_ContentIsArray(t *testing.T) {
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv.AddTool(mcp.Tool{
+		Name:     "ping",
+		Resource: "test",
+		Action:   'r',
+		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
+			return mcp.Text("pong"), nil
+		},
+	})
+	var ctx context.Context
+
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"ping","arguments":{}}}`)
+	resp := srv.HandleMessage(&ctx, req)
+
+	if resp == nil {
+		t.Fatal("expected response, got nil")
+	}
+
+	body := encodeResponse(resp)
+
+	if contains(body, `"content":{`) {
+		t.Fatalf("Bug C not fixed: content is an object instead of an array.\nResponse: %s", body)
+	}
+	if !contains(body, `"content":[`) {
+		t.Fatalf("expected content as JSON array, got: %s", body)
+	}
+}
+
+// TestToolCall_ContentItemLowercaseKeys verifica que los items dentro de content
+// usen claves en minúsculas ("type", "text") según el protocolo MCP.
+// Regresión: json.Encode usa Schema() generado por ormc — garantiza que no rompa en el futuro.
+func TestToolCall_ContentItemLowercaseKeys(t *testing.T) {
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv.AddTool(mcp.Tool{
+		Name:     "ping",
+		Resource: "test",
+		Action:   'r',
+		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
+			return mcp.Text("pong"), nil
+		},
+	})
+	var ctx context.Context
+
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"ping","arguments":{}}}`)
+	resp := srv.HandleMessage(&ctx, req)
+
+	body := encodeResponse(resp)
+
+	if contains(body, `"Type":`) || contains(body, `"Text":`) {
+		t.Fatalf("content item uses PascalCase keys — ormc schema regression.\nResponse: %s", body)
+	}
+	if !contains(body, `"type":"text"`) || !contains(body, `"text":"pong"`) {
+		t.Fatalf("expected lowercase 'type' and 'text' keys in content item, got: %s", body)
+	}
+}
+
+// TestText_GetText_RoundTrip verifica que mcp.Text() + mcp.GetText() funcionen
+// correctamente con el formato array exigido por el protocolo MCP.
+func TestText_GetText_RoundTrip(t *testing.T) {
+	r := mcp.Text("hello protocol")
+	text, err := mcp.GetText(r)
+	if err != nil {
+		t.Fatalf("GetText error after array fix: %v — Content was: %s", err, r.Content)
+	}
+	if text != "hello protocol" {
+		t.Fatalf("got %q, expected 'hello protocol'", text)
+	}
+}
+
 // TestJSONResult verifies JSON result creation with proper Fielder
 func TestJSONResult(t *testing.T) {
 	// Use a simple Meta struct which implements fmt.Fielder

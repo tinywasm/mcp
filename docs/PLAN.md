@@ -8,10 +8,10 @@ El protocolo MCP (2024-11-05 y 2025-11-25) exige que el campo `content` en la re
 {"content": [{"type": "text", "text": "..."}]}
 ```
 
-El servidor actualmente envía un **objeto** (y con claves en PascalCase):
+El servidor actualmente envía un **objeto**:
 
 ```json
-{"content": {"Type":"text","Text":"..."}}
+{"content": {"type":"text","text":"..."}}
 ```
 
 Esto causa el error que reporta Claude Code:
@@ -28,39 +28,23 @@ func Text(text string) *Result {
     c := &TextContent{Type: "text", Text: text}
     var s string
     _ = json.Encode(c, &s)
-    return &Result{Content: s}  // ← s es un objeto, no un array
+    return &Result{Content: s}  // ← s es un objeto {"type":"text","text":"..."}, no un array
 }
 ```
 
-Dos bugs encadenados:
+**Un solo bug:** `Content` debe ser un array JSON (`[{...}]`), no un objeto (`{...}`).
 
-1. `Content` debe ser un array JSON (`[{...}]`), no un objeto (`{...}`)
-2. `TextContent` usa PascalCase → `json.Encode` produce `{"Type":"text","Text":"..."}` en lugar de `{"type":"text","text":"..."}`
+> **Nota sobre ormc y PascalCase:** `json.Encode` de `tinywasm/json` usa `Schema()` (generado por ormc) para obtener los nombres de campo, NO los nombres de la struct Go. El `model_orm.go` ya define `_schemaTextContent` con `"type"` y `"text"` en minúsculas. Las claves son correctas. **ormc no requiere ningún cambio.**
 
 ## Archivos a modificar
 
-- `model.go` — `TextContent`: agregar tags `json:"type"` / `json:"text"`
-- `tools.go` — función `Text()`: envolver el content en array `[...]`
+- `tools.go` — función `Text()`: envolver el content en array usando `TextContentList`
 
 ## Pasos
 
-### Paso 1 — Corregir tags JSON en `TextContent` (`model.go`)
+### Paso 1 — Envolver content en array usando `TextContentList` (`tools.go`)
 
-```go
-// ANTES
-type TextContent struct {
-    Type string
-    Text string
-}
-
-// DESPUÉS
-type TextContent struct {
-    Type string `json:"type"`
-    Text string `json:"text"`
-}
-```
-
-### Paso 2 — Envolver content en array (`tools.go`)
+`json.Encode` ya soporta `FielderSlice` — escribe un array `[...]` cuando recibe un tipo que implemente esa interfaz. `TextContentList` es generado por ormc en `model_orm.go` y ya implementa `FielderSlice`.
 
 ```go
 // ANTES
@@ -68,105 +52,26 @@ func Text(text string) *Result {
     c := &TextContent{Type: "text", Text: text}
     var s string
     _ = json.Encode(c, &s)
-    return &Result{Content: s}
+    return &Result{Content: s}  // objeto: {"type":"text","text":"..."}
 }
 
-// DESPUÉS
+// DESPUÉS — usa TextContentList para que json.Encode produzca un array
 func Text(text string) *Result {
-    c := &TextContent{Type: "text", Text: text}
-    var item string
-    _ = json.Encode(c, &item)
-    return &Result{Content: "[" + item + "]"}
+    list := TextContentList{&TextContent{Type: "text", Text: text}}
+    var s string
+    _ = json.Encode(&list, &s)
+    return &Result{Content: s}  // array: [{"type":"text","text":"..."}]
 }
 ```
 
-### Paso 3 — Agregar tests que documenten el bug (`tests/protocol_test.go`)
+> `TextContentList` implementa `fmt.FielderSlice` (generado por ormc), por lo que `json.Encode` llama a `encodeSlice` internamente y produce `[...]`. No se necesita concatenación manual ni cambios en ormc.
 
-Los tests deben fallar **antes** del fix y pasar **después**, siguiendo el patrón de Bug A y Bug B ya existentes.
+### Paso 2 — Actualizar `GetText` en `utils.go`
 
-Agregar al final de `tests/protocol_test.go`:
-
-```go
-// TestToolCall_ContentIsArray verifica que la respuesta de tools/call
-// devuelva content como array JSON, no como objeto.
-// Este test FALLA antes del fix (tools.go Text() envuelve objeto, no array).
-func TestToolCall_ContentIsArray(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
-	srv.AddTool(mcp.Tool{
-		Name:     "ping",
-		Resource: "test",
-		Action:   'r',
-		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
-			return mcp.Text("pong"), nil
-		},
-	})
-	var ctx context.Context
-
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"ping","arguments":{}}}`)
-	resp := srv.HandleMessage(&ctx, req)
-
-	if resp == nil {
-		t.Fatal("expected response, got nil")
-	}
-
-	body := encodeResponse(resp)
-
-	// El protocolo MCP exige: "content":[{...}] — array, no objeto
-	if contains(body, `"content":{`) {
-		t.Fatalf("Bug C not fixed: content is an object instead of an array.\nResponse: %s", body)
-	}
-	if !contains(body, `"content":[`) {
-		t.Fatalf("expected content as JSON array, got: %s", body)
-	}
-}
-
-// TestToolCall_ContentItemLowercaseKeys verifica que los items dentro de content
-// usen claves en minúsculas ("type", "text") según el protocolo MCP.
-// Este test FALLA antes del fix (TextContent sin json tags produce PascalCase).
-func TestToolCall_ContentItemLowercaseKeys(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
-	srv.AddTool(mcp.Tool{
-		Name:     "ping",
-		Resource: "test",
-		Action:   'r',
-		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
-			return mcp.Text("pong"), nil
-		},
-	})
-	var ctx context.Context
-
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"ping","arguments":{}}}`)
-	resp := srv.HandleMessage(&ctx, req)
-
-	body := encodeResponse(resp)
-
-	// Claves PascalCase ("Type", "Text") son inválidas para el protocolo MCP
-	if contains(body, `"Type":`) || contains(body, `"Text":`) {
-		t.Fatalf("Bug C not fixed: content item uses PascalCase keys instead of lowercase.\nResponse: %s", body)
-	}
-	if !contains(body, `"type":"text"`) || !contains(body, `"text":"pong"`) {
-		t.Fatalf("expected lowercase 'type' and 'text' keys in content item, got: %s", body)
-	}
-}
-
-// TestText_GetText_RoundTrip verifica que mcp.Text() + mcp.GetText() funcionen
-// correctamente después del fix al formato array.
-func TestText_GetText_RoundTrip(t *testing.T) {
-	r := mcp.Text("hello protocol")
-	text, err := mcp.GetText(r)
-	if err != nil {
-		t.Fatalf("GetText error after array fix: %v — Content was: %s", err, r.Content)
-	}
-	if text != "hello protocol" {
-		t.Fatalf("got %q, expected 'hello protocol'", text)
-	}
-}
-```
-
-**Nota:** `GetText` en `utils.go` también deberá actualizarse para extraer el primer item del array:
+Al cambiar `Content` de objeto a array, `GetText` debe extraer el primer elemento:
 
 ```go
-// ANTES
+// ANTES — decodifica un objeto
 func GetText(r *Result) (string, error) {
     var c TextContent
     if err := json.Decode([]byte(r.Content), &c); err != nil {
@@ -175,45 +80,29 @@ func GetText(r *Result) (string, error) {
     return c.Text, nil
 }
 
-// DESPUÉS — extrae primer elemento del array
+// DESPUÉS — decodifica el primer elemento del array via TextContentList
 func GetText(r *Result) (string, error) {
-    // Content es "[{...}]", extraer primer elemento
-    raw := []byte(r.Content)
-    first := mcp.ExtractJSONValue(raw, "0")  // alternativa: parse manual del array
-    var c TextContent
-    if err := json.Decode(first, &c); err != nil {
+    var list TextContentList
+    if err := json.Decode([]byte(r.Content), &list); err != nil {
         return "", err
     }
-    return c.Text, nil
-}
-```
-
-O más simple, si `tinywasm/json` soporta decode de slice:
-
-```go
-func GetText(r *Result) (string, error) {
-    var items []TextContent
-    if err := json.Decode([]byte(r.Content), &items); err != nil {
-        return "", err
-    }
-    if len(items) == 0 {
+    if len(list) == 0 {
         return "", fmt.Err("mcp", "empty content array")
     }
-    return items[0].Text, nil
+    return list[0].Text, nil
 }
 ```
+
+> `json.Decode` soporta `FielderSlice` (verificado en `decode.go:37-39` — es simétrico al encode). `TextContentList` implementa esa interfaz, por lo que el decode del array funciona directamente.
+
+### Paso 3 — Tests (ya escritos en `tests/mcp_test.go`)
+
+Los tres tests están en `tests/mcp_test.go` y se pueden correr con `go test ./tests/`:
+
+- `TestToolCall_ContentIsArray` — **falla antes del fix** con: `Bug C not fixed: content is an object instead of an array`
+- `TestToolCall_ContentItemLowercaseKeys` — pasa (regresión ormc, claves ya correctas)
+- `TestText_GetText_RoundTrip` — pasa (actualmente `GetText` decodifica objeto; fallará tras el fix del Paso 2)
 
 ### Paso 4 — Revisar función `JSON()` en `utils.go`
 
-`JSON()` también asigna directamente a `Content` sin envolver en array. Si se usa para respuestas estructuradas, debe evaluarse si necesita el mismo tratamiento o si es para uso interno.
-
-### Paso 4 — Verificar `Result.Content` en `model.go`
-
-```go
-type Result struct {
-    IsError bool        `json:"isError,omitempty"`
-    Content fmt.RawJSON  // ← debe serializar como array
-}
-```
-
-Verificar que el encoder de `tinywasm/json` respeta `fmt.RawJSON` como raw (sin re-escapar).
+`JSON()` también asigna directamente a `Content` sin envolver en array. Evaluar si se usa para respuestas externas (requiere array) o solo internamente.
