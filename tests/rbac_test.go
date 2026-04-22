@@ -21,7 +21,7 @@ func TestHandleToolCall_Can_ChecksResource(t *testing.T) {
 		},
 	})
 	var ctx context.Context
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":"{}"}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":{}}}`)
 	srv.HandleMessage(&ctx, req)
 
 	if auth.lastResource != "secrets" {
@@ -41,7 +41,7 @@ func TestHandleToolCall_Can_ChecksAction(t *testing.T) {
 		},
 	})
 	var ctx context.Context
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":"{}"}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":{}}}`)
 	srv.HandleMessage(&ctx, req)
 
 	if auth.lastAction != 'u' {
@@ -63,7 +63,7 @@ func TestHandleToolCall_ExecuteNeverCalledIfCanFalse(t *testing.T) {
 		},
 	})
 	var ctx context.Context
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":"{}"}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":{}}}`)
 	srv.HandleMessage(&ctx, req)
 
 	if called {
@@ -74,7 +74,7 @@ func TestHandleToolCall_ExecuteNeverCalledIfCanFalse(t *testing.T) {
 func TestHandleToolCall_ToolNotFound(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
 	var ctx context.Context
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"nonexistent","arguments":"{}"}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"nonexistent","arguments":{}}}`)
 	resp := srv.HandleMessage(&ctx, req)
 
 	respStr := encodeResponse(resp)
@@ -94,7 +94,7 @@ func TestHandleToolCall_ExecuteReturnsError_IsErrorTrue(t *testing.T) {
 		},
 	})
 	var ctx context.Context
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"fail","arguments":"{}"}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"fail","arguments":{}}}`)
 	resp := srv.HandleMessage(&ctx, req)
 
 	respStr := encodeResponse(resp)
@@ -140,7 +140,7 @@ func TestHandleToolCall_Bind_UsesToolAction(t *testing.T) {
 		},
 	})
 	var ctx context.Context
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":"{\"Foo\":\"bar\"}"}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":{"Foo":"bar"}}}`)
 	srv.HandleMessage(&ctx, req)
 
 	if target.lastAction != 'u' {
@@ -167,7 +167,7 @@ func TestHandleToolCall_DuplicateToolName_Overwrites(t *testing.T) {
 		},
 	})
 	var ctx context.Context
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":"{}"}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":{}}}`)
 	resp := srv.HandleMessage(&ctx, req)
 
 	respStr := encodeResponse(resp)
@@ -201,7 +201,7 @@ func TestConcurrent_AddToolAndCallTool(t *testing.T) {
 		go func(n int) {
 			defer wg.Done()
 			var ctx context.Context
-			req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"t` + string(rune('0'+n)) + `","arguments":"{}"}}`)
+			req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"t` + string(rune('0'+n)) + `","arguments":{}}}`)
 			srv.HandleMessage(&ctx, req)
 		}(i)
 	}
@@ -229,7 +229,7 @@ func TestNewServer_ProviderInjectsTools(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 	var ctx context.Context
-	req1 := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"t1","arguments":"{}"}}`)
+	req1 := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"t1","arguments":{}}}`)
 	resp1 := srv.HandleMessage(&ctx, req1)
 	if !contains(encodeResponse(resp1), "1") {
 		t.Fatal("t1 not registered")

@@ -47,7 +47,7 @@ type initializeResult struct {
 // ormc:formonly
 type CallToolParams struct {
 	Name      string
-	Arguments string `json:",omitempty"`
+	Arguments fmt.RawJSON `json:",omitempty"`
 }
 
 // ormc:formonly
@@ -66,7 +66,7 @@ type TextContent struct {
 type toolEntry struct {
 	Name        string
 	Description string `json:",omitempty"`
-	InputSchema string `json:"inputSchema,omitempty"`
+	InputSchema fmt.RawJSON `json:"inputSchema,omitempty"`
 }
 
 // ormc:formonly

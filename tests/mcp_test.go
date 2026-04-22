@@ -189,7 +189,7 @@ func TestHandleMessage_Compliance(t *testing.T) {
 	}{
 		{
 			name:    "ValidToolCall",
-			message: `{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"echo","arguments":"{}"}}`,
+			message: `{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"echo","arguments":{}}}`,
 		},
 		{
 			name:         "InvalidVersion",
@@ -289,7 +289,7 @@ func TestHandleToolCall_Can_False_Rejected(t *testing.T) {
 	var ctx context.Context
 	ctx.Set(mcp.CtxKeyUserID, "forbidden-user")
 
-	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"secret","arguments":"{}"}}`)
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"secret","arguments":{}}}`)
 	resp := srv.HandleMessage(&ctx, req)
 
 	if resp == nil {
@@ -327,5 +327,74 @@ func TestHandleMessage_WithSSE_PublishesNotification(t *testing.T) {
 	}
 	if !contains(string(sse.lastData), "notifications/initialized") {
 		t.Fatalf("expected notification data, got %s", string(sse.lastData))
+	}
+}
+
+// TestToolCall_ArgumentsAsObject verifies that tools/call accepts arguments
+// as a JSON object (MCP spec), not only as a quoted string.
+// This test FAILS before the fix (model.go Arguments string → fmt.RawJSON).
+func TestToolCall_ArgumentsAsObject(t *testing.T) {
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv.AddTool(mcp.Tool{
+		Name:     "echo",
+		Resource: "test",
+		Action:   'r',
+		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
+			return mcp.Text("ok"), nil
+		},
+	})
+	var ctx context.Context
+
+	// MCP spec: arguments MUST be a JSON object, not a quoted string
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"echo","arguments":{}}}`)
+	resp := srv.HandleMessage(&ctx, req)
+
+	if resp == nil {
+		t.Fatal("expected response, got nil")
+	}
+
+	body := encodeResponse(resp)
+
+	if contains(body, "json decode expected string") {
+		t.Fatalf("Bug A not fixed: server rejected JSON object arguments with parse error.\nResponse: %s", body)
+	}
+	if contains(body, `"error":`) {
+		t.Fatalf("expected success response, got error: %s", body)
+	}
+}
+
+// TestListTools_InputSchemaIsObject verifies that tools/list returns inputSchema
+// as an inline JSON object, not as a quoted JSON string.
+// This test FAILS before the fix (model.go InputSchema string → fmt.RawJSON).
+func TestListTools_InputSchemaIsObject(t *testing.T) {
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv.AddTool(mcp.Tool{
+		Name:        "search",
+		Description: "Search something",
+		InputSchema: `{"type":"object","properties":{"query":{"type":"string"}}}`,
+		Resource:    "items",
+		Action:      'r',
+		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
+			return mcp.Text("ok"), nil
+		},
+	})
+	var ctx context.Context
+
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/list","params":{}}`)
+	resp := srv.HandleMessage(&ctx, req)
+
+	if resp == nil {
+		t.Fatal("expected response, got nil")
+	}
+
+	body := encodeResponse(resp)
+
+	// inputSchema must NOT appear as a quoted string (i.e. "inputSchema":"..." is wrong)
+	// It must appear as an inline object (i.e. "inputSchema":{"type":... is correct)
+	if contains(body, `"inputSchema":"{`) {
+		t.Fatalf("Bug B not fixed: inputSchema is a quoted string instead of a JSON object.\nResponse: %s", body)
+	}
+	if !contains(body, `"inputSchema":{"type"`) {
+		t.Fatalf("expected inputSchema as inline object, got: %s", body)
 	}
 }

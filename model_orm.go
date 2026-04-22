@@ -141,7 +141,7 @@ func (m *initializeResult) Validate(action byte) error {
 
 var _schemaCallToolParams = []fmt.Field{
 		{Name: "name", Type: fmt.FieldText, Widget: input.Text()},
-		{Name: "arguments", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "arguments", Type: fmt.FieldRaw, OmitEmpty: true},
 	}
 
 func (m *CallToolParams) Schema() []fmt.Field { return _schemaCallToolParams }
@@ -205,7 +205,7 @@ func (m *TextContent) Validate(action byte) error {
 var _schematoolEntry = []fmt.Field{
 		{Name: "name", Type: fmt.FieldText, Widget: input.Text()},
 		{Name: "description", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
-		{Name: "inputSchema", Type: fmt.FieldText, OmitEmpty: true, Widget: input.Text()},
+		{Name: "inputSchema", Type: fmt.FieldRaw, OmitEmpty: true},
 	}
 
 func (m *toolEntry) Schema() []fmt.Field { return _schematoolEntry }
