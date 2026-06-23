@@ -178,6 +178,6 @@ func createErrorResponse(id string, code int, message string) JSONRPCMessage {
 	return newErrorResponse(id, code, message, nil)
 }
 
-func createResponse(id string, result fmt.Fielder) JSONRPCMessage {
+func createResponse(id string, result fmt.Encodable) JSONRPCMessage {
 	return newResultResponse(id, result)
 }
