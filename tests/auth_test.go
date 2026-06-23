@@ -47,7 +47,7 @@ func TestHandleMessage_TokenAuth_ValidToken_Returns_Result(t *testing.T) {
 		t.Fatal("expected response")
 	}
 	respStr := encodeResponse(resp)
-	if contains(respStr, "error") {
+	if contains(respStr, `"error":{`) {
 		t.Fatalf("expected success response, got %s", respStr)
 	}
 }

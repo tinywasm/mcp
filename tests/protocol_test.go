@@ -69,7 +69,7 @@ func TestInitialize_OlderSupportedVersion_Accepted(t *testing.T) {
 	if !contains(respStr, "2024-11-05") {
 		t.Fatalf("expected protocol version 2024-11-05 in response, got %s", respStr)
 	}
-	if contains(respStr, "error") {
+	if contains(respStr, `"error":{`) {
 		t.Fatalf("expected no error for supported version, got %s", respStr)
 	}
 }
@@ -84,7 +84,7 @@ func TestInitialize_NewerUnknownVersion_DowngradesGracefully(t *testing.T) {
 	if !contains(respStr, "2025-11-25") {
 		t.Fatalf("expected server to respond with latest version 2025-11-25, got %s", respStr)
 	}
-	if contains(respStr, "error") {
+	if contains(respStr, `"error":{`) {
 		t.Fatalf("expected no error for newer unknown version, got %s", respStr)
 	}
 }

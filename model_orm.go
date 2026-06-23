@@ -69,14 +69,14 @@ func (m *rpcResponse) IsNil() bool { return m == nil }
 func (m *rpcResponse) EncodeFields(w fmt.FieldWriter) {
 	w.String("jsonrpc", m.JSONRPC)
 	w.String("id", m.ID)
-	w.String("result", m.Result)
+	w.Raw("result", m.Result)
 	w.String("error", m.Error)
 }
 
 func (m *rpcResponse) DecodeFields(r fmt.FieldReader) error {
 	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
 	if v, ok := r.String("id"); ok { m.ID = v }
-	if v, ok := r.String("result"); ok { m.Result = v }
+	if v, ok := r.Raw("result"); ok { m.Result = v }
 	if v, ok := r.String("error"); ok { m.Error = v }
 	return nil
 }
@@ -137,8 +137,8 @@ func (m *initializeParams) ModelName() string {
 }
 
 var _schemainitializeParams = []fmt.Field{
-		{Name: "protocol_version", Type: fmt.FieldText},
-		{Name: "client_info", Type: fmt.FieldStruct},
+		{Name: "protocolVersion", Type: fmt.FieldText},
+		{Name: "clientInfo", Type: fmt.FieldStruct},
 	}
 
 func (m *initializeParams) Schema() []fmt.Field { return _schemainitializeParams }
@@ -148,13 +148,13 @@ func (m *initializeParams) Pointers() []any { return []any{&m.ProtocolVersion, &
 func (m *initializeParams) IsNil() bool { return m == nil }
 
 func (m *initializeParams) EncodeFields(w fmt.FieldWriter) {
-	w.String("protocol_version", m.ProtocolVersion)
-	w.Object("client_info", &m.ClientInfo)
+	w.String("protocolVersion", m.ProtocolVersion)
+	w.Object("clientInfo", &m.ClientInfo)
 }
 
 func (m *initializeParams) DecodeFields(r fmt.FieldReader) error {
-	if v, ok := r.String("protocol_version"); ok { m.ProtocolVersion = v }
-	r.Object("client_info", &m.ClientInfo)
+	if v, ok := r.String("protocolVersion"); ok { m.ProtocolVersion = v }
+	r.Object("clientInfo", &m.ClientInfo)
 	return nil
 }
 
@@ -211,8 +211,8 @@ func (m *initializeResult) ModelName() string {
 }
 
 var _schemainitializeResult = []fmt.Field{
-		{Name: "protocol_version", Type: fmt.FieldText},
-		{Name: "server_info", Type: fmt.FieldStruct},
+		{Name: "protocolVersion", Type: fmt.FieldText},
+		{Name: "serverInfo", Type: fmt.FieldStruct},
 		{Name: "capabilities", Type: fmt.FieldRaw},
 	}
 
@@ -223,15 +223,15 @@ func (m *initializeResult) Pointers() []any { return []any{&m.ProtocolVersion, &
 func (m *initializeResult) IsNil() bool { return m == nil }
 
 func (m *initializeResult) EncodeFields(w fmt.FieldWriter) {
-	w.String("protocol_version", m.ProtocolVersion)
-	w.Object("server_info", &m.ServerInfo)
-	w.String("capabilities", m.Capabilities)
+	w.String("protocolVersion", m.ProtocolVersion)
+	w.Object("serverInfo", &m.ServerInfo)
+	w.Raw("capabilities", m.Capabilities)
 }
 
 func (m *initializeResult) DecodeFields(r fmt.FieldReader) error {
-	if v, ok := r.String("protocol_version"); ok { m.ProtocolVersion = v }
-	r.Object("server_info", &m.ServerInfo)
-	if v, ok := r.String("capabilities"); ok { m.Capabilities = v }
+	if v, ok := r.String("protocolVersion"); ok { m.ProtocolVersion = v }
+	r.Object("serverInfo", &m.ServerInfo)
+	if v, ok := r.Raw("capabilities"); ok { m.Capabilities = v }
 	return nil
 }
 
@@ -263,12 +263,12 @@ func (m *CallToolParams) IsNil() bool { return m == nil }
 
 func (m *CallToolParams) EncodeFields(w fmt.FieldWriter) {
 	w.String("name", m.Name)
-	w.String("arguments", m.Arguments)
+	w.Raw("arguments", m.Arguments)
 }
 
 func (m *CallToolParams) DecodeFields(r fmt.FieldReader) error {
 	if v, ok := r.String("name"); ok { m.Name = v }
-	if v, ok := r.String("arguments"); ok { m.Arguments = v }
+	if v, ok := r.Raw("arguments"); ok { m.Arguments = v }
 	return nil
 }
 
@@ -288,7 +288,7 @@ func (m *Result) ModelName() string {
 }
 
 var _schemaResult = []fmt.Field{
-		{Name: "is_error", Type: fmt.FieldBool},
+		{Name: "isError", Type: fmt.FieldBool},
 		{Name: "content", Type: fmt.FieldRaw},
 	}
 
@@ -299,13 +299,13 @@ func (m *Result) Pointers() []any { return []any{&m.IsError, &m.Content} }
 func (m *Result) IsNil() bool { return m == nil }
 
 func (m *Result) EncodeFields(w fmt.FieldWriter) {
-	w.Bool("is_error", m.IsError)
-	w.String("content", m.Content)
+	w.Bool("isError", m.IsError)
+	w.Raw("content", m.Content)
 }
 
 func (m *Result) DecodeFields(r fmt.FieldReader) error {
-	if v, ok := r.Bool("is_error"); ok { m.IsError = v }
-	if v, ok := r.String("content"); ok { m.Content = v }
+	if v, ok := r.Bool("isError"); ok { m.IsError = v }
+	if v, ok := r.Raw("content"); ok { m.Content = v }
 	return nil
 }
 
@@ -364,7 +364,7 @@ func (m *toolEntry) ModelName() string {
 var _schematoolEntry = []fmt.Field{
 		{Name: "name", Type: fmt.FieldText},
 		{Name: "description", Type: fmt.FieldText},
-		{Name: "input_schema", Type: fmt.FieldRaw},
+		{Name: "inputSchema", Type: fmt.FieldRaw},
 	}
 
 func (m *toolEntry) Schema() []fmt.Field { return _schematoolEntry }
@@ -376,13 +376,13 @@ func (m *toolEntry) IsNil() bool { return m == nil }
 func (m *toolEntry) EncodeFields(w fmt.FieldWriter) {
 	w.String("name", m.Name)
 	w.String("description", m.Description)
-	w.String("input_schema", m.InputSchema)
+	w.Raw("inputSchema", m.InputSchema)
 }
 
 func (m *toolEntry) DecodeFields(r fmt.FieldReader) error {
 	if v, ok := r.String("name"); ok { m.Name = v }
 	if v, ok := r.String("description"); ok { m.Description = v }
-	if v, ok := r.String("input_schema"); ok { m.InputSchema = v }
+	if v, ok := r.Raw("inputSchema"); ok { m.InputSchema = v }
 	return nil
 }
 
@@ -403,7 +403,7 @@ func (m *listToolsResult) ModelName() string {
 
 var _schemalistToolsResult = []fmt.Field{
 		{Name: "tools", Type: fmt.FieldRaw},
-		{Name: "next_cursor", Type: fmt.FieldText},
+		{Name: "nextCursor", Type: fmt.FieldText},
 	}
 
 func (m *listToolsResult) Schema() []fmt.Field { return _schemalistToolsResult }
@@ -413,13 +413,13 @@ func (m *listToolsResult) Pointers() []any { return []any{&m.Tools, &m.NextCurso
 func (m *listToolsResult) IsNil() bool { return m == nil }
 
 func (m *listToolsResult) EncodeFields(w fmt.FieldWriter) {
-	w.String("tools", m.Tools)
-	w.String("next_cursor", m.NextCursor)
+	w.Raw("tools", m.Tools)
+	w.String("nextCursor", m.NextCursor)
 }
 
 func (m *listToolsResult) DecodeFields(r fmt.FieldReader) error {
-	if v, ok := r.String("tools"); ok { m.Tools = v }
-	if v, ok := r.String("next_cursor"); ok { m.NextCursor = v }
+	if v, ok := r.Raw("tools"); ok { m.Tools = v }
+	if v, ok := r.String("nextCursor"); ok { m.NextCursor = v }
 	return nil
 }
 
@@ -479,7 +479,7 @@ func (m *Meta) ModelName() string {
 }
 
 var _schemaMeta = []fmt.Field{
-		{Name: "progress_token", Type: fmt.FieldText},
+		{Name: "progressToken", Type: fmt.FieldText},
 	}
 
 func (m *Meta) Schema() []fmt.Field { return _schemaMeta }
@@ -489,11 +489,11 @@ func (m *Meta) Pointers() []any { return []any{&m.ProgressToken} }
 func (m *Meta) IsNil() bool { return m == nil }
 
 func (m *Meta) EncodeFields(w fmt.FieldWriter) {
-	w.String("progress_token", m.ProgressToken)
+	w.String("progressToken", m.ProgressToken)
 }
 
 func (m *Meta) DecodeFields(r fmt.FieldReader) error {
-	if v, ok := r.String("progress_token"); ok { m.ProgressToken = v }
+	if v, ok := r.String("progressToken"); ok { m.ProgressToken = v }
 	return nil
 }
 
@@ -679,15 +679,15 @@ func (m *JSONRPCResponseStruct) IsNil() bool { return m == nil }
 func (m *JSONRPCResponseStruct) EncodeFields(w fmt.FieldWriter) {
 	w.String("jsonrpc", m.JSONRPC)
 	w.String("id", m.ID)
-	w.String("result", m.Result)
-	w.String("error", m.Error)
+	w.Raw("result", m.Result)
+	w.Raw("error", m.Error)
 }
 
 func (m *JSONRPCResponseStruct) DecodeFields(r fmt.FieldReader) error {
 	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
 	if v, ok := r.String("id"); ok { m.ID = v }
-	if v, ok := r.String("result"); ok { m.Result = v }
-	if v, ok := r.String("error"); ok { m.Error = v }
+	if v, ok := r.Raw("result"); ok { m.Result = v }
+	if v, ok := r.Raw("error"); ok { m.Error = v }
 	return nil
 }
 
@@ -721,13 +721,13 @@ func (m *JSONRPCError) IsNil() bool { return m == nil }
 func (m *JSONRPCError) EncodeFields(w fmt.FieldWriter) {
 	w.String("jsonrpc", m.JSONRPC)
 	w.String("id", m.ID)
-	w.String("error", m.Error)
+	w.Raw("error", m.Error)
 }
 
 func (m *JSONRPCError) DecodeFields(r fmt.FieldReader) error {
 	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
 	if v, ok := r.String("id"); ok { m.ID = v }
-	if v, ok := r.String("error"); ok { m.Error = v }
+	if v, ok := r.Raw("error"); ok { m.Error = v }
 	return nil
 }
 

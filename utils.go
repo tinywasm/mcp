@@ -36,36 +36,36 @@ func GetText(r *Result) (string, error) {
 }
 
 func newResultResponse(id RequestId, result any) JSONRPCMessage {
-	var resJSON string
+	var resJSON []byte
 	if f, ok := result.(fmt.Encodable); ok {
 		json.Encode(f, &resJSON)
 	}
 	return &JSONRPCResponseStruct{
 		JSONRPC: JSONRPC_VERSION,
 		ID:      id,
-		Result:  resJSON,
+		Result:  fmt.RawJSON(resJSON),
 	}
 }
 
 func newErrorDetails(code int, message string, data any) *JSONRPCErrorDetails {
-	var dataJSON string
+	var dataJSON []byte
 	if f, ok := data.(fmt.Encodable); ok {
 		json.Encode(f, &dataJSON)
 	}
 	return &JSONRPCErrorDetails{
 		Code:    int64(code),
 		Message: message,
-		Data:    dataJSON,
+		Data:    string(dataJSON),
 	}
 }
 
 func newErrorResponse(id RequestId, code int, message string, data any) JSONRPCMessage {
 	det := newErrorDetails(code, message, data)
-	var detJSON string
+	var detJSON []byte
 	json.Encode(det, &detJSON)
 	return &JSONRPCError{
 		JSONRPC: JSONRPC_VERSION,
 		ID:      id,
-		Error:   detJSON,
+		Error:   fmt.RawJSON(detJSON),
 	}
 }
