@@ -70,7 +70,7 @@ func (c *Client) Dispatch(ctx *context.Context, method string, params any) {
 func (c *Client) buildBody(method string, params any) []byte {
 	var paramsJSON string
 	if params != nil {
-		if f, ok := params.(fmt.Fielder); ok {
+		if f, ok := params.(fmt.Encodable); ok {
 			if err := json.Encode(f, &paramsJSON); err != nil {
 				return nil
 			}

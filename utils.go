@@ -5,7 +5,7 @@ import (
 	"github.com/tinywasm/json"
 )
 
-func JSON(data fmt.Fielder) (*Result, error) {
+func JSON(data fmt.Encodable) (*Result, error) {
 	var s string
 	if err := json.Encode(data, &s); err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func GetText(r *Result) (string, error) {
 
 func newResultResponse(id RequestId, result any) JSONRPCMessage {
 	var resJSON string
-	if f, ok := result.(fmt.Fielder); ok {
+	if f, ok := result.(fmt.Encodable); ok {
 		json.Encode(f, &resJSON)
 	}
 	return &JSONRPCResponseStruct{
@@ -49,7 +49,7 @@ func newResultResponse(id RequestId, result any) JSONRPCMessage {
 
 func newErrorDetails(code int, message string, data any) *JSONRPCErrorDetails {
 	var dataJSON string
-	if f, ok := data.(fmt.Fielder); ok {
+	if f, ok := data.(fmt.Encodable); ok {
 		json.Encode(f, &dataJSON)
 	}
 	return &JSONRPCErrorDetails{

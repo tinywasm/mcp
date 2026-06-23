@@ -20,7 +20,14 @@ type Tool struct {
 	Execute     func(ctx *context.Context, req Request) (*Result, error)
 }
 
-func (r *Request) Bind(target fmt.SafeFields) error {
+// DecodableFields combines Decodable (codec) with Validate (validation).
+// ormc-generated model types satisfy this interface.
+type DecodableFields interface {
+	fmt.Decodable
+	Validate(action byte) error
+}
+
+func (r *Request) Bind(target DecodableFields) error {
 	if err := json.Decode([]byte(r.Params.Arguments), target); err != nil {
 		return err
 	}

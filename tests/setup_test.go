@@ -83,7 +83,7 @@ func contains(s, substr string) bool {
 
 func encodeResponse(resp mcp.JSONRPCMessage) string {
 	var b []byte
-	if f, ok := resp.(fmt.Fielder); ok {
+	if f, ok := resp.(fmt.Encodable); ok {
 		json.Encode(f, &b)
 	}
 	return string(b)

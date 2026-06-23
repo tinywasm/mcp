@@ -65,7 +65,7 @@ func TestHandleMessage_Ping(t *testing.T) {
 	}
 
 	var b []byte
-	if f, ok := resp.(fmt.Fielder); ok {
+	if f, ok := resp.(fmt.Encodable); ok {
 		json.Encode(f, &b)
 	}
 
@@ -91,7 +91,7 @@ func TestHandleMessage_Initialize(t *testing.T) {
 	}
 
 	var b []byte
-	if f, ok := resp.(fmt.Fielder); ok {
+	if f, ok := resp.(fmt.Encodable); ok {
 		json.Encode(f, &b)
 	}
 
@@ -317,7 +317,7 @@ func TestHandleMessage_Compliance(t *testing.T) {
 			if tt.expectError {
 				// Check if it's an error response
 				var b []byte
-				if f, ok := resp.(fmt.Fielder); ok {
+				if f, ok := resp.(fmt.Encodable); ok {
 					json.Encode(f, &b)
 				}
 				respStr := string(b)
@@ -328,7 +328,7 @@ func TestHandleMessage_Compliance(t *testing.T) {
 			} else {
 				// Should be success
 				var b []byte
-				if f, ok := resp.(fmt.Fielder); ok {
+				if f, ok := resp.(fmt.Encodable); ok {
 					json.Encode(f, &b)
 				}
 				respStr := string(b)
@@ -370,7 +370,7 @@ func TestHandleToolCall_Can_False_Rejected(t *testing.T) {
 	}
 
 	var b []byte
-	if f, ok := resp.(fmt.Fielder); ok {
+	if f, ok := resp.(fmt.Encodable); ok {
 		json.Encode(f, &b)
 	}
 	respStr := string(b)

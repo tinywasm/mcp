@@ -27,8 +27,8 @@ type jsonRPCError struct {
 
 // ormc:formonly
 type initializeParams struct {
-	ProtocolVersion string             `json:"protocolVersion"`
-	ClientInfo      implementationInfo `json:"clientInfo"`
+	ProtocolVersion string             ``
+	ClientInfo      implementationInfo ``
 }
 
 // ormc:formonly
@@ -39,20 +39,20 @@ type implementationInfo struct {
 
 // ormc:formonly
 type initializeResult struct {
-	ProtocolVersion string             `json:"protocolVersion"`
-	ServerInfo      implementationInfo `json:"serverInfo"`
+	ProtocolVersion string             ``
+	ServerInfo      implementationInfo ``
 	Capabilities    fmt.RawJSON
 }
 
 // ormc:formonly
 type CallToolParams struct {
 	Name      string
-	Arguments fmt.RawJSON `json:",omitempty"`
+	Arguments fmt.RawJSON ``
 }
 
 // ormc:formonly
 type Result struct {
-	IsError bool        `json:"isError,omitempty"`
+	IsError bool        ``
 	Content fmt.RawJSON
 }
 
@@ -65,36 +65,36 @@ type TextContent struct {
 // ormc:formonly
 type toolEntry struct {
 	Name        string
-	Description string `json:",omitempty"`
-	InputSchema fmt.RawJSON `json:"inputSchema,omitempty"`
+	Description string ``
+	InputSchema fmt.RawJSON ``
 }
 
 // ormc:formonly
 type listToolsResult struct {
 	Tools      fmt.RawJSON
-	NextCursor string `json:"nextCursor,omitempty"`
+	NextCursor string ``
 }
 
 // ormc:formonly
 type errorResponse struct {
 	JSONRPC string
-	ID      string `json:",omitempty"`
+	ID      string ``
 	Error   jsonRPCError
 }
 
 // ormc:formonly
 type Meta struct {
-	ProgressToken string `json:"progressToken,omitempty"`
+	ProgressToken string ``
 }
 
 // ormc:formonly
 type NotificationParams struct {
-	Meta string `json:",omitempty"`
+	Meta string ``
 }
 
 // ormc:formonly
 type EmptyResult struct {
-	Result string `json:",omitempty"`
+	Result string ``
 }
 
 // ormc:formonly
@@ -102,22 +102,22 @@ type JSONRPCRequest struct {
 	JSONRPC string
 	ID      RequestId
 	Method  string
-	Params  string `json:",omitempty"`
+	Params  string ``
 }
 
 // ormc:formonly
 type JSONRPCNotification struct {
 	JSONRPC string
 	Method  string
-	Params  string `json:",omitempty"`
+	Params  string ``
 }
 
 // ormc:formonly
 type JSONRPCResponseStruct struct {
 	JSONRPC string
 	ID      string
-	Result  fmt.RawJSON `json:",omitempty"`
-	Error   fmt.RawJSON `json:",omitempty"`
+	Result  fmt.RawJSON ``
+	Error   fmt.RawJSON ``
 }
 
 func (r *JSONRPCResponseStruct) jsonrpcMessage() {}
@@ -125,8 +125,8 @@ func (r *JSONRPCResponseStruct) jsonrpcMessage() {}
 // ormc:formonly
 type JSONRPCError struct {
 	JSONRPC string
-	ID      string `json:",omitempty"`
-	Error   fmt.RawJSON `json:",omitempty"`
+	ID      string ``
+	Error   fmt.RawJSON ``
 }
 
 func (e *JSONRPCError) jsonrpcMessage() {}
@@ -135,5 +135,5 @@ func (e *JSONRPCError) jsonrpcMessage() {}
 type JSONRPCErrorDetails struct {
 	Code    int64
 	Message string
-	Data    string `json:",omitempty"`
+	Data    string ``
 }

@@ -127,6 +127,15 @@ func (v *validateFielder) Validate(action byte) error {
 	return nil
 }
 
+func (v *validateFielder) IsNil() bool { return v == nil }
+
+func (v *validateFielder) DecodeFields(r fmt.FieldReader) error {
+	if val, ok := r.String("Foo"); ok {
+		v.Foo = val
+	}
+	return nil
+}
+
 func TestHandleToolCall_Bind_UsesToolAction(t *testing.T) {
 	var target validateFielder
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
