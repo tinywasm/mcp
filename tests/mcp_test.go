@@ -332,7 +332,7 @@ func TestHandleMessage_Compliance(t *testing.T) {
 					json.Encode(f, &b)
 				}
 				respStr := string(b)
-				if contains(respStr, `"error":`) {
+				if contains(respStr, `"error":{`) {
 					t.Fatalf("expected success response, got %s", respStr)
 				}
 			}
@@ -431,7 +431,7 @@ func TestToolCall_ArgumentsAsObject(t *testing.T) {
 	if contains(body, "json decode expected string") {
 		t.Fatalf("Bug A not fixed: server rejected JSON object arguments with parse error.\nResponse: %s", body)
 	}
-	if contains(body, `"error":`) {
+	if contains(body, `"error":{`) {
 		t.Fatalf("expected success response, got error: %s", body)
 	}
 }

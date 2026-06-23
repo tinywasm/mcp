@@ -15,7 +15,7 @@ type rpcResponse struct {
 	JSONRPC string
 	ID      string
 	Result  fmt.RawJSON
-	Error   string
+	Error   string `omitempty:"true"`
 }
 
 // ormc:formonly
@@ -116,8 +116,8 @@ type JSONRPCNotification struct {
 type JSONRPCResponseStruct struct {
 	JSONRPC string
 	ID      string
-	Result  fmt.RawJSON ``
-	Error   fmt.RawJSON ``
+	Result  fmt.RawJSON `omitempty:"true"`
+	Error   fmt.RawJSON `omitempty:"true"`
 }
 
 func (r *JSONRPCResponseStruct) jsonrpcMessage() {}
@@ -125,8 +125,8 @@ func (r *JSONRPCResponseStruct) jsonrpcMessage() {}
 // ormc:formonly
 type JSONRPCError struct {
 	JSONRPC string
-	ID      string ``
-	Error   fmt.RawJSON ``
+	ID      string
+	Error   fmt.RawJSON
 }
 
 func (e *JSONRPCError) jsonrpcMessage() {}
