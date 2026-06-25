@@ -119,3 +119,34 @@ func TestExtractJSONValue_NonStringValue(t *testing.T) {
 		t.Fatalf("expected '42', got %q", string(got))
 	}
 }
+
+func TestSuccessResponseHasNoErrorKey(t *testing.T) {
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	var ctx context.Context
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"ping"}`)
+	resp := srv.HandleMessage(&ctx, req)
+
+	respStr := encodeResponse(resp)
+	if contains(respStr, "\"error\"") {
+		t.Fatalf("success response must not contain \"error\" key: %s", respStr)
+	}
+	if !contains(respStr, "\"result\"") {
+		t.Fatalf("success response must contain \"result\" key: %s", respStr)
+	}
+}
+
+func TestErrorResponseHasNoResultKey(t *testing.T) {
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	var ctx context.Context
+	// Invalid request to trigger error
+	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"unknown_method"}`)
+	resp := srv.HandleMessage(&ctx, req)
+
+	respStr := encodeResponse(resp)
+	if contains(respStr, "\"result\"") {
+		t.Fatalf("error response must not contain \"result\" key: %s", respStr)
+	}
+	if !contains(respStr, "\"error\"") {
+		t.Fatalf("error response must contain \"error\" key: %s", respStr)
+	}
+}

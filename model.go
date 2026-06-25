@@ -14,8 +14,8 @@ type rpcRequest struct {
 type rpcResponse struct {
 	JSONRPC string
 	ID      string
-	Result  fmt.RawJSON
-	Error   string `omitempty:"true"`
+	Result  fmt.RawJSON `omitempty:"true"`
+	Error   string      `omitempty:"true"`
 }
 
 // ormc:formonly
@@ -41,7 +41,7 @@ type implementationInfo struct {
 type initializeResult struct {
 	ProtocolVersion string             ``
 	ServerInfo      implementationInfo ``
-	Capabilities    fmt.RawJSON
+	Capabilities    fmt.RawJSON        `omitempty:"true"`
 }
 
 // ormc:formonly
@@ -52,7 +52,7 @@ type CallToolParams struct {
 
 // ormc:formonly
 type Result struct {
-	IsError bool        ``
+	IsError bool        `omitempty:"true"`
 	Content fmt.RawJSON
 }
 
@@ -65,36 +65,36 @@ type TextContent struct {
 // ormc:formonly
 type toolEntry struct {
 	Name        string
-	Description string ``
+	Description string `omitempty:"true"`
 	InputSchema fmt.RawJSON ``
 }
 
 // ormc:formonly
 type listToolsResult struct {
 	Tools      fmt.RawJSON
-	NextCursor string ``
+	NextCursor string `omitempty:"true"`
 }
 
 // ormc:formonly
 type errorResponse struct {
 	JSONRPC string
-	ID      string ``
+	ID      string `omitempty:"true"`
 	Error   jsonRPCError
 }
 
 // ormc:formonly
 type Meta struct {
-	ProgressToken string ``
+	ProgressToken string `omitempty:"true"`
 }
 
 // ormc:formonly
 type NotificationParams struct {
-	Meta string ``
+	Meta string `omitempty:"true"`
 }
 
 // ormc:formonly
 type EmptyResult struct {
-	Result string ``
+	Result string `omitempty:"true"`
 }
 
 // ormc:formonly
@@ -102,14 +102,14 @@ type JSONRPCRequest struct {
 	JSONRPC string
 	ID      RequestId
 	Method  string
-	Params  string ``
+	Params  string `omitempty:"true"`
 }
 
 // ormc:formonly
 type JSONRPCNotification struct {
 	JSONRPC string
 	Method  string
-	Params  string ``
+	Params  string `omitempty:"true"`
 }
 
 // ormc:formonly
@@ -135,5 +135,5 @@ func (e *JSONRPCError) jsonrpcMessage() {}
 type JSONRPCErrorDetails struct {
 	Code    int64
 	Message string
-	Data    string ``
+	Data    string `omitempty:"true"`
 }
