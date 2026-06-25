@@ -56,8 +56,8 @@ func (m *rpcResponse) ModelName() string {
 var _schemarpcResponse = []fmt.Field{
 		{Name: "jsonrpc", Type: fmt.FieldText},
 		{Name: "id", Type: fmt.FieldText},
-		{Name: "result", Type: fmt.FieldRaw},
-		{Name: "error", Type: fmt.FieldText},
+		{Name: "result", Type: fmt.FieldRaw, OmitEmpty: true},
+		{Name: "error", Type: fmt.FieldText, OmitEmpty: true},
 	}
 
 func (m *rpcResponse) Schema() []fmt.Field { return _schemarpcResponse }
@@ -69,8 +69,8 @@ func (m *rpcResponse) IsNil() bool { return m == nil }
 func (m *rpcResponse) EncodeFields(w fmt.FieldWriter) {
 	w.String("jsonrpc", m.JSONRPC)
 	w.String("id", m.ID)
-	w.Raw("result", m.Result)
-	w.String("error", m.Error)
+	if len(m.Result) != 0 { w.Raw("result", m.Result) }
+	if m.Error != "" { w.String("error", m.Error) }
 }
 
 func (m *rpcResponse) DecodeFields(r fmt.FieldReader) error {
@@ -213,7 +213,7 @@ func (m *initializeResult) ModelName() string {
 var _schemainitializeResult = []fmt.Field{
 		{Name: "protocolVersion", Type: fmt.FieldText},
 		{Name: "serverInfo", Type: fmt.FieldStruct},
-		{Name: "capabilities", Type: fmt.FieldRaw},
+		{Name: "capabilities", Type: fmt.FieldRaw, OmitEmpty: true},
 	}
 
 func (m *initializeResult) Schema() []fmt.Field { return _schemainitializeResult }
@@ -225,7 +225,7 @@ func (m *initializeResult) IsNil() bool { return m == nil }
 func (m *initializeResult) EncodeFields(w fmt.FieldWriter) {
 	w.String("protocolVersion", m.ProtocolVersion)
 	w.Object("serverInfo", &m.ServerInfo)
-	w.Raw("capabilities", m.Capabilities)
+	if len(m.Capabilities) != 0 { w.Raw("capabilities", m.Capabilities) }
 }
 
 func (m *initializeResult) DecodeFields(r fmt.FieldReader) error {
@@ -288,7 +288,7 @@ func (m *Result) ModelName() string {
 }
 
 var _schemaResult = []fmt.Field{
-		{Name: "isError", Type: fmt.FieldBool},
+		{Name: "isError", Type: fmt.FieldBool, OmitEmpty: true},
 		{Name: "content", Type: fmt.FieldRaw},
 	}
 
@@ -299,7 +299,7 @@ func (m *Result) Pointers() []any { return []any{&m.IsError, &m.Content} }
 func (m *Result) IsNil() bool { return m == nil }
 
 func (m *Result) EncodeFields(w fmt.FieldWriter) {
-	w.Bool("isError", m.IsError)
+	if m.IsError { w.Bool("isError", m.IsError) }
 	w.Raw("content", m.Content)
 }
 
@@ -363,7 +363,7 @@ func (m *toolEntry) ModelName() string {
 
 var _schematoolEntry = []fmt.Field{
 		{Name: "name", Type: fmt.FieldText},
-		{Name: "description", Type: fmt.FieldText},
+		{Name: "description", Type: fmt.FieldText, OmitEmpty: true},
 		{Name: "inputSchema", Type: fmt.FieldRaw},
 	}
 
@@ -375,7 +375,7 @@ func (m *toolEntry) IsNil() bool { return m == nil }
 
 func (m *toolEntry) EncodeFields(w fmt.FieldWriter) {
 	w.String("name", m.Name)
-	w.String("description", m.Description)
+	if m.Description != "" { w.String("description", m.Description) }
 	w.Raw("inputSchema", m.InputSchema)
 }
 
@@ -403,7 +403,7 @@ func (m *listToolsResult) ModelName() string {
 
 var _schemalistToolsResult = []fmt.Field{
 		{Name: "tools", Type: fmt.FieldRaw},
-		{Name: "nextCursor", Type: fmt.FieldText},
+		{Name: "nextCursor", Type: fmt.FieldText, OmitEmpty: true},
 	}
 
 func (m *listToolsResult) Schema() []fmt.Field { return _schemalistToolsResult }
@@ -414,7 +414,7 @@ func (m *listToolsResult) IsNil() bool { return m == nil }
 
 func (m *listToolsResult) EncodeFields(w fmt.FieldWriter) {
 	w.Raw("tools", m.Tools)
-	w.String("nextCursor", m.NextCursor)
+	if m.NextCursor != "" { w.String("nextCursor", m.NextCursor) }
 }
 
 func (m *listToolsResult) DecodeFields(r fmt.FieldReader) error {
@@ -440,7 +440,7 @@ func (m *errorResponse) ModelName() string {
 
 var _schemaerrorResponse = []fmt.Field{
 		{Name: "jsonrpc", Type: fmt.FieldText},
-		{Name: "id", Type: fmt.FieldText},
+		{Name: "id", Type: fmt.FieldText, OmitEmpty: true},
 		{Name: "error", Type: fmt.FieldStruct},
 	}
 
@@ -452,7 +452,7 @@ func (m *errorResponse) IsNil() bool { return m == nil }
 
 func (m *errorResponse) EncodeFields(w fmt.FieldWriter) {
 	w.String("jsonrpc", m.JSONRPC)
-	w.String("id", m.ID)
+	if m.ID != "" { w.String("id", m.ID) }
 	w.Object("error", &m.Error)
 }
 
@@ -479,7 +479,7 @@ func (m *Meta) ModelName() string {
 }
 
 var _schemaMeta = []fmt.Field{
-		{Name: "progressToken", Type: fmt.FieldText},
+		{Name: "progressToken", Type: fmt.FieldText, OmitEmpty: true},
 	}
 
 func (m *Meta) Schema() []fmt.Field { return _schemaMeta }
@@ -489,7 +489,7 @@ func (m *Meta) Pointers() []any { return []any{&m.ProgressToken} }
 func (m *Meta) IsNil() bool { return m == nil }
 
 func (m *Meta) EncodeFields(w fmt.FieldWriter) {
-	w.String("progressToken", m.ProgressToken)
+	if m.ProgressToken != "" { w.String("progressToken", m.ProgressToken) }
 }
 
 func (m *Meta) DecodeFields(r fmt.FieldReader) error {
@@ -513,7 +513,7 @@ func (m *NotificationParams) ModelName() string {
 }
 
 var _schemaNotificationParams = []fmt.Field{
-		{Name: "meta", Type: fmt.FieldText},
+		{Name: "meta", Type: fmt.FieldText, OmitEmpty: true},
 	}
 
 func (m *NotificationParams) Schema() []fmt.Field { return _schemaNotificationParams }
@@ -523,7 +523,7 @@ func (m *NotificationParams) Pointers() []any { return []any{&m.Meta} }
 func (m *NotificationParams) IsNil() bool { return m == nil }
 
 func (m *NotificationParams) EncodeFields(w fmt.FieldWriter) {
-	w.String("meta", m.Meta)
+	if m.Meta != "" { w.String("meta", m.Meta) }
 }
 
 func (m *NotificationParams) DecodeFields(r fmt.FieldReader) error {
@@ -547,7 +547,7 @@ func (m *EmptyResult) ModelName() string {
 }
 
 var _schemaEmptyResult = []fmt.Field{
-		{Name: "result", Type: fmt.FieldText},
+		{Name: "result", Type: fmt.FieldText, OmitEmpty: true},
 	}
 
 func (m *EmptyResult) Schema() []fmt.Field { return _schemaEmptyResult }
@@ -557,7 +557,7 @@ func (m *EmptyResult) Pointers() []any { return []any{&m.Result} }
 func (m *EmptyResult) IsNil() bool { return m == nil }
 
 func (m *EmptyResult) EncodeFields(w fmt.FieldWriter) {
-	w.String("result", m.Result)
+	if m.Result != "" { w.String("result", m.Result) }
 }
 
 func (m *EmptyResult) DecodeFields(r fmt.FieldReader) error {
@@ -584,7 +584,7 @@ var _schemaJSONRPCRequest = []fmt.Field{
 		{Name: "jsonrpc", Type: fmt.FieldText},
 		{Name: "id", Type: fmt.FieldText},
 		{Name: "method", Type: fmt.FieldText},
-		{Name: "params", Type: fmt.FieldText},
+		{Name: "params", Type: fmt.FieldText, OmitEmpty: true},
 	}
 
 func (m *JSONRPCRequest) Schema() []fmt.Field { return _schemaJSONRPCRequest }
@@ -597,7 +597,7 @@ func (m *JSONRPCRequest) EncodeFields(w fmt.FieldWriter) {
 	w.String("jsonrpc", m.JSONRPC)
 	w.String("id", m.ID)
 	w.String("method", m.Method)
-	w.String("params", m.Params)
+	if m.Params != "" { w.String("params", m.Params) }
 }
 
 func (m *JSONRPCRequest) DecodeFields(r fmt.FieldReader) error {
@@ -626,7 +626,7 @@ func (m *JSONRPCNotification) ModelName() string {
 var _schemaJSONRPCNotification = []fmt.Field{
 		{Name: "jsonrpc", Type: fmt.FieldText},
 		{Name: "method", Type: fmt.FieldText},
-		{Name: "params", Type: fmt.FieldText},
+		{Name: "params", Type: fmt.FieldText, OmitEmpty: true},
 	}
 
 func (m *JSONRPCNotification) Schema() []fmt.Field { return _schemaJSONRPCNotification }
@@ -638,7 +638,7 @@ func (m *JSONRPCNotification) IsNil() bool { return m == nil }
 func (m *JSONRPCNotification) EncodeFields(w fmt.FieldWriter) {
 	w.String("jsonrpc", m.JSONRPC)
 	w.String("method", m.Method)
-	w.String("params", m.Params)
+	if m.Params != "" { w.String("params", m.Params) }
 }
 
 func (m *JSONRPCNotification) DecodeFields(r fmt.FieldReader) error {
@@ -666,8 +666,8 @@ func (m *JSONRPCResponseStruct) ModelName() string {
 var _schemaJSONRPCResponseStruct = []fmt.Field{
 		{Name: "jsonrpc", Type: fmt.FieldText},
 		{Name: "id", Type: fmt.FieldText},
-		{Name: "result", Type: fmt.FieldRaw},
-		{Name: "error", Type: fmt.FieldRaw},
+		{Name: "result", Type: fmt.FieldRaw, OmitEmpty: true},
+		{Name: "error", Type: fmt.FieldRaw, OmitEmpty: true},
 	}
 
 func (m *JSONRPCResponseStruct) Schema() []fmt.Field { return _schemaJSONRPCResponseStruct }
@@ -679,8 +679,8 @@ func (m *JSONRPCResponseStruct) IsNil() bool { return m == nil }
 func (m *JSONRPCResponseStruct) EncodeFields(w fmt.FieldWriter) {
 	w.String("jsonrpc", m.JSONRPC)
 	w.String("id", m.ID)
-	w.Raw("result", m.Result)
-	w.Raw("error", m.Error)
+	if len(m.Result) != 0 { w.Raw("result", m.Result) }
+	if len(m.Error) != 0 { w.Raw("error", m.Error) }
 }
 
 func (m *JSONRPCResponseStruct) DecodeFields(r fmt.FieldReader) error {
@@ -749,7 +749,7 @@ func (m *JSONRPCErrorDetails) ModelName() string {
 var _schemaJSONRPCErrorDetails = []fmt.Field{
 		{Name: "code", Type: fmt.FieldInt},
 		{Name: "message", Type: fmt.FieldText},
-		{Name: "data", Type: fmt.FieldText},
+		{Name: "data", Type: fmt.FieldText, OmitEmpty: true},
 	}
 
 func (m *JSONRPCErrorDetails) Schema() []fmt.Field { return _schemaJSONRPCErrorDetails }
@@ -761,7 +761,7 @@ func (m *JSONRPCErrorDetails) IsNil() bool { return m == nil }
 func (m *JSONRPCErrorDetails) EncodeFields(w fmt.FieldWriter) {
 	w.Int("code", int64(m.Code))
 	w.String("message", m.Message)
-	w.String("data", m.Data)
+	if m.Data != "" { w.String("data", m.Data) }
 }
 
 func (m *JSONRPCErrorDetails) DecodeFields(r fmt.FieldReader) error {
