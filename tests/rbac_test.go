@@ -129,11 +129,10 @@ func (v *validateFielder) Validate(action byte) error {
 
 func (v *validateFielder) IsNil() bool { return v == nil }
 
-func (v *validateFielder) DecodeFields(r fmt.FieldReader) error {
+func (v *validateFielder) DecodeFields(r fmt.FieldReader) {
 	if val, ok := r.String("Foo"); ok {
 		v.Foo = val
 	}
-	return nil
 }
 
 func TestHandleToolCall_Bind_UsesToolAction(t *testing.T) {

@@ -30,12 +30,11 @@ func (m *rpcRequest) EncodeFields(w fmt.FieldWriter) {
 	w.String("params", m.Params)
 }
 
-func (m *rpcRequest) DecodeFields(r fmt.FieldReader) error {
+func (m *rpcRequest) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
 	if v, ok := r.String("id"); ok { m.ID = v }
 	if v, ok := r.String("method"); ok { m.Method = v }
 	if v, ok := r.String("params"); ok { m.Params = v }
-	return nil
 }
 
 type rpcRequestList []*rpcRequest
@@ -47,7 +46,7 @@ func (s *rpcRequestList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *rpcRequestList) Append() fmt.Fielder  { v := &rpcRequest{}; *s = append(*s, v); return v }
 func (s *rpcRequestList) IsNil() bool          { return s == nil }
 func (s *rpcRequestList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *rpcRequestList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *rpcRequestList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *rpcResponse) ModelName() string {
 	return "rpc_response"
@@ -73,12 +72,11 @@ func (m *rpcResponse) EncodeFields(w fmt.FieldWriter) {
 	if m.Error != "" { w.String("error", m.Error) }
 }
 
-func (m *rpcResponse) DecodeFields(r fmt.FieldReader) error {
+func (m *rpcResponse) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
 	if v, ok := r.String("id"); ok { m.ID = v }
 	if v, ok := r.Raw("result"); ok { m.Result = v }
 	if v, ok := r.String("error"); ok { m.Error = v }
-	return nil
 }
 
 type rpcResponseList []*rpcResponse
@@ -90,7 +88,7 @@ func (s *rpcResponseList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *rpcResponseList) Append() fmt.Fielder  { v := &rpcResponse{}; *s = append(*s, v); return v }
 func (s *rpcResponseList) IsNil() bool          { return s == nil }
 func (s *rpcResponseList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *rpcResponseList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *rpcResponseList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *jsonRPCError) ModelName() string {
 	return "json_rpcerror"
@@ -99,7 +97,7 @@ func (m *jsonRPCError) ModelName() string {
 var _schemajsonRPCError = []fmt.Field{
 		{Name: "code", Type: fmt.FieldInt},
 		{Name: "message", Type: fmt.FieldText},
-		{Name: "data", Type: fmt.FieldText},
+		{Name: "data", Type: fmt.FieldText, OmitEmpty: true},
 	}
 
 func (m *jsonRPCError) Schema() []fmt.Field { return _schemajsonRPCError }
@@ -111,14 +109,13 @@ func (m *jsonRPCError) IsNil() bool { return m == nil }
 func (m *jsonRPCError) EncodeFields(w fmt.FieldWriter) {
 	w.Int("code", int64(m.Code))
 	w.String("message", m.Message)
-	w.String("data", m.Data)
+	if m.Data != "" { w.String("data", m.Data) }
 }
 
-func (m *jsonRPCError) DecodeFields(r fmt.FieldReader) error {
+func (m *jsonRPCError) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.Int("code"); ok { m.Code = int64(v) }
 	if v, ok := r.String("message"); ok { m.Message = v }
 	if v, ok := r.String("data"); ok { m.Data = v }
-	return nil
 }
 
 type jsonRPCErrorList []*jsonRPCError
@@ -130,7 +127,7 @@ func (s *jsonRPCErrorList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *jsonRPCErrorList) Append() fmt.Fielder  { v := &jsonRPCError{}; *s = append(*s, v); return v }
 func (s *jsonRPCErrorList) IsNil() bool          { return s == nil }
 func (s *jsonRPCErrorList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *jsonRPCErrorList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *jsonRPCErrorList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *initializeParams) ModelName() string {
 	return "initialize_params"
@@ -152,10 +149,9 @@ func (m *initializeParams) EncodeFields(w fmt.FieldWriter) {
 	w.Object("clientInfo", &m.ClientInfo)
 }
 
-func (m *initializeParams) DecodeFields(r fmt.FieldReader) error {
+func (m *initializeParams) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("protocolVersion"); ok { m.ProtocolVersion = v }
 	r.Object("clientInfo", &m.ClientInfo)
-	return nil
 }
 
 type initializeParamsList []*initializeParams
@@ -167,7 +163,7 @@ func (s *initializeParamsList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *initializeParamsList) Append() fmt.Fielder  { v := &initializeParams{}; *s = append(*s, v); return v }
 func (s *initializeParamsList) IsNil() bool          { return s == nil }
 func (s *initializeParamsList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *initializeParamsList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *initializeParamsList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *implementationInfo) ModelName() string {
 	return "implementation_info"
@@ -189,10 +185,9 @@ func (m *implementationInfo) EncodeFields(w fmt.FieldWriter) {
 	w.String("version", m.Version)
 }
 
-func (m *implementationInfo) DecodeFields(r fmt.FieldReader) error {
+func (m *implementationInfo) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("name"); ok { m.Name = v }
 	if v, ok := r.String("version"); ok { m.Version = v }
-	return nil
 }
 
 type implementationInfoList []*implementationInfo
@@ -204,7 +199,7 @@ func (s *implementationInfoList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *implementationInfoList) Append() fmt.Fielder  { v := &implementationInfo{}; *s = append(*s, v); return v }
 func (s *implementationInfoList) IsNil() bool          { return s == nil }
 func (s *implementationInfoList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *implementationInfoList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *implementationInfoList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *initializeResult) ModelName() string {
 	return "initialize_result"
@@ -228,11 +223,10 @@ func (m *initializeResult) EncodeFields(w fmt.FieldWriter) {
 	if len(m.Capabilities) != 0 { w.Raw("capabilities", m.Capabilities) }
 }
 
-func (m *initializeResult) DecodeFields(r fmt.FieldReader) error {
+func (m *initializeResult) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("protocolVersion"); ok { m.ProtocolVersion = v }
 	r.Object("serverInfo", &m.ServerInfo)
 	if v, ok := r.Raw("capabilities"); ok { m.Capabilities = v }
-	return nil
 }
 
 type initializeResultList []*initializeResult
@@ -244,7 +238,7 @@ func (s *initializeResultList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *initializeResultList) Append() fmt.Fielder  { v := &initializeResult{}; *s = append(*s, v); return v }
 func (s *initializeResultList) IsNil() bool          { return s == nil }
 func (s *initializeResultList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *initializeResultList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *initializeResultList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *CallToolParams) ModelName() string {
 	return "call_tool_params"
@@ -266,10 +260,9 @@ func (m *CallToolParams) EncodeFields(w fmt.FieldWriter) {
 	w.Raw("arguments", m.Arguments)
 }
 
-func (m *CallToolParams) DecodeFields(r fmt.FieldReader) error {
+func (m *CallToolParams) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("name"); ok { m.Name = v }
 	if v, ok := r.Raw("arguments"); ok { m.Arguments = v }
-	return nil
 }
 
 type CallToolParamsList []*CallToolParams
@@ -281,7 +274,7 @@ func (s *CallToolParamsList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *CallToolParamsList) Append() fmt.Fielder  { v := &CallToolParams{}; *s = append(*s, v); return v }
 func (s *CallToolParamsList) IsNil() bool          { return s == nil }
 func (s *CallToolParamsList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *CallToolParamsList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *CallToolParamsList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *Result) ModelName() string {
 	return "result"
@@ -303,10 +296,9 @@ func (m *Result) EncodeFields(w fmt.FieldWriter) {
 	w.Raw("content", m.Content)
 }
 
-func (m *Result) DecodeFields(r fmt.FieldReader) error {
+func (m *Result) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.Bool("isError"); ok { m.IsError = v }
 	if v, ok := r.Raw("content"); ok { m.Content = v }
-	return nil
 }
 
 type ResultList []*Result
@@ -318,7 +310,7 @@ func (s *ResultList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *ResultList) Append() fmt.Fielder  { v := &Result{}; *s = append(*s, v); return v }
 func (s *ResultList) IsNil() bool          { return s == nil }
 func (s *ResultList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *ResultList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *ResultList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *TextContent) ModelName() string {
 	return "text_content"
@@ -340,10 +332,9 @@ func (m *TextContent) EncodeFields(w fmt.FieldWriter) {
 	w.String("text", m.Text)
 }
 
-func (m *TextContent) DecodeFields(r fmt.FieldReader) error {
+func (m *TextContent) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("type"); ok { m.Type = v }
 	if v, ok := r.String("text"); ok { m.Text = v }
-	return nil
 }
 
 type TextContentList []*TextContent
@@ -355,7 +346,7 @@ func (s *TextContentList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *TextContentList) Append() fmt.Fielder  { v := &TextContent{}; *s = append(*s, v); return v }
 func (s *TextContentList) IsNil() bool          { return s == nil }
 func (s *TextContentList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *TextContentList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *TextContentList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *toolEntry) ModelName() string {
 	return "tool_entry"
@@ -379,11 +370,10 @@ func (m *toolEntry) EncodeFields(w fmt.FieldWriter) {
 	w.Raw("inputSchema", m.InputSchema)
 }
 
-func (m *toolEntry) DecodeFields(r fmt.FieldReader) error {
+func (m *toolEntry) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("name"); ok { m.Name = v }
 	if v, ok := r.String("description"); ok { m.Description = v }
 	if v, ok := r.Raw("inputSchema"); ok { m.InputSchema = v }
-	return nil
 }
 
 type toolEntryList []*toolEntry
@@ -395,7 +385,7 @@ func (s *toolEntryList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *toolEntryList) Append() fmt.Fielder  { v := &toolEntry{}; *s = append(*s, v); return v }
 func (s *toolEntryList) IsNil() bool          { return s == nil }
 func (s *toolEntryList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *toolEntryList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *toolEntryList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *listToolsResult) ModelName() string {
 	return "list_tools_result"
@@ -417,10 +407,9 @@ func (m *listToolsResult) EncodeFields(w fmt.FieldWriter) {
 	if m.NextCursor != "" { w.String("nextCursor", m.NextCursor) }
 }
 
-func (m *listToolsResult) DecodeFields(r fmt.FieldReader) error {
+func (m *listToolsResult) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.Raw("tools"); ok { m.Tools = v }
 	if v, ok := r.String("nextCursor"); ok { m.NextCursor = v }
-	return nil
 }
 
 type listToolsResultList []*listToolsResult
@@ -432,7 +421,7 @@ func (s *listToolsResultList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *listToolsResultList) Append() fmt.Fielder  { v := &listToolsResult{}; *s = append(*s, v); return v }
 func (s *listToolsResultList) IsNil() bool          { return s == nil }
 func (s *listToolsResultList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *listToolsResultList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *listToolsResultList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *errorResponse) ModelName() string {
 	return "error_response"
@@ -456,11 +445,10 @@ func (m *errorResponse) EncodeFields(w fmt.FieldWriter) {
 	w.Object("error", &m.Error)
 }
 
-func (m *errorResponse) DecodeFields(r fmt.FieldReader) error {
+func (m *errorResponse) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
 	if v, ok := r.String("id"); ok { m.ID = v }
 	r.Object("error", &m.Error)
-	return nil
 }
 
 type errorResponseList []*errorResponse
@@ -472,7 +460,7 @@ func (s *errorResponseList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *errorResponseList) Append() fmt.Fielder  { v := &errorResponse{}; *s = append(*s, v); return v }
 func (s *errorResponseList) IsNil() bool          { return s == nil }
 func (s *errorResponseList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *errorResponseList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *errorResponseList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *Meta) ModelName() string {
 	return "meta"
@@ -492,9 +480,8 @@ func (m *Meta) EncodeFields(w fmt.FieldWriter) {
 	if m.ProgressToken != "" { w.String("progressToken", m.ProgressToken) }
 }
 
-func (m *Meta) DecodeFields(r fmt.FieldReader) error {
+func (m *Meta) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("progressToken"); ok { m.ProgressToken = v }
-	return nil
 }
 
 type MetaList []*Meta
@@ -506,7 +493,7 @@ func (s *MetaList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *MetaList) Append() fmt.Fielder  { v := &Meta{}; *s = append(*s, v); return v }
 func (s *MetaList) IsNil() bool          { return s == nil }
 func (s *MetaList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *MetaList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *MetaList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *NotificationParams) ModelName() string {
 	return "notification_params"
@@ -526,9 +513,8 @@ func (m *NotificationParams) EncodeFields(w fmt.FieldWriter) {
 	if m.Meta != "" { w.String("meta", m.Meta) }
 }
 
-func (m *NotificationParams) DecodeFields(r fmt.FieldReader) error {
+func (m *NotificationParams) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("meta"); ok { m.Meta = v }
-	return nil
 }
 
 type NotificationParamsList []*NotificationParams
@@ -540,7 +526,7 @@ func (s *NotificationParamsList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *NotificationParamsList) Append() fmt.Fielder  { v := &NotificationParams{}; *s = append(*s, v); return v }
 func (s *NotificationParamsList) IsNil() bool          { return s == nil }
 func (s *NotificationParamsList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *NotificationParamsList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *NotificationParamsList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *EmptyResult) ModelName() string {
 	return "empty_result"
@@ -560,9 +546,8 @@ func (m *EmptyResult) EncodeFields(w fmt.FieldWriter) {
 	if m.Result != "" { w.String("result", m.Result) }
 }
 
-func (m *EmptyResult) DecodeFields(r fmt.FieldReader) error {
+func (m *EmptyResult) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("result"); ok { m.Result = v }
-	return nil
 }
 
 type EmptyResultList []*EmptyResult
@@ -574,7 +559,7 @@ func (s *EmptyResultList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *EmptyResultList) Append() fmt.Fielder  { v := &EmptyResult{}; *s = append(*s, v); return v }
 func (s *EmptyResultList) IsNil() bool          { return s == nil }
 func (s *EmptyResultList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *EmptyResultList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *EmptyResultList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *JSONRPCRequest) ModelName() string {
 	return "jsonrpcrequest"
@@ -600,12 +585,11 @@ func (m *JSONRPCRequest) EncodeFields(w fmt.FieldWriter) {
 	if m.Params != "" { w.String("params", m.Params) }
 }
 
-func (m *JSONRPCRequest) DecodeFields(r fmt.FieldReader) error {
+func (m *JSONRPCRequest) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
 	if v, ok := r.String("id"); ok { m.ID = v }
 	if v, ok := r.String("method"); ok { m.Method = v }
 	if v, ok := r.String("params"); ok { m.Params = v }
-	return nil
 }
 
 type JSONRPCRequestList []*JSONRPCRequest
@@ -617,7 +601,7 @@ func (s *JSONRPCRequestList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *JSONRPCRequestList) Append() fmt.Fielder  { v := &JSONRPCRequest{}; *s = append(*s, v); return v }
 func (s *JSONRPCRequestList) IsNil() bool          { return s == nil }
 func (s *JSONRPCRequestList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *JSONRPCRequestList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *JSONRPCRequestList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *JSONRPCNotification) ModelName() string {
 	return "jsonrpcnotification"
@@ -641,11 +625,10 @@ func (m *JSONRPCNotification) EncodeFields(w fmt.FieldWriter) {
 	if m.Params != "" { w.String("params", m.Params) }
 }
 
-func (m *JSONRPCNotification) DecodeFields(r fmt.FieldReader) error {
+func (m *JSONRPCNotification) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
 	if v, ok := r.String("method"); ok { m.Method = v }
 	if v, ok := r.String("params"); ok { m.Params = v }
-	return nil
 }
 
 type JSONRPCNotificationList []*JSONRPCNotification
@@ -657,7 +640,7 @@ func (s *JSONRPCNotificationList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *JSONRPCNotificationList) Append() fmt.Fielder  { v := &JSONRPCNotification{}; *s = append(*s, v); return v }
 func (s *JSONRPCNotificationList) IsNil() bool          { return s == nil }
 func (s *JSONRPCNotificationList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *JSONRPCNotificationList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *JSONRPCNotificationList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *JSONRPCResponseStruct) ModelName() string {
 	return "jsonrpcresponse_struct"
@@ -683,12 +666,11 @@ func (m *JSONRPCResponseStruct) EncodeFields(w fmt.FieldWriter) {
 	if len(m.Error) != 0 { w.Raw("error", m.Error) }
 }
 
-func (m *JSONRPCResponseStruct) DecodeFields(r fmt.FieldReader) error {
+func (m *JSONRPCResponseStruct) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
 	if v, ok := r.String("id"); ok { m.ID = v }
 	if v, ok := r.Raw("result"); ok { m.Result = v }
 	if v, ok := r.Raw("error"); ok { m.Error = v }
-	return nil
 }
 
 type JSONRPCResponseStructList []*JSONRPCResponseStruct
@@ -700,7 +682,7 @@ func (s *JSONRPCResponseStructList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *JSONRPCResponseStructList) Append() fmt.Fielder  { v := &JSONRPCResponseStruct{}; *s = append(*s, v); return v }
 func (s *JSONRPCResponseStructList) IsNil() bool          { return s == nil }
 func (s *JSONRPCResponseStructList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *JSONRPCResponseStructList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *JSONRPCResponseStructList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *JSONRPCError) ModelName() string {
 	return "jsonrpcerror"
@@ -724,11 +706,10 @@ func (m *JSONRPCError) EncodeFields(w fmt.FieldWriter) {
 	w.Raw("error", m.Error)
 }
 
-func (m *JSONRPCError) DecodeFields(r fmt.FieldReader) error {
+func (m *JSONRPCError) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
 	if v, ok := r.String("id"); ok { m.ID = v }
 	if v, ok := r.Raw("error"); ok { m.Error = v }
-	return nil
 }
 
 type JSONRPCErrorList []*JSONRPCError
@@ -740,7 +721,7 @@ func (s *JSONRPCErrorList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *JSONRPCErrorList) Append() fmt.Fielder  { v := &JSONRPCError{}; *s = append(*s, v); return v }
 func (s *JSONRPCErrorList) IsNil() bool          { return s == nil }
 func (s *JSONRPCErrorList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *JSONRPCErrorList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *JSONRPCErrorList) DecodeFields(_ fmt.FieldReader) {}
 
 func (m *JSONRPCErrorDetails) ModelName() string {
 	return "jsonrpcerror_details"
@@ -764,11 +745,10 @@ func (m *JSONRPCErrorDetails) EncodeFields(w fmt.FieldWriter) {
 	if m.Data != "" { w.String("data", m.Data) }
 }
 
-func (m *JSONRPCErrorDetails) DecodeFields(r fmt.FieldReader) error {
+func (m *JSONRPCErrorDetails) DecodeFields(r fmt.FieldReader) {
 	if v, ok := r.Int("code"); ok { m.Code = int64(v) }
 	if v, ok := r.String("message"); ok { m.Message = v }
 	if v, ok := r.String("data"); ok { m.Data = v }
-	return nil
 }
 
 type JSONRPCErrorDetailsList []*JSONRPCErrorDetails
@@ -780,5 +760,5 @@ func (s *JSONRPCErrorDetailsList) At(i int) fmt.Fielder { return (*s)[i] }
 func (s *JSONRPCErrorDetailsList) Append() fmt.Fielder  { v := &JSONRPCErrorDetails{}; *s = append(*s, v); return v }
 func (s *JSONRPCErrorDetailsList) IsNil() bool          { return s == nil }
 func (s *JSONRPCErrorDetailsList) EncodeFields(_ fmt.FieldWriter) {}
-func (s *JSONRPCErrorDetailsList) DecodeFields(_ fmt.FieldReader) error { return nil }
+func (s *JSONRPCErrorDetailsList) DecodeFields(_ fmt.FieldReader) {}
 
