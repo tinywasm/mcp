@@ -23,6 +23,8 @@ Consumer (tinywasm/app)
     │
     └─ NewServer(Config, []ToolProvider) → (*Server, error)
               │
+                ├─ MountAPI(router) → POST /mcp
+                │
               ▼
         ┌─────────────────────────────────────┐
         │  Server                             │
@@ -81,6 +83,7 @@ SSE is optional — when `Config.SSE` is nil, no streaming occurs.
 |------|---------------|
 | `server.go` | `Server`, `Config`, `NewServer`, `HandleMessage` dispatch to handlers, `AddTool`, tool call/list/init/ping handlers |
 | `request_handler.go` | `HandleMessage` JSON-RPC dispatch, `ExtractJSONValue`, `extractJSONString`, context keys |
+| `mount.go` | `router.APIModule` implementation (`ModelName`, `MountAPI`) |
 | `mcp_auth.go` | `Authorizer` interface (`Authorize` + `Can`), `NewTokenAuthorizer`, `OpenAuthorizer` |
 | `server_sse.go` | `SSEPublisher` interface (build `!wasm`) |
 | `tools.go` | `Tool`, `Request`, `Request.Bind`, `Text`, `FilterFunc`, `ToolProvider` |
