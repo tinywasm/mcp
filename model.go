@@ -45,7 +45,7 @@ type CallToolParams struct {
 
 type Result struct {
 	IsError bool        `json:"isError,omitempty"`
-	Content fmt.RawJSON
+	Content fmt.RawJSON `json:"content,omitempty"`
 }
 
 type TextContent struct {
