@@ -9,6 +9,8 @@ const (
 
 // Common HTTP header constants used across server transports
 const (
+	headerContentType        = "Content-Type"
+	mimeJSON                 = "application/json"
 	HeaderKeySessionID       = "Mcp-Session-Id"
 	HeaderKeyProtocolVersion = "Mcp-Protocol-Version"
 	ContentTypeText          = "text"

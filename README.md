@@ -63,15 +63,22 @@ srv.AddTool(mcp.Tool{
     Execute:     handleSearch,
 })
 
-// Consumer owns HTTP routing — use HandleMessage directly
-http.HandleFunc("/mcp", func(w http.ResponseWriter, r *http.Request) {
+// 1. Mount on a router (recommended)
+import "github.com/tinywasm/router"
+
+// ... inside your setup
+r := router.New()
+srv.MountAPI(r)
+r.ListenAndServe(":3030")
+
+// 2. Or manual handling if needed
+http.HandleFunc(mcp.MCPPath, func(w http.ResponseWriter, r *http.Request) {
     body, _ := io.ReadAll(r.Body)
     ctx := context.New()
     ctx.Set(mcp.CtxKeyAuthToken, r.Header.Get("Authorization"))
     resp := srv.HandleMessage(&ctx, body)
     // encode resp as JSON and write to w
 })
-http.ListenAndServe(":3030", nil)
 ```
 
 ### 4. Tool results
@@ -203,6 +210,7 @@ response := srv.HandleMessage(&ctx, message)
 | `NewServer(config, providers)` | Create MCP server — returns `(*Server, error)` |
 | `Server.AddTool(tool)` | Register a single tool |
 | `Server.HandleMessage(ctx, msg)` | Process JSON-RPC message (WASM-safe) |
+| `Server.MountAPI(router)` | Mount MCP endpoint on a `router.Router` |
 | `Tool{Name, Description, InputSchema, Resource, Action, Execute}` | Tool definition |
 | `ToolProvider` | Interface: `Tools() []Tool` |
 | `Authorizer` | Interface: `Authorize(token) (userID, error)`, `Can(userID, resource, action) bool` |
