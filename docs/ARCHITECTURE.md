@@ -7,8 +7,8 @@ Lean Go implementation of MCP (Model Context Protocol) over JSON-RPC 2.0. Protoc
 ## Design Principles
 
 - **No HTTP ownership** — `mcp` never owns HTTP routing. Only exposes `HandleMessage()`.
-- **Auth required** — `NewServer` returns error if `Config.Auth == nil`.
-- **Mandatory RBAC** — Every tool call passes through `Authorizer.Can()` before execution.
+- **RBAC Required** — `NewServer` returns error if `Config.Authorize == nil`.
+- **Mandatory RBAC** — Every tool call passes through `Authorize()` before execution.
 - **SSE via DI** — Optional `SSEPublisher` injected by consumer for streaming notifications.
 - **WASM-safe** — Protocol core compiles with TinyGo. Server-only files use `//go:build !wasm`.
 
@@ -18,7 +18,7 @@ Lean Go implementation of MCP (Model Context Protocol) over JSON-RPC 2.0. Protoc
 Consumer (tinywasm/app)
     │
     ├─ owns HTTP routing
-    ├─ creates Authorizer (token, open, or custom)
+    ├─ handles authentication (middleware)
     ├─ optionally creates *sse.SSEServer → SSEPublisher
     │
     └─ NewServer(Config, []ToolProvider) → (*Server, error)
@@ -31,8 +31,8 @@ Consumer (tinywasm/app)
         │  HandleMessage(ctx, []byte) → msg   │
         │                                     │
         │  Auth flow:                         │
-        │  1. Authorize(token) → userID       │
-        │  2. Can(userID, resource, action)   │
+        │  1. UserID from ctx                 │
+        │  2. Authorize(userID, res, act)     │
         │                                     │
         │  SSE: Publish(data, channel)        │
         └─────────────────────────────────────┘
@@ -48,14 +48,12 @@ Consumer (tinywasm/app)
 ```
 HandleMessage(ctx, raw)
     │
-    ├─ extract token from ctx (CtxKeyAuthToken)
-    ├─ auth.Authorize(token) → userID, err
-    │   └─ err? → -32001 Unauthorized
-    ├─ ctx.Set(CtxKeyUserID, userID)
+    ├─ userID := ctx.Value(CtxKeyUserID)
     │
     └─ tools/call:
         ├─ lookup tool by name
-        ├─ auth.Can(userID, tool.Resource, tool.Action)
+        ├─ if !tool.Public && userID == "": Forbidden
+        ├─ authorize(userID, tool.Resource, tool.Action)
         │   └─ false? → -32001 Forbidden
         └─ tool.Execute(ctx, req)
 ```
@@ -84,7 +82,7 @@ SSE is optional — when `Config.SSE` is nil, no streaming occurs.
 | `server.go` | `Server`, `Config`, `NewServer`, `HandleMessage` dispatch to handlers, `AddTool`, tool call/list/init/ping handlers |
 | `request_handler.go` | `HandleMessage` JSON-RPC dispatch, `ExtractJSONValue`, `extractJSONString`, context keys |
 | `mount.go` | `router.APIModule` implementation (`ModelName`, `MountAPI`) |
-| `mcp_auth.go` | `Authorizer` interface (`Authorize` + `Can`), `NewTokenAuthorizer`, `OpenAuthorizer` |
+| `mcp_auth.go` | `Authorize` type + `AllowAll` helper |
 | `server_sse.go` | `SSEPublisher` interface (build `!wasm`) |
 | `tools.go` | `Tool`, `Request`, `Request.Bind`, `Text`, `FilterFunc`, `ToolProvider` |
 | `types.go` | JSON-RPC 2.0 types: `JSONRPCMessage`, `JSONRPCRequest`, `JSONRPCNotification`, `JSONRPCResponseStruct`, `JSONRPCError`, `Result`, error codes, MCP methods |
@@ -100,10 +98,8 @@ SSE is optional — when `Config.SSE` is nil, no streaming occurs.
 ## Key Interfaces
 
 ```go
-type Authorizer interface {
-    Authorize(token string) (userID string, err error)
-    Can(userID, resource string, action byte) bool
-}
+// From github.com/tinywasm/router (matches mcp.Authorize)
+type Authorize func(userID, resource, action string) bool
 
 type SSEPublisher interface {  // build !wasm
     Publish(data []byte, channel string)
@@ -120,4 +116,4 @@ type ToolProvider interface {
 - No external HTTP dependencies in protocol core
 - WASM build excludes `server_sse.go` via build tag
 - All tools require `Resource` and `Action` fields (RBAC mandatory)
-- `NewServer` rejects nil `Auth`
+- `NewServer` rejects nil `Authorize`

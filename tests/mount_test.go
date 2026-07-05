@@ -29,6 +29,7 @@ type mockContext struct {
 	headers     map[string]string
 	status      int
 	writtenData []byte
+	userID      string
 }
 
 func (m *mockContext) Body() []byte { return m.body }
@@ -49,12 +50,13 @@ func (m *mockContext) Write(data []byte) (int, error) {
 	m.writtenData = append(m.writtenData, data...)
 	return len(data), nil
 }
+func (m *mockContext) UserID() string { return m.userID }
 
 func TestMountAPI(t *testing.T) {
 	server, _ := mcp.NewServer(mcp.Config{
-		Name:    "test-server",
-		Version: "1.0.0",
-		Auth:    &mockAuth{id: "user-1"},
+		Name:      "test-server",
+		Version:   "1.0.0",
+		Authorize: mcp.AllowAll,
 	}, nil)
 
 	mr := &mockRouter{}
@@ -89,8 +91,8 @@ func TestMountAPI(t *testing.T) {
 
 func TestModelName(t *testing.T) {
 	server, _ := mcp.NewServer(mcp.Config{
-		Name: "my-mcp-server",
-		Auth: &mockAuth{id: "user-1"},
+		Name:      "my-mcp-server",
+		Authorize: mcp.AllowAll,
 	}, nil)
 
 	if server.ModelName() != "my-mcp-server" {

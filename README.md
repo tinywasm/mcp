@@ -46,9 +46,9 @@ func handleSearch(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 
 ```go
 srv, err := mcp.NewServer(mcp.Config{
-    Name:    "my-server",
-    Version: "1.0.0",
-    Auth:    mcp.NewTokenAuthorizer("my-secret-key"),
+    Name:      "my-server",
+    Version:   "1.0.0",
+    Authorize: mcp.AllowAll, // or your RBAC function
 }, nil)
 if err != nil {
     log.Fatal(err)
@@ -66,7 +66,6 @@ srv.AddTool(mcp.Tool{
 // 1. Mount on a router (recommended)
 import "github.com/tinywasm/router"
 
-// ... inside your setup
 r := router.New()
 srv.MountAPI(r)
 r.ListenAndServe(":3030")
@@ -75,41 +74,29 @@ r.ListenAndServe(":3030")
 http.HandleFunc(mcp.MCPPath, func(w http.ResponseWriter, r *http.Request) {
     body, _ := io.ReadAll(r.Body)
     ctx := context.New()
-    ctx.Set(mcp.CtxKeyAuthToken, r.Header.Get("Authorization"))
+    ctx.Set(mcp.CtxKeyUserID, "user-123") // identity resolved by host
     resp := srv.HandleMessage(&ctx, body)
     // encode resp as JSON and write to w
 })
 ```
 
-### 4. Tool results
-
-```go
-return mcp.Text("operation completed"), nil   // text
-return mcp.JSON(&MyData{Name: "test"})        // JSON (Fielder)
-text, err := mcp.GetText(result)              // extract text
-```
-
 ---
 
-## Authorizer
+## Authorization (RBAC)
 
-mcp provides built-in implementations and accepts custom ones:
+`mcp` delegates identity resolution to the host and only handles per-tool RBAC.
 
 ```go
-type Authorizer interface {
-    Authorize(token string) (userID string, err error)
-    Can(userID, resource string, action byte) bool
-}
+// The Authorize function signature expected by mcp
+type Authorize func(userID, resource, action string) bool
 
-// Built-in:
-auth := mcp.NewTokenAuthorizer("my-api-key") // token-based, Can() always true
-auth := mcp.OpenAuthorizer()                  // no auth, Can() always true
-
-// Custom (e.g. from tinywasm/user):
-auth := userModule.MCPAuthorizer()            // satisfies mcp.Authorizer
+// Example implementation (e.g. using tinywasm/user)
+srv, _ := mcp.NewServer(mcp.Config{
+    Authorize: user.Can,
+}, providers)
 ```
 
-Auth is required — `NewServer` returns error if `Config.Auth == nil`. Use `mcp.OpenAuthorizer()` for open access.
+Authorization is required — `NewServer` returns error if `Config.Authorize` is nil. Use `mcp.AllowAll` for open access during development.
 
 ---
 
@@ -123,76 +110,18 @@ import "github.com/tinywasm/sse"
 sseServer := sse.New()
 
 srv, err := mcp.NewServer(mcp.Config{
-    Name:    "my-server",
-    Version: "1.0.0",
-    Auth:    mcp.NewTokenAuthorizer("secret"),
-    SSE:     sseServer, // *sse.SSEServer satisfies mcp.SSEPublisher
+    Name:      "my-server",
+    Version:   "1.0.0",
+    Authorize: mcp.AllowAll,
+    SSE:       sseServer, // *sse.SSEServer satisfies mcp.SSEPublisher
 }, providers)
-```
-
-When SSE is present, tool list changes and notifications are published automatically. When nil, no streaming occurs.
-
----
-
-## ToolProvider
-
-Group related tools and their dependencies in a provider:
-
-```go
-type CatalogProvider struct {
-    db *postgres.DB
-}
-
-type CatalogSearchArgs struct {
-    Query    string `input:"required,min=1,max=255"`
-    Category string `input:"max=50"`
-}
-
-type CatalogUpdateArgs struct {
-    ProductID string  `input:"required"`
-    Price     float64 `input:"required,min=0"`
-}
-
-func (p *CatalogProvider) Tools() []mcp.Tool {
-    return []mcp.Tool{
-        {
-            Name:        "catalog_search",
-            Description: "Search product catalog",
-            InputSchema: new(CatalogSearchArgs).Schema(),
-            Resource:    "catalog",
-            Action:      'r',
-            Execute:     p.handleSearch,
-        },
-        {
-            Name:        "catalog_update",
-            Description: "Update product price",
-            InputSchema: new(CatalogUpdateArgs).Schema(),
-            Resource:    "catalog",
-            Action:      'u',
-            Execute:     p.handleUpdate,
-        },
-    }
-}
-
-func (p *CatalogProvider) handleSearch(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
-    var args CatalogSearchArgs
-    if err := req.Bind(&args); err != nil {
-        return nil, err
-    }
-    // ... query p.db
-    return mcp.Text("found 3 products"), nil
-}
-
-// Pass providers to NewServer
-srv, err := mcp.NewServer(config, []mcp.ToolProvider{&CatalogProvider{db: db}})
 ```
 
 ---
 
 ## WASM / Browser
 
-The protocol core compiles with TinyGo. Server-only files (`//go:build !wasm`)
-are excluded automatically.
+The protocol core compiles with TinyGo. Server-only files (`//go:build !wasm`) are excluded automatically.
 
 In browser mode, call the handler directly — no HTTP server needed:
 
@@ -211,22 +140,15 @@ response := srv.HandleMessage(&ctx, message)
 | `Server.AddTool(tool)` | Register a single tool |
 | `Server.HandleMessage(ctx, msg)` | Process JSON-RPC message (WASM-safe) |
 | `Server.MountAPI(router)` | Mount MCP endpoint on a `router.Router` |
-| `Tool{Name, Description, InputSchema, Resource, Action, Execute}` | Tool definition |
-| `ToolProvider` | Interface: `Tools() []Tool` |
-| `Authorizer` | Interface: `Authorize(token) (userID, error)`, `Can(userID, resource, action) bool` |
-| `SSEPublisher` | Interface: `Publish(data, channel)` (build `!wasm`) |
-| `NewTokenAuthorizer(apiKey)` | Token-based authorizer |
-| `OpenAuthorizer()` | Open access authorizer |
-| `Request` | Incoming tool call |
+| `Tool{Name, Description, InputSchema, Resource, Action, Public, Execute}` | Tool definition |
+| `AllowAll` | Helper for open access (dev/tests) |
 | `Request.Bind(target)` | Decode + validate arguments |
-| `Result` | Tool call result |
 | `Text(s)` | Create text result |
 | `JSON(data)` | Create JSON result |
 | `GetText(result)` | Extract text from result |
-| `Config` | Server configuration: `Name`, `Version`, `Auth`, `SSE` |
+| `Config` | Server configuration: `Name`, `Version`, `Authorize`, `SSE` |
 | `CtxKeySessionID` | Context key for session ID |
 | `CtxKeyUserID` | Context key for authenticated user ID |
-| `CtxKeyAuthToken` | Context key for auth token |
 
 ---
 
@@ -240,3 +162,6 @@ response := srv.HandleMessage(&ctx, message)
 | [docs/PLAN.md](docs/PLAN.md) | Pending: migrate to `FieldRaw` for inline JSON fields |
 | [docs/diagrams/architecture.md](docs/diagrams/architecture.md) | Architecture overview diagram |
 | [docs/diagrams/request_flow.md](docs/diagrams/request_flow.md) | Request dispatch + auth flow diagram |
+
+---
+This project is a minimal Go implementation of the Model Context Protocol, inspired by and with some internal models adapted from [github.com/mark3labs/mcp-go](https://github.com/mark3labs/mcp-go).

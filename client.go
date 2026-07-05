@@ -9,13 +9,11 @@ import (
 
 type Client struct {
 	endpoint string
-	apiKey   string
 }
 
-func NewClient(baseURL, apiKey string) *Client {
+func NewClient(baseURL string) *Client {
 	return &Client{
 		endpoint: fmt.Convert(baseURL).TrimSuffix("/").String() + "/mcp",
-		apiKey:   apiKey,
 	}
 }
 
@@ -27,11 +25,7 @@ func (c *Client) Call(ctx *context.Context, method string, params any, callback 
 		}
 		return
 	}
-	r := fetch.Post(c.endpoint).ContentTypeJSON().Body(body)
-	if c.apiKey != "" {
-		r = r.Header("Authorization", "Bearer "+c.apiKey)
-	}
-	r.Send(func(resp *fetch.Response, err error) {
+	fetch.Post(c.endpoint).ContentTypeJSON().Body(body).Send(func(resp *fetch.Response, err error) {
 		if err != nil {
 			if callback != nil {
 				callback(nil, err)
@@ -60,11 +54,7 @@ func (c *Client) Dispatch(ctx *context.Context, method string, params any) {
 	if body == nil {
 		return
 	}
-	r := fetch.Post(c.endpoint).ContentTypeJSON().Body(body)
-	if c.apiKey != "" {
-		r = r.Header("Authorization", "Bearer "+c.apiKey)
-	}
-	r.Send(func(*fetch.Response, error) {})
+	fetch.Post(c.endpoint).ContentTypeJSON().Body(body).Send(func(*fetch.Response, error) {})
 }
 
 func (c *Client) buildBody(method string, params any) []byte {

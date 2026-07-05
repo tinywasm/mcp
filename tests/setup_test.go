@@ -8,52 +8,20 @@ import (
 
 // --- Mocks ---
 
-// mockAuth — simple auth that always succeeds with given id
-type mockAuth struct {
-	id string
-}
-
-func (m *mockAuth) Authorize(token string) (string, error) {
-	return m.id, nil
-}
-
-func (m *mockAuth) Can(userID, resource string, action byte) bool {
-	if userID == "forbidden-user" {
-		return false
-	}
-	return true
-}
-
-// rbacAuth — records Can() args and allows control per resource/action
+// rbacAuth — records Authorize args and allows control per resource/action
 type rbacAuth struct {
-	id           string
 	lastResource string
-	lastAction   byte
+	lastAction   string
 	denyResource string
-	denyAction   byte
+	denyAction   string
 }
 
-func (m *rbacAuth) Authorize(token string) (string, error) {
-	return m.id, nil
-}
-
-func (m *rbacAuth) Can(userID, resource string, action byte) bool {
+func (m *rbacAuth) Can(userID, resource, action string) bool {
 	m.lastResource = resource
 	m.lastAction = action
 	if resource == m.denyResource && action == m.denyAction {
 		return false
 	}
-	return true
-}
-
-// emptyUserAuth — returns empty userID (tests empty rejection)
-type emptyUserAuth struct{}
-
-func (m *emptyUserAuth) Authorize(token string) (string, error) {
-	return "", nil
-}
-
-func (m *emptyUserAuth) Can(userID, resource string, action byte) bool {
 	return true
 }
 

@@ -10,8 +10,8 @@ import (
 )
 
 func TestHandleToolCall_Can_ChecksResource(t *testing.T) {
-	auth := &rbacAuth{id: "user"}
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: auth}, nil)
+	auth := &rbacAuth{}
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: auth.Can}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:     "tool1",
 		Resource: "secrets",
@@ -21,6 +21,7 @@ func TestHandleToolCall_Can_ChecksResource(t *testing.T) {
 		},
 	})
 	var ctx context.Context
+	ctx.Set(mcp.CtxKeyUserID, "u1")
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":{}}}`)
 	srv.HandleMessage(&ctx, req)
 
@@ -30,8 +31,8 @@ func TestHandleToolCall_Can_ChecksResource(t *testing.T) {
 }
 
 func TestHandleToolCall_Can_ChecksAction(t *testing.T) {
-	auth := &rbacAuth{id: "user"}
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: auth}, nil)
+	auth := &rbacAuth{}
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: auth.Can}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:     "tool1",
 		Resource: "res",
@@ -41,18 +42,19 @@ func TestHandleToolCall_Can_ChecksAction(t *testing.T) {
 		},
 	})
 	var ctx context.Context
+	ctx.Set(mcp.CtxKeyUserID, "u1")
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":{}}}`)
 	srv.HandleMessage(&ctx, req)
 
-	if auth.lastAction != 'u' {
-		t.Fatalf("expected lastAction 'u', got %c", auth.lastAction)
+	if auth.lastAction != "u" {
+		t.Fatalf("expected lastAction 'u', got %s", auth.lastAction)
 	}
 }
 
 func TestHandleToolCall_ExecuteNeverCalledIfCanFalse(t *testing.T) {
 	called := false
-	auth := &rbacAuth{id: "user", denyResource: "secrets", denyAction: 'r'}
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: auth}, nil)
+	auth := &rbacAuth{denyResource: "secrets", denyAction: "r"}
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: auth.Can}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:     "tool1",
 		Resource: "secrets",
@@ -63,6 +65,7 @@ func TestHandleToolCall_ExecuteNeverCalledIfCanFalse(t *testing.T) {
 		},
 	})
 	var ctx context.Context
+	ctx.Set(mcp.CtxKeyUserID, "u1")
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":{}}}`)
 	srv.HandleMessage(&ctx, req)
 
@@ -72,7 +75,7 @@ func TestHandleToolCall_ExecuteNeverCalledIfCanFalse(t *testing.T) {
 }
 
 func TestHandleToolCall_ToolNotFound(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	var ctx context.Context
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"nonexistent","arguments":{}}}`)
 	resp := srv.HandleMessage(&ctx, req)
@@ -84,7 +87,7 @@ func TestHandleToolCall_ToolNotFound(t *testing.T) {
 }
 
 func TestHandleToolCall_ExecuteReturnsError_IsErrorTrue(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:     "fail",
 		Resource: "res",
@@ -94,6 +97,7 @@ func TestHandleToolCall_ExecuteReturnsError_IsErrorTrue(t *testing.T) {
 		},
 	})
 	var ctx context.Context
+	ctx.Set(mcp.CtxKeyUserID, "u1")
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"fail","arguments":{}}}`)
 	resp := srv.HandleMessage(&ctx, req)
 
@@ -137,7 +141,7 @@ func (v *validateFielder) DecodeFields(r fmt.FieldReader) {
 
 func TestHandleToolCall_Bind_UsesToolAction(t *testing.T) {
 	var target validateFielder
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:     "tool1",
 		Resource: "res",
@@ -148,6 +152,7 @@ func TestHandleToolCall_Bind_UsesToolAction(t *testing.T) {
 		},
 	})
 	var ctx context.Context
+	ctx.Set(mcp.CtxKeyUserID, "u1")
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":{"Foo":"bar"}}}`)
 	srv.HandleMessage(&ctx, req)
 
@@ -157,7 +162,7 @@ func TestHandleToolCall_Bind_UsesToolAction(t *testing.T) {
 }
 
 func TestHandleToolCall_DuplicateToolName_Overwrites(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:     "tool1",
 		Resource: "res",
@@ -175,6 +180,7 @@ func TestHandleToolCall_DuplicateToolName_Overwrites(t *testing.T) {
 		},
 	})
 	var ctx context.Context
+	ctx.Set(mcp.CtxKeyUserID, "u1")
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":{}}}`)
 	resp := srv.HandleMessage(&ctx, req)
 
@@ -185,7 +191,7 @@ func TestHandleToolCall_DuplicateToolName_Overwrites(t *testing.T) {
 }
 
 func TestConcurrent_AddToolAndCallTool(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	var wg sync.WaitGroup
 	count := 20
 
@@ -209,6 +215,7 @@ func TestConcurrent_AddToolAndCallTool(t *testing.T) {
 		go func(n int) {
 			defer wg.Done()
 			var ctx context.Context
+			ctx.Set(mcp.CtxKeyUserID, "u1")
 			req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"t` + string(rune('0'+n)) + `","arguments":{}}}`)
 			srv.HandleMessage(&ctx, req)
 		}(i)
@@ -232,11 +239,12 @@ func TestNewServer_ProviderInjectsTools(t *testing.T) {
 			{Name: "t2", Resource: "r", Action: 'r', Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) { return mcp.Text("2"), nil }},
 		},
 	}
-	srv, err := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, []mcp.ToolProvider{p})
+	srv, err := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, []mcp.ToolProvider{p})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 	var ctx context.Context
+	ctx.Set(mcp.CtxKeyUserID, "u1")
 	req1 := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"t1","arguments":{}}}`)
 	resp1 := srv.HandleMessage(&ctx, req1)
 	if !contains(encodeResponse(resp1), "1") {
@@ -250,7 +258,7 @@ func TestNewServer_ProviderWithInvalidTool_ReturnsError(t *testing.T) {
 			{Name: "", Resource: "r", Action: 'r'}, // Invalid
 		},
 	}
-	_, err := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, []mcp.ToolProvider{p})
+	_, err := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, []mcp.ToolProvider{p})
 	if err == nil {
 		t.Fatal("expected error for invalid tool from provider")
 	}

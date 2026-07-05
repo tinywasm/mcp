@@ -16,26 +16,26 @@ type Server struct {
 	instructions string
 	tools        map[string]Tool
 	providers    []ToolProvider
-	auth         Authorizer
+	authorize    func(userID, resource, action string) bool
 	log          func(messages ...any)
 	SSE          SSEPublisher
 }
 
 type Config struct {
-	Name    string
-	Version string
-	Auth    Authorizer
-	SSE     SSEPublisher
+	Name      string
+	Version   string
+	Authorize func(userID, resource, action string) bool
+	SSE       SSEPublisher
 }
 
 func NewServer(config Config, providers []ToolProvider) (*Server, error) {
-	if config.Auth == nil {
-		return nil, fmt.Err("mcp", "Auth is required — use mcp.OpenAuthorizer() for open access")
+	if config.Authorize == nil {
+		return nil, fmt.Err("mcp", "Authorize is required")
 	}
 	s := &Server{
 		name:      config.Name,
 		version:   config.Version,
-		auth:      config.Auth,
+		authorize: config.Authorize,
 		SSE:       config.SSE,
 		tools:     make(map[string]Tool),
 		providers: providers,
@@ -143,8 +143,13 @@ func (s *Server) handleToolCall(ctx *context.Context, id string, params CallTool
 	}
 
 	userID := ctx.Value(CtxKeyUserID)
-	if !s.auth.Can(userID, tool.Resource, tool.Action) {
-		return nil, &requestError{id: id, code: -32001, err: fmt.Err("forbidden")}
+	if !tool.Public {
+		if userID == "" {
+			return nil, &requestError{id: id, code: -32001, err: fmt.Err("forbidden: authentication required")}
+		}
+		if !s.authorize(userID, tool.Resource, string(tool.Action)) {
+			return nil, &requestError{id: id, code: -32001, err: fmt.Err("forbidden")}
+		}
 	}
 
 	req := Request{Params: params, Action: tool.Action}

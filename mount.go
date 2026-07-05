@@ -15,7 +15,9 @@ func (s *Server) ModelName() string { return s.name }
 // MountAPI publishes the MCP endpoint on the host's Router.
 func (s *Server) MountAPI(r router.Router) {
 	r.Post(MCPPath, func(ctx router.Context) {
-		resp := s.HandleMessage(context.Background(), ctx.Body())
+		reqCtx := context.Background()
+		reqCtx.Set(CtxKeyUserID, ctx.UserID())
+		resp := s.HandleMessage(reqCtx, ctx.Body())
 		ctx.SetHeader(headerContentType, mimeJSON)
 		var out string
 		var err error
