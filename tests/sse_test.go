@@ -10,10 +10,10 @@ import (
 func TestAddTool_WithSSE_PublishesListChanged(t *testing.T) {
 	sse := &mockSSE{}
 	srv, _ := mcp.NewServer(mcp.Config{
-		Name:    "test",
-		Version: "1.0.0",
-		Auth:    mcp.OpenAuthorizer(),
-		SSE:     sse,
+		Name:      "test",
+		Version:   "1.0.0",
+		Authorize: mcp.AllowAll,
+		SSE:       sse,
 	}, nil)
 
 	err := srv.AddTool(mcp.Tool{
@@ -38,10 +38,10 @@ func TestAddTool_WithSSE_PublishesListChanged(t *testing.T) {
 
 func TestAddTool_WithoutSSE_NoPanic(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{
-		Name:    "test",
-		Version: "1.0.0",
-		Auth:    mcp.OpenAuthorizer(),
-		SSE:     nil,
+		Name:      "test",
+		Version:   "1.0.0",
+		Authorize: mcp.AllowAll,
+		SSE:       nil,
 	}, nil)
 
 	err := srv.AddTool(mcp.Tool{
@@ -59,10 +59,10 @@ func TestAddTool_WithoutSSE_NoPanic(t *testing.T) {
 
 func TestHandleMessage_WithoutSSE_NoPublish(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{
-		Name:    "test",
-		Version: "1.0.0",
-		Auth:    mcp.OpenAuthorizer(),
-		SSE:     nil,
+		Name:      "test",
+		Version:   "1.0.0",
+		Authorize: mcp.AllowAll,
+		SSE:       nil,
 	}, nil)
 
 	var ctx context.Context
@@ -77,10 +77,10 @@ func TestHandleMessage_WithoutSSE_NoPublish(t *testing.T) {
 func TestSSE_PublishData_ContainsMethod(t *testing.T) {
 	sse := &mockSSE{}
 	srv, _ := mcp.NewServer(mcp.Config{
-		Name:    "test",
-		Version: "1.0.0",
-		Auth:    mcp.OpenAuthorizer(),
-		SSE:     sse,
+		Name:      "test",
+		Version:   "1.0.0",
+		Authorize: mcp.AllowAll,
+		SSE:       sse,
 	}, nil)
 
 	var ctx context.Context

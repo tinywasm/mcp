@@ -2,7 +2,7 @@
 
 ```mermaid
 flowchart TD
-    A[HTTP Consumer<br/>owns routing] --> B[ctx.Set CtxKeyAuthToken]
+    A[HTTP Consumer<br/>owns routing] --> B[ctx.Set CtxKeyUserID]
     B --> C[srv.HandleMessage ctx body]
     C --> D{method?}
     D -->|initialize| E[handleInitialize<br/>no auth required]

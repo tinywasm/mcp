@@ -8,7 +8,7 @@ flowchart TD
     C -->|no| E[Server]
     E --> F[HandleMessage ctx bytes]
     F --> G[JSON-RPC 2.0 dispatch]
-    G --> H[Authorizer<br/>Authorize + Can]
+    G --> H[Authorizer<br/>Authorize]
     G --> I[Tool registry<br/>map name→Tool]
     G --> J[SSEPublisher optional<br/>Publish data channel]
     I --> K[ToolProvider<br/>Tools → Tool]

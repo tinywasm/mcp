@@ -11,7 +11,7 @@ import (
 
 // TestAddTool_Valid verifies tool registration succeeds with valid Tool
 func TestAddTool_Valid(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	err := srv.AddTool(mcp.Tool{
 		Name:        "search",
 		Description: "Search items",
@@ -28,7 +28,7 @@ func TestAddTool_Valid(t *testing.T) {
 
 // TestAddTool_MissingRBAC verifies AddTool rejects tools without Resource or Action
 func TestAddTool_MissingRBAC(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	err := srv.AddTool(mcp.Tool{
 		Name: "search",
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
@@ -42,7 +42,7 @@ func TestAddTool_MissingRBAC(t *testing.T) {
 
 // TestAddTool_MissingRun verifies AddTool rejects tools without Run handler
 func TestAddTool_MissingRun(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	err := srv.AddTool(mcp.Tool{
 		Name:     "search",
 		Resource: "items",
@@ -55,7 +55,7 @@ func TestAddTool_MissingRun(t *testing.T) {
 
 // TestHandleMessage_Ping verifies ping request returns valid response
 func TestHandleMessage_Ping(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	var ctx context.Context
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"ping"}`)
 	resp := srv.HandleMessage(&ctx, req)
@@ -81,7 +81,7 @@ func TestHandleMessage_Ping(t *testing.T) {
 
 // TestHandleMessage_Initialize verifies initialize request returns server info
 func TestHandleMessage_Initialize(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test-server", Version: "2.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test-server", Version: "2.0.0", Authorize: mcp.AllowAll}, nil)
 	var ctx context.Context
 	req := []byte(`{"jsonrpc":"2.0","id":"init-1","method":"initialize","params":"{\"protocolVersion\":\"2024-11-05\",\"clientInfo\":{\"name\":\"test-client\",\"version\":\"1.0\"}}"}`)
 	resp := srv.HandleMessage(&ctx, req)
@@ -124,7 +124,7 @@ func TestTextRoundTrip(t *testing.T) {
 // devuelva content como array JSON, no como objeto.
 // Bug C: tools.go Text() produce objeto {"type":"text","text":"..."} en lugar de array.
 func TestToolCall_ContentIsArray(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:     "ping",
 		Resource: "test",
@@ -134,6 +134,7 @@ func TestToolCall_ContentIsArray(t *testing.T) {
 		},
 	})
 	var ctx context.Context
+	ctx.Set(mcp.CtxKeyUserID, "u1")
 
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"ping","arguments":{}}}`)
 	resp := srv.HandleMessage(&ctx, req)
@@ -156,7 +157,7 @@ func TestToolCall_ContentIsArray(t *testing.T) {
 // usen claves en minúsculas ("type", "text") según el protocolo MCP.
 // Regresión: json.Encode usa Schema() generado por ormc — garantiza que no rompa en el futuro.
 func TestToolCall_ContentItemLowercaseKeys(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:     "ping",
 		Resource: "test",
@@ -166,6 +167,7 @@ func TestToolCall_ContentItemLowercaseKeys(t *testing.T) {
 		},
 	})
 	var ctx context.Context
+	ctx.Set(mcp.CtxKeyUserID, "u1")
 
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"ping","arguments":{}}}`)
 	resp := srv.HandleMessage(&ctx, req)
@@ -206,11 +208,6 @@ func TestJSONResult(t *testing.T) {
 	}
 }
 
-// TestAuthorizer_Satisfies compile-time check that mockAuth implements Authorizer
-func TestAuthorizer_Satisfies(t *testing.T) {
-	var _ mcp.Authorizer = &mockAuth{id: "user123"}
-}
-
 func TestExtractJSONValue(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -242,7 +239,7 @@ func TestExtractJSONValue(t *testing.T) {
 }
 
 func TestHandleMessage_Compliance(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:     "echo",
 		Resource: "test",
@@ -252,6 +249,7 @@ func TestHandleMessage_Compliance(t *testing.T) {
 		},
 	})
 	var ctx context.Context
+	ctx.Set(mcp.CtxKeyUserID, "u1")
 
 	tests := []struct {
 		name         string
@@ -340,16 +338,9 @@ func TestHandleMessage_Compliance(t *testing.T) {
 	}
 }
 
-func TestNewServer_NilAuth_ReturnsError(t *testing.T) {
-	_, err := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0"}, nil)
-	if err == nil {
-		t.Fatal("expected error for nil Auth")
-	}
-}
-
 func TestHandleToolCall_Can_False_Rejected(t *testing.T) {
-	auth := &mockAuth{id: "forbidden-user"}
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: auth}, nil)
+	auth := &rbacAuth{denyResource: "secrets", denyAction: "r"}
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: auth.Can}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:     "secret",
 		Resource: "secrets",
@@ -360,7 +351,7 @@ func TestHandleToolCall_Can_False_Rejected(t *testing.T) {
 	})
 
 	var ctx context.Context
-	ctx.Set(mcp.CtxKeyUserID, "forbidden-user")
+	ctx.Set(mcp.CtxKeyUserID, "u1")
 
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"secret","arguments":{}}}`)
 	resp := srv.HandleMessage(&ctx, req)
@@ -382,10 +373,10 @@ func TestHandleToolCall_Can_False_Rejected(t *testing.T) {
 func TestHandleMessage_WithSSE_PublishesNotification(t *testing.T) {
 	sse := &mockSSE{}
 	srv, _ := mcp.NewServer(mcp.Config{
-		Name:    "test",
-		Version: "1.0.0",
-		Auth:    mcp.OpenAuthorizer(),
-		SSE:     sse,
+		Name:      "test",
+		Version:   "1.0.0",
+		Authorize: mcp.AllowAll,
+		SSE:       sse,
 	}, nil)
 
 	var ctx context.Context
@@ -407,7 +398,7 @@ func TestHandleMessage_WithSSE_PublishesNotification(t *testing.T) {
 // as a JSON object (MCP spec), not only as a quoted string.
 // This test FAILS before the fix (model.go Arguments string → fmt.RawJSON).
 func TestToolCall_ArgumentsAsObject(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:     "echo",
 		Resource: "test",
@@ -417,6 +408,7 @@ func TestToolCall_ArgumentsAsObject(t *testing.T) {
 		},
 	})
 	var ctx context.Context
+	ctx.Set(mcp.CtxKeyUserID, "u1")
 
 	// MCP spec: arguments MUST be a JSON object, not a quoted string
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"echo","arguments":{}}}`)
@@ -440,7 +432,7 @@ func TestToolCall_ArgumentsAsObject(t *testing.T) {
 // as an inline JSON object, not as a quoted JSON string.
 // This test FAILS before the fix (model.go InputSchema string → fmt.RawJSON).
 func TestListTools_InputSchemaIsObject(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:        "search",
 		Description: "Search something",

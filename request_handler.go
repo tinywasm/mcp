@@ -8,7 +8,6 @@ import (
 const (
 	CtxKeyUserID    = "mcp.user_id"
 	CtxKeySessionID = "mcp.session_id"
-	CtxKeyAuthToken = "mcp.auth_token"
 )
 
 func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMessage {
@@ -36,8 +35,8 @@ func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMess
 		return nil
 	}
 
-	// Handle initialize without auth
-	if MCPMethod(method) == MethodInitialize {
+	switch MCPMethod(method) {
+	case MethodInitialize:
 		raw := ExtractJSONValue(message, "params")
 		var p initializeParams
 		if err := json.Decode(raw, &p); err != nil {
@@ -48,19 +47,7 @@ func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMess
 			return reqErr.ToJSONRPCError()
 		}
 		return createResponse(id, result)
-	}
 
-	token := ctx.Value(CtxKeyAuthToken)
-	userID, err := s.auth.Authorize(token)
-	if err != nil {
-		return createErrorResponse(id, -32001, "Unauthorized")
-	}
-	if userID == "" {
-		return createErrorResponse(id, -32001, "Unauthorized: empty user identity")
-	}
-	ctx.Set(CtxKeyUserID, userID)
-
-	switch MCPMethod(method) {
 	case MethodPing:
 		result, reqErr := s.handlePing(ctx, id)
 		if reqErr != nil {

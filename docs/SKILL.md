@@ -11,7 +11,7 @@ Lean Go MCP server + client library. Protocol-only, WASM-safe, no HTTP ownership
 ## What it does
 
 - Handles JSON-RPC 2.0 MCP messages: `initialize`, `ping`, `tools/list`, `tools/call`
-- Mandatory RBAC on every tool call via `Authorizer` interface
+- Mandatory RBAC on every tool call via `Authorize` function
 - Optional SSE streaming via injected `SSEPublisher`
 - Dual-use: server (backend) + client (WASM frontend via `tinywasm/fetch`)
 
@@ -19,7 +19,7 @@ Lean Go MCP server + client library. Protocol-only, WASM-safe, no HTTP ownership
 
 ```go
 // Server
-mcp.NewServer(Config{Name, Version, Auth, SSE}, []ToolProvider) (*Server, error)
+mcp.NewServer(Config{Name, Version, Authorize, SSE}, []ToolProvider) (*Server, error)
 srv.HandleMessage(ctx, []byte) JSONRPCMessage   // main entry point
 srv.AddTool(Tool)                                // register at runtime
 
@@ -29,6 +29,7 @@ mcp.Tool{
     InputSchema string   // JSON schema from ormc: new(Args).Schema()
     Resource    string   // RBAC resource e.g. "catalog"
     Action      byte     // 'c','r','u','d'
+    Public      bool     // explicit: accessible without identity
     Execute     func(ctx, Request) (*Result, error)
 }
 
@@ -45,8 +46,7 @@ mcp.JSON(&myFielder{})     // *Result with JSON content
 mcp.GetText(result)        // extract text string
 
 // Auth
-mcp.NewTokenAuthorizer("apikey")  // Bearer token, Can() always true
-mcp.OpenAuthorizer()               // no auth, open access
+mcp.AllowAll               // helper: always returns true (dev/tests)
 
 // Client (WASM-safe, uses tinywasm/fetch)
 c := mcp.NewClient("http://host", "apikey")
@@ -54,8 +54,7 @@ c.Call(ctx, "tools/call", params, func(data []byte, err error){})
 c.Dispatch(ctx, "tools/call", params)  // fire-and-forget
 
 // Context keys
-mcp.CtxKeyAuthToken   // set before HandleMessage: ctx.Set(CtxKeyAuthToken, token)
-mcp.CtxKeyUserID      // set by server after Authorize
+mcp.CtxKeyUserID      // set before HandleMessage: identity resolved by host
 mcp.CtxKeySessionID   // set by server on initialize
 ```
 
@@ -81,7 +80,7 @@ srv, _ := mcp.NewServer(config, []mcp.ToolProvider{&MyProvider{db: db}})
 http.HandleFunc("/mcp", func(w http.ResponseWriter, r *http.Request) {
     body, _ := io.ReadAll(r.Body)
     ctx := context.New()
-    ctx.Set(mcp.CtxKeyAuthToken, strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+    ctx.Set(mcp.CtxKeyUserID, "user-123") // identity resolved by host middleware
     resp := srv.HandleMessage(&ctx, body)
     // encode resp (fmt.Fielder) to JSON and write
 })
@@ -97,7 +96,7 @@ go install github.com/tinywasm/orm/cmd/ormc@latest
 
 ## Constraints
 
-- `Config.Auth` must not be nil — use `OpenAuthorizer()` for open access
+- `Config.Authorize` must not be nil — use `mcp.AllowAll` for open access
 - Every `Tool` must have `Resource` and `Action` set
 - No stdlib `encoding/json` — uses `tinywasm/json` (TinyGo compatible)
 - SSE is optional; when nil no streaming occurs
@@ -109,7 +108,7 @@ go install github.com/tinywasm/orm/cmd/ormc@latest
 |------|------|
 | `server.go` | `Server`, `NewServer`, handlers (init/ping/list/call) |
 | `request_handler.go` | `HandleMessage` dispatch, JSON extraction, context keys |
-| `mcp_auth.go` | `Authorizer` interface + built-in implementations |
+| `mcp_auth.go` | `Authorize` type + `AllowAll` helper |
 | `tools.go` | `Tool`, `Request`, `Request.Bind`, `Text`, `ToolProvider` |
 | `client.go` | `Client` for WASM frontend use |
 | `publish_sse.go` | `SSEPublisher` interface |

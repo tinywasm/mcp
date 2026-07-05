@@ -8,7 +8,7 @@ import (
 )
 
 func TestInitialize_UnsupportedVersion_Rejected(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	var ctx context.Context
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"1.0","clientInfo":{"name":"test","version":"1"}}}`)
 	resp := srv.HandleMessage(&ctx, req)
@@ -20,7 +20,7 @@ func TestInitialize_UnsupportedVersion_Rejected(t *testing.T) {
 }
 
 func TestInitialize_ValidVersion_ReturnsServerInfo(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "my-server", Version: "2.3.4", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "my-server", Version: "2.3.4", Authorize: mcp.AllowAll}, nil)
 	var ctx context.Context
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"test","version":"1"}}}`)
 	resp := srv.HandleMessage(&ctx, req)
@@ -35,7 +35,7 @@ func TestInitialize_ValidVersion_ReturnsServerInfo(t *testing.T) {
 }
 
 func TestInitialize_GeneratesSessionID(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	var ctx context.Context
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"test","version":"1"}}}`)
 	srv.HandleMessage(&ctx, req)
@@ -47,7 +47,7 @@ func TestInitialize_GeneratesSessionID(t *testing.T) {
 }
 
 func TestInitialize_ExistingSessionID_Preserved(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	var ctx context.Context
 	ctx.Set(mcp.CtxKeySessionID, "existing-session")
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"test","version":"1"}}}`)
@@ -60,7 +60,7 @@ func TestInitialize_ExistingSessionID_Preserved(t *testing.T) {
 }
 
 func TestInitialize_OlderSupportedVersion_Accepted(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	var ctx context.Context
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"test","version":"1"}}}`)
 	resp := srv.HandleMessage(&ctx, req)
@@ -75,7 +75,7 @@ func TestInitialize_OlderSupportedVersion_Accepted(t *testing.T) {
 }
 
 func TestInitialize_NewerUnknownVersion_DowngradesGracefully(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	var ctx context.Context
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2099-12-31","clientInfo":{"name":"test","version":"1"}}}`)
 	resp := srv.HandleMessage(&ctx, req)
@@ -90,7 +90,7 @@ func TestInitialize_NewerUnknownVersion_DowngradesGracefully(t *testing.T) {
 }
 
 func TestHandleMessage_NullBytes(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	var ctx context.Context
 	req := []byte{0x00}
 	resp := srv.HandleMessage(&ctx, req)
@@ -121,7 +121,7 @@ func TestExtractJSONValue_NonStringValue(t *testing.T) {
 }
 
 func TestSuccessResponseHasNoErrorKey(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	var ctx context.Context
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"ping"}`)
 	resp := srv.HandleMessage(&ctx, req)
@@ -136,7 +136,7 @@ func TestSuccessResponseHasNoErrorKey(t *testing.T) {
 }
 
 func TestErrorResponseHasNoResultKey(t *testing.T) {
-	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Auth: mcp.OpenAuthorizer()}, nil)
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	var ctx context.Context
 	// Invalid request to trigger error
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"unknown_method"}`)
