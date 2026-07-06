@@ -2,8 +2,8 @@ package mcp
 
 import (
 	"github.com/tinywasm/context"
-	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/json"
+	"github.com/tinywasm/model"
 )
 
 type Request struct {
@@ -24,7 +24,7 @@ type Tool struct {
 // DecodableFields combines Decodable (codec) with Validate (validation).
 // ormc-generated model types satisfy this interface.
 type DecodableFields interface {
-	fmt.Decodable
+	model.Decodable
 	Validate(action byte) error
 }
 

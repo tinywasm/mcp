@@ -1,5 +1,7 @@
 package mcp_test
 
+import "github.com/tinywasm/model"
+
 import (
 	"testing"
 	"sync"
@@ -112,9 +114,9 @@ type validateFielder struct {
 	lastAction byte
 }
 
-func (v *validateFielder) SafeFields() []fmt.Field {
-	return []fmt.Field{
-		{Name: "Foo", Type: fmt.FieldText},
+func (v *validateFielder) SafeFields() []model.Field {
+	return []model.Field{
+		{Name: "Foo", Type: model.FieldText},
 	}
 }
 
@@ -122,7 +124,7 @@ func (v *validateFielder) Pointers() []any {
 	return []any{&v.Foo}
 }
 
-func (v *validateFielder) Schema() []fmt.Field {
+func (v *validateFielder) Schema() []model.Field {
 	return v.SafeFields()
 }
 
@@ -133,7 +135,7 @@ func (v *validateFielder) Validate(action byte) error {
 
 func (v *validateFielder) IsNil() bool { return v == nil }
 
-func (v *validateFielder) DecodeFields(r fmt.FieldReader) {
+func (v *validateFielder) DecodeFields(r model.FieldReader) {
 	if val, ok := r.String("Foo"); ok {
 		v.Foo = val
 	}

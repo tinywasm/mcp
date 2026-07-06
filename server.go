@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"github.com/tinywasm/model"
 	"sync"
 
 	"github.com/tinywasm/context"
@@ -183,6 +184,6 @@ func createErrorResponse(id string, code int, message string) JSONRPCMessage {
 	return newErrorResponse(id, code, message, nil)
 }
 
-func createResponse(id string, result fmt.Encodable) JSONRPCMessage {
+func createResponse(id string, result model.Encodable) JSONRPCMessage {
 	return newResultResponse(id, result)
 }

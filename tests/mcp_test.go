@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/tinywasm/context"
-	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/json"
+	"github.com/tinywasm/model"
 	"github.com/tinywasm/mcp"
 )
 
@@ -65,7 +65,7 @@ func TestHandleMessage_Ping(t *testing.T) {
 	}
 
 	var b []byte
-	if f, ok := resp.(fmt.Encodable); ok {
+	if f, ok := resp.(model.Encodable); ok {
 		json.Encode(f, &b)
 	}
 
@@ -91,7 +91,7 @@ func TestHandleMessage_Initialize(t *testing.T) {
 	}
 
 	var b []byte
-	if f, ok := resp.(fmt.Encodable); ok {
+	if f, ok := resp.(model.Encodable); ok {
 		json.Encode(f, &b)
 	}
 
@@ -197,7 +197,7 @@ func TestText_GetText_RoundTrip(t *testing.T) {
 
 // TestJSONResult verifies JSON result creation with proper Fielder
 func TestJSONResult(t *testing.T) {
-	// Use a simple Meta struct which implements fmt.Fielder
+	// Use a simple Meta struct which implements model.Fielder
 	data := &mcp.Meta{}
 	r, err := mcp.JSON(data)
 	if err != nil {
@@ -315,7 +315,7 @@ func TestHandleMessage_Compliance(t *testing.T) {
 			if tt.expectError {
 				// Check if it's an error response
 				var b []byte
-				if f, ok := resp.(fmt.Encodable); ok {
+				if f, ok := resp.(model.Encodable); ok {
 					json.Encode(f, &b)
 				}
 				respStr := string(b)
@@ -326,7 +326,7 @@ func TestHandleMessage_Compliance(t *testing.T) {
 			} else {
 				// Should be success
 				var b []byte
-				if f, ok := resp.(fmt.Encodable); ok {
+				if f, ok := resp.(model.Encodable); ok {
 					json.Encode(f, &b)
 				}
 				respStr := string(b)
@@ -361,7 +361,7 @@ func TestHandleToolCall_Can_False_Rejected(t *testing.T) {
 	}
 
 	var b []byte
-	if f, ok := resp.(fmt.Encodable); ok {
+	if f, ok := resp.(model.Encodable); ok {
 		json.Encode(f, &b)
 	}
 	respStr := string(b)
@@ -396,7 +396,7 @@ func TestHandleMessage_WithSSE_PublishesNotification(t *testing.T) {
 
 // TestToolCall_ArgumentsAsObject verifies that tools/call accepts arguments
 // as a JSON object (MCP spec), not only as a quoted string.
-// This test FAILS before the fix (model.go Arguments string → fmt.RawJSON).
+// This test FAILS before the fix (model.go Arguments string → model.RawJSON).
 func TestToolCall_ArgumentsAsObject(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	srv.AddTool(mcp.Tool{
@@ -430,7 +430,7 @@ func TestToolCall_ArgumentsAsObject(t *testing.T) {
 
 // TestListTools_InputSchemaIsObject verifies that tools/list returns inputSchema
 // as an inline JSON object, not as a quoted JSON string.
-// This test FAILS before the fix (model.go InputSchema string → fmt.RawJSON).
+// This test FAILS before the fix (model.go InputSchema string → model.RawJSON).
 func TestListTools_InputSchemaIsObject(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	srv.AddTool(mcp.Tool{

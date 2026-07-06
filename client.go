@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"github.com/tinywasm/model"
 	"github.com/tinywasm/context"
 	"github.com/tinywasm/fetch"
 	"github.com/tinywasm/fmt"
@@ -60,7 +61,7 @@ func (c *Client) Dispatch(ctx *context.Context, method string, params any) {
 func (c *Client) buildBody(method string, params any) []byte {
 	var paramsJSON string
 	if params != nil {
-		if f, ok := params.(fmt.Encodable); ok {
+		if f, ok := params.(model.Encodable); ok {
 			if err := json.Encode(f, &paramsJSON); err != nil {
 				return nil
 			}

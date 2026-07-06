@@ -1,11 +1,12 @@
 package mcp
 
 import (
+	"github.com/tinywasm/model"
 	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/json"
 )
 
-func JSON(data fmt.Encodable) (*Result, error) {
+func JSON(data model.Encodable) (*Result, error) {
 	var s string
 	if err := json.Encode(data, &s); err != nil {
 		return nil, err
@@ -37,19 +38,19 @@ func GetText(r *Result) (string, error) {
 
 func newResultResponse(id RequestId, result any) JSONRPCMessage {
 	var resJSON []byte
-	if f, ok := result.(fmt.Encodable); ok {
+	if f, ok := result.(model.Encodable); ok {
 		json.Encode(f, &resJSON)
 	}
 	return &JSONRPCResponseStruct{
 		JSONRPC: JSONRPC_VERSION,
 		ID:      id,
-		Result:  fmt.RawJSON(resJSON),
+		Result:  model.RawJSON(resJSON),
 	}
 }
 
 func newErrorDetails(code int, message string, data any) *JSONRPCErrorDetails {
 	var dataJSON []byte
-	if f, ok := data.(fmt.Encodable); ok {
+	if f, ok := data.(model.Encodable); ok {
 		json.Encode(f, &dataJSON)
 	}
 	return &JSONRPCErrorDetails{
@@ -66,6 +67,6 @@ func newErrorResponse(id RequestId, code int, message string, data any) JSONRPCM
 	return &JSONRPCError{
 		JSONRPC: JSONRPC_VERSION,
 		ID:      id,
-		Error:   fmt.RawJSON(detJSON),
+		Error:   model.RawJSON(detJSON),
 	}
 }

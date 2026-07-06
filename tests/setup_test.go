@@ -1,8 +1,8 @@
 package mcp_test
 
 import (
-	"github.com/tinywasm/fmt"
 	"github.com/tinywasm/json"
+	"github.com/tinywasm/model"
 	"github.com/tinywasm/mcp"
 )
 
@@ -51,7 +51,7 @@ func contains(s, substr string) bool {
 
 func encodeResponse(resp mcp.JSONRPCMessage) string {
 	var b []byte
-	if f, ok := resp.(fmt.Encodable); ok {
+	if f, ok := resp.(model.Encodable); ok {
 		json.Encode(f, &b)
 	}
 	return string(b)
