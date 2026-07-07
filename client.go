@@ -42,6 +42,10 @@ func (c *Client) Call(ctx *context.Context, method string, params any, callback 
 			callback(nil, err)
 			return
 		}
+		if len(envelope.Error) != 0 {
+			callback(nil, fmt.Err("mcp: "+string(envelope.Error)))
+			return
+		}
 		if len(envelope.Result) == 0 {
 			callback(nil, nil)
 			return
@@ -67,7 +71,7 @@ func (c *Client) buildBody(method string, params any) []byte {
 			}
 		}
 	}
-	req := rpcRequest{JSONRPC: "2.0", ID: "1", Method: method, Params: paramsJSON}
+	req := rpcRequest{Jsonrpc: "2.0", Id: "1", Method: method, Params: paramsJSON}
 	var body []byte
 	if err := json.Encode(&req, &body); err != nil {
 		return nil

@@ -76,7 +76,7 @@ func (s *Server) AddTool(tool Tool) error {
 
 	if s.SSE != nil {
 		notification := JSONRPCNotification{
-			JSONRPC: JSONRPC_VERSION,
+			Jsonrpc: JSONRPC_VERSION,
 			Method:  "notifications/tools/list_changed",
 		}
 		var data []byte

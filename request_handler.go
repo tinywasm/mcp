@@ -29,7 +29,7 @@ func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMess
 
 	if id == "" {
 		var notification JSONRPCNotification
-		notification.JSONRPC = JSONRPC_VERSION
+		notification.Jsonrpc = JSONRPC_VERSION
 		notification.Method = method
 		s.handleNotification(ctx, notification)
 		return nil

@@ -6,35 +6,33 @@ import (
 	"github.com/tinywasm/model"
 )
 
-func (m *rpcRequest) ModelName() string {
-	return "rpc_request"
+type rpcRequest struct {
+	Jsonrpc string
+	Id string
+	Method string
+	Params string
 }
 
-var _schemarpcRequest = []model.Field{
-		{Name: "jsonrpc", Type: model.FieldText},
-		{Name: "id", Type: model.FieldText},
-		{Name: "method", Type: model.FieldText},
-		{Name: "params", Type: model.FieldText},
-	}
+func (m *rpcRequest) ModelName() string { return "rpc_request" }
 
-func (m *rpcRequest) Schema() []model.Field { return _schemarpcRequest }
+func (m *rpcRequest) Schema() []model.Field { return rpcRequestModel.Fields }
 
-func (m *rpcRequest) Pointers() []any { return []any{&m.JSONRPC, &m.ID, &m.Method, &m.Params} }
+func (m *rpcRequest) Pointers() []any { return []any{&m.Jsonrpc, &m.Id, &m.Method, &m.Params} }
 
 func (m *rpcRequest) IsNil() bool { return m == nil }
 
 func (m *rpcRequest) EncodeFields(w model.FieldWriter) {
-	w.String("jsonrpc", m.JSONRPC)
-	w.String("id", m.ID)
+	w.String("jsonrpc", m.Jsonrpc)
+	w.String("id", m.Id)
 	w.String("method", m.Method)
-	w.String("params", m.Params)
+	w.Raw("params", m.Params)
 }
 
 func (m *rpcRequest) DecodeFields(r model.FieldReader) {
-	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
-	if v, ok := r.String("id"); ok { m.ID = v }
+	if v, ok := r.String("jsonrpc"); ok { m.Jsonrpc = v }
+	if v, ok := r.String("id"); ok { m.Id = v }
 	if v, ok := r.String("method"); ok { m.Method = v }
-	if v, ok := r.String("params"); ok { m.Params = v }
+	if v, ok := r.Raw("params"); ok { m.Params = v }
 }
 
 type rpcRequestList []*rpcRequest
@@ -48,35 +46,33 @@ func (s *rpcRequestList) IsNil() bool          { return s == nil }
 func (s *rpcRequestList) EncodeFields(_ model.FieldWriter) {}
 func (s *rpcRequestList) DecodeFields(_ model.FieldReader) {}
 
-func (m *rpcResponse) ModelName() string {
-	return "rpc_response"
+type rpcResponse struct {
+	Jsonrpc string
+	Id string
+	Result string
+	Error string
 }
 
-var _schemarpcResponse = []model.Field{
-		{Name: "jsonrpc", Type: model.FieldText},
-		{Name: "id", Type: model.FieldText},
-		{Name: "result", Type: model.FieldRaw, OmitEmpty: true},
-		{Name: "error", Type: model.FieldText, OmitEmpty: true},
-	}
+func (m *rpcResponse) ModelName() string { return "rpc_response" }
 
-func (m *rpcResponse) Schema() []model.Field { return _schemarpcResponse }
+func (m *rpcResponse) Schema() []model.Field { return rpcResponseModel.Fields }
 
-func (m *rpcResponse) Pointers() []any { return []any{&m.JSONRPC, &m.ID, &m.Result, &m.Error} }
+func (m *rpcResponse) Pointers() []any { return []any{&m.Jsonrpc, &m.Id, &m.Result, &m.Error} }
 
 func (m *rpcResponse) IsNil() bool { return m == nil }
 
 func (m *rpcResponse) EncodeFields(w model.FieldWriter) {
-	w.String("jsonrpc", m.JSONRPC)
-	w.String("id", m.ID)
+	w.String("jsonrpc", m.Jsonrpc)
+	w.String("id", m.Id)
 	if len(m.Result) != 0 { w.Raw("result", m.Result) }
-	if m.Error != "" { w.String("error", m.Error) }
+	if len(m.Error) != 0 { w.Raw("error", m.Error) }
 }
 
 func (m *rpcResponse) DecodeFields(r model.FieldReader) {
-	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
-	if v, ok := r.String("id"); ok { m.ID = v }
+	if v, ok := r.String("jsonrpc"); ok { m.Jsonrpc = v }
+	if v, ok := r.String("id"); ok { m.Id = v }
 	if v, ok := r.Raw("result"); ok { m.Result = v }
-	if v, ok := r.String("error"); ok { m.Error = v }
+	if v, ok := r.Raw("error"); ok { m.Error = v }
 }
 
 type rpcResponseList []*rpcResponse
@@ -90,30 +86,28 @@ func (s *rpcResponseList) IsNil() bool          { return s == nil }
 func (s *rpcResponseList) EncodeFields(_ model.FieldWriter) {}
 func (s *rpcResponseList) DecodeFields(_ model.FieldReader) {}
 
-func (m *jsonRPCError) ModelName() string {
-	return "json_rpcerror"
+type jsonRPCError struct {
+	Code int64
+	Message string
+	Data string
 }
 
-var _schemajsonRPCError = []model.Field{
-		{Name: "code", Type: model.FieldInt},
-		{Name: "message", Type: model.FieldText},
-		{Name: "data", Type: model.FieldText, OmitEmpty: true},
-	}
+func (m *jsonRPCError) ModelName() string { return "json_rpcerror" }
 
-func (m *jsonRPCError) Schema() []model.Field { return _schemajsonRPCError }
+func (m *jsonRPCError) Schema() []model.Field { return jsonRPCErrorModel.Fields }
 
 func (m *jsonRPCError) Pointers() []any { return []any{&m.Code, &m.Message, &m.Data} }
 
 func (m *jsonRPCError) IsNil() bool { return m == nil }
 
 func (m *jsonRPCError) EncodeFields(w model.FieldWriter) {
-	w.Int("code", int64(m.Code))
+	w.Int("code", m.Code)
 	w.String("message", m.Message)
 	if m.Data != "" { w.String("data", m.Data) }
 }
 
 func (m *jsonRPCError) DecodeFields(r model.FieldReader) {
-	if v, ok := r.Int("code"); ok { m.Code = int64(v) }
+	if v, ok := r.Int("code"); ok { m.Code = v }
 	if v, ok := r.String("message"); ok { m.Message = v }
 	if v, ok := r.String("data"); ok { m.Data = v }
 }
@@ -129,16 +123,14 @@ func (s *jsonRPCErrorList) IsNil() bool          { return s == nil }
 func (s *jsonRPCErrorList) EncodeFields(_ model.FieldWriter) {}
 func (s *jsonRPCErrorList) DecodeFields(_ model.FieldReader) {}
 
-func (m *initializeParams) ModelName() string {
-	return "initialize_params"
+type initializeParams struct {
+	ProtocolVersion string
+	ClientInfo implementationInfo
 }
 
-var _schemainitializeParams = []model.Field{
-		{Name: "protocolVersion", Type: model.FieldText},
-		{Name: "clientInfo", Type: model.FieldStruct},
-	}
+func (m *initializeParams) ModelName() string { return "initialize_params" }
 
-func (m *initializeParams) Schema() []model.Field { return _schemainitializeParams }
+func (m *initializeParams) Schema() []model.Field { return initializeParamsModel.Fields }
 
 func (m *initializeParams) Pointers() []any { return []any{&m.ProtocolVersion, &m.ClientInfo} }
 
@@ -165,16 +157,14 @@ func (s *initializeParamsList) IsNil() bool          { return s == nil }
 func (s *initializeParamsList) EncodeFields(_ model.FieldWriter) {}
 func (s *initializeParamsList) DecodeFields(_ model.FieldReader) {}
 
-func (m *implementationInfo) ModelName() string {
-	return "implementation_info"
+type implementationInfo struct {
+	Name string
+	Version string
 }
 
-var _schemaimplementationInfo = []model.Field{
-		{Name: "name", Type: model.FieldText},
-		{Name: "version", Type: model.FieldText},
-	}
+func (m *implementationInfo) ModelName() string { return "implementation_info" }
 
-func (m *implementationInfo) Schema() []model.Field { return _schemaimplementationInfo }
+func (m *implementationInfo) Schema() []model.Field { return implementationInfoModel.Fields }
 
 func (m *implementationInfo) Pointers() []any { return []any{&m.Name, &m.Version} }
 
@@ -201,17 +191,15 @@ func (s *implementationInfoList) IsNil() bool          { return s == nil }
 func (s *implementationInfoList) EncodeFields(_ model.FieldWriter) {}
 func (s *implementationInfoList) DecodeFields(_ model.FieldReader) {}
 
-func (m *initializeResult) ModelName() string {
-	return "initialize_result"
+type initializeResult struct {
+	ProtocolVersion string
+	ServerInfo implementationInfo
+	Capabilities string
 }
 
-var _schemainitializeResult = []model.Field{
-		{Name: "protocolVersion", Type: model.FieldText},
-		{Name: "serverInfo", Type: model.FieldStruct},
-		{Name: "capabilities", Type: model.FieldRaw, OmitEmpty: true},
-	}
+func (m *initializeResult) ModelName() string { return "initialize_result" }
 
-func (m *initializeResult) Schema() []model.Field { return _schemainitializeResult }
+func (m *initializeResult) Schema() []model.Field { return initializeResultModel.Fields }
 
 func (m *initializeResult) Pointers() []any { return []any{&m.ProtocolVersion, &m.ServerInfo, &m.Capabilities} }
 
@@ -240,16 +228,14 @@ func (s *initializeResultList) IsNil() bool          { return s == nil }
 func (s *initializeResultList) EncodeFields(_ model.FieldWriter) {}
 func (s *initializeResultList) DecodeFields(_ model.FieldReader) {}
 
-func (m *CallToolParams) ModelName() string {
-	return "call_tool_params"
+type CallToolParams struct {
+	Name string
+	Arguments string
 }
 
-var _schemaCallToolParams = []model.Field{
-		{Name: "name", Type: model.FieldText},
-		{Name: "arguments", Type: model.FieldRaw},
-	}
+func (m *CallToolParams) ModelName() string { return "call_tool_params" }
 
-func (m *CallToolParams) Schema() []model.Field { return _schemaCallToolParams }
+func (m *CallToolParams) Schema() []model.Field { return CallToolParamsModel.Fields }
 
 func (m *CallToolParams) Pointers() []any { return []any{&m.Name, &m.Arguments} }
 
@@ -276,16 +262,14 @@ func (s *CallToolParamsList) IsNil() bool          { return s == nil }
 func (s *CallToolParamsList) EncodeFields(_ model.FieldWriter) {}
 func (s *CallToolParamsList) DecodeFields(_ model.FieldReader) {}
 
-func (m *Result) ModelName() string {
-	return "result"
+type Result struct {
+	IsError bool
+	Content string
 }
 
-var _schemaResult = []model.Field{
-		{Name: "isError", Type: model.FieldBool, OmitEmpty: true},
-		{Name: "content", Type: model.FieldRaw, OmitEmpty: true},
-	}
+func (m *Result) ModelName() string { return "result" }
 
-func (m *Result) Schema() []model.Field { return _schemaResult }
+func (m *Result) Schema() []model.Field { return ResultModel.Fields }
 
 func (m *Result) Pointers() []any { return []any{&m.IsError, &m.Content} }
 
@@ -312,16 +296,14 @@ func (s *ResultList) IsNil() bool          { return s == nil }
 func (s *ResultList) EncodeFields(_ model.FieldWriter) {}
 func (s *ResultList) DecodeFields(_ model.FieldReader) {}
 
-func (m *TextContent) ModelName() string {
-	return "text_content"
+type TextContent struct {
+	Type string
+	Text string
 }
 
-var _schemaTextContent = []model.Field{
-		{Name: "type", Type: model.FieldText},
-		{Name: "text", Type: model.FieldText},
-	}
+func (m *TextContent) ModelName() string { return "text_content" }
 
-func (m *TextContent) Schema() []model.Field { return _schemaTextContent }
+func (m *TextContent) Schema() []model.Field { return TextContentModel.Fields }
 
 func (m *TextContent) Pointers() []any { return []any{&m.Type, &m.Text} }
 
@@ -348,17 +330,15 @@ func (s *TextContentList) IsNil() bool          { return s == nil }
 func (s *TextContentList) EncodeFields(_ model.FieldWriter) {}
 func (s *TextContentList) DecodeFields(_ model.FieldReader) {}
 
-func (m *toolEntry) ModelName() string {
-	return "tool_entry"
+type toolEntry struct {
+	Name string
+	Description string
+	InputSchema string
 }
 
-var _schematoolEntry = []model.Field{
-		{Name: "name", Type: model.FieldText},
-		{Name: "description", Type: model.FieldText, OmitEmpty: true},
-		{Name: "inputSchema", Type: model.FieldRaw},
-	}
+func (m *toolEntry) ModelName() string { return "tool_entry" }
 
-func (m *toolEntry) Schema() []model.Field { return _schematoolEntry }
+func (m *toolEntry) Schema() []model.Field { return toolEntryModel.Fields }
 
 func (m *toolEntry) Pointers() []any { return []any{&m.Name, &m.Description, &m.InputSchema} }
 
@@ -387,16 +367,14 @@ func (s *toolEntryList) IsNil() bool          { return s == nil }
 func (s *toolEntryList) EncodeFields(_ model.FieldWriter) {}
 func (s *toolEntryList) DecodeFields(_ model.FieldReader) {}
 
-func (m *listToolsResult) ModelName() string {
-	return "list_tools_result"
+type listToolsResult struct {
+	Tools string
+	NextCursor string
 }
 
-var _schemalistToolsResult = []model.Field{
-		{Name: "tools", Type: model.FieldRaw},
-		{Name: "nextCursor", Type: model.FieldText, OmitEmpty: true},
-	}
+func (m *listToolsResult) ModelName() string { return "list_tools_result" }
 
-func (m *listToolsResult) Schema() []model.Field { return _schemalistToolsResult }
+func (m *listToolsResult) Schema() []model.Field { return listToolsResultModel.Fields }
 
 func (m *listToolsResult) Pointers() []any { return []any{&m.Tools, &m.NextCursor} }
 
@@ -423,31 +401,29 @@ func (s *listToolsResultList) IsNil() bool          { return s == nil }
 func (s *listToolsResultList) EncodeFields(_ model.FieldWriter) {}
 func (s *listToolsResultList) DecodeFields(_ model.FieldReader) {}
 
-func (m *errorResponse) ModelName() string {
-	return "error_response"
+type errorResponse struct {
+	Jsonrpc string
+	Id string
+	Error jsonRPCError
 }
 
-var _schemaerrorResponse = []model.Field{
-		{Name: "jsonrpc", Type: model.FieldText},
-		{Name: "id", Type: model.FieldText, OmitEmpty: true},
-		{Name: "error", Type: model.FieldStruct},
-	}
+func (m *errorResponse) ModelName() string { return "error_response" }
 
-func (m *errorResponse) Schema() []model.Field { return _schemaerrorResponse }
+func (m *errorResponse) Schema() []model.Field { return errorResponseModel.Fields }
 
-func (m *errorResponse) Pointers() []any { return []any{&m.JSONRPC, &m.ID, &m.Error} }
+func (m *errorResponse) Pointers() []any { return []any{&m.Jsonrpc, &m.Id, &m.Error} }
 
 func (m *errorResponse) IsNil() bool { return m == nil }
 
 func (m *errorResponse) EncodeFields(w model.FieldWriter) {
-	w.String("jsonrpc", m.JSONRPC)
-	if m.ID != "" { w.String("id", m.ID) }
+	w.String("jsonrpc", m.Jsonrpc)
+	if m.Id != "" { w.String("id", m.Id) }
 	w.Object("error", &m.Error)
 }
 
 func (m *errorResponse) DecodeFields(r model.FieldReader) {
-	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
-	if v, ok := r.String("id"); ok { m.ID = v }
+	if v, ok := r.String("jsonrpc"); ok { m.Jsonrpc = v }
+	if v, ok := r.String("id"); ok { m.Id = v }
 	r.Object("error", &m.Error)
 }
 
@@ -462,15 +438,13 @@ func (s *errorResponseList) IsNil() bool          { return s == nil }
 func (s *errorResponseList) EncodeFields(_ model.FieldWriter) {}
 func (s *errorResponseList) DecodeFields(_ model.FieldReader) {}
 
-func (m *Meta) ModelName() string {
-	return "meta"
+type Meta struct {
+	ProgressToken string
 }
 
-var _schemaMeta = []model.Field{
-		{Name: "progressToken", Type: model.FieldText, OmitEmpty: true},
-	}
+func (m *Meta) ModelName() string { return "meta" }
 
-func (m *Meta) Schema() []model.Field { return _schemaMeta }
+func (m *Meta) Schema() []model.Field { return MetaModel.Fields }
 
 func (m *Meta) Pointers() []any { return []any{&m.ProgressToken} }
 
@@ -495,15 +469,13 @@ func (s *MetaList) IsNil() bool          { return s == nil }
 func (s *MetaList) EncodeFields(_ model.FieldWriter) {}
 func (s *MetaList) DecodeFields(_ model.FieldReader) {}
 
-func (m *NotificationParams) ModelName() string {
-	return "notification_params"
+type NotificationParams struct {
+	Meta string
 }
 
-var _schemaNotificationParams = []model.Field{
-		{Name: "meta", Type: model.FieldText, OmitEmpty: true},
-	}
+func (m *NotificationParams) ModelName() string { return "notification_params" }
 
-func (m *NotificationParams) Schema() []model.Field { return _schemaNotificationParams }
+func (m *NotificationParams) Schema() []model.Field { return NotificationParamsModel.Fields }
 
 func (m *NotificationParams) Pointers() []any { return []any{&m.Meta} }
 
@@ -528,15 +500,13 @@ func (s *NotificationParamsList) IsNil() bool          { return s == nil }
 func (s *NotificationParamsList) EncodeFields(_ model.FieldWriter) {}
 func (s *NotificationParamsList) DecodeFields(_ model.FieldReader) {}
 
-func (m *EmptyResult) ModelName() string {
-	return "empty_result"
+type EmptyResult struct {
+	Result string
 }
 
-var _schemaEmptyResult = []model.Field{
-		{Name: "result", Type: model.FieldText, OmitEmpty: true},
-	}
+func (m *EmptyResult) ModelName() string { return "empty_result" }
 
-func (m *EmptyResult) Schema() []model.Field { return _schemaEmptyResult }
+func (m *EmptyResult) Schema() []model.Field { return EmptyResultModel.Fields }
 
 func (m *EmptyResult) Pointers() []any { return []any{&m.Result} }
 
@@ -561,35 +531,33 @@ func (s *EmptyResultList) IsNil() bool          { return s == nil }
 func (s *EmptyResultList) EncodeFields(_ model.FieldWriter) {}
 func (s *EmptyResultList) DecodeFields(_ model.FieldReader) {}
 
-func (m *JSONRPCRequest) ModelName() string {
-	return "jsonrpcrequest"
+type JSONRPCRequest struct {
+	Jsonrpc string
+	Id string
+	Method string
+	Params string
 }
 
-var _schemaJSONRPCRequest = []model.Field{
-		{Name: "jsonrpc", Type: model.FieldText},
-		{Name: "id", Type: model.FieldText},
-		{Name: "method", Type: model.FieldText},
-		{Name: "params", Type: model.FieldText, OmitEmpty: true},
-	}
+func (m *JSONRPCRequest) ModelName() string { return "jsonrpcrequest" }
 
-func (m *JSONRPCRequest) Schema() []model.Field { return _schemaJSONRPCRequest }
+func (m *JSONRPCRequest) Schema() []model.Field { return JSONRPCRequestModel.Fields }
 
-func (m *JSONRPCRequest) Pointers() []any { return []any{&m.JSONRPC, &m.ID, &m.Method, &m.Params} }
+func (m *JSONRPCRequest) Pointers() []any { return []any{&m.Jsonrpc, &m.Id, &m.Method, &m.Params} }
 
 func (m *JSONRPCRequest) IsNil() bool { return m == nil }
 
 func (m *JSONRPCRequest) EncodeFields(w model.FieldWriter) {
-	w.String("jsonrpc", m.JSONRPC)
-	w.String("id", m.ID)
+	w.String("jsonrpc", m.Jsonrpc)
+	w.String("id", m.Id)
 	w.String("method", m.Method)
-	if m.Params != "" { w.String("params", m.Params) }
+	if len(m.Params) != 0 { w.Raw("params", m.Params) }
 }
 
 func (m *JSONRPCRequest) DecodeFields(r model.FieldReader) {
-	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
-	if v, ok := r.String("id"); ok { m.ID = v }
+	if v, ok := r.String("jsonrpc"); ok { m.Jsonrpc = v }
+	if v, ok := r.String("id"); ok { m.Id = v }
 	if v, ok := r.String("method"); ok { m.Method = v }
-	if v, ok := r.String("params"); ok { m.Params = v }
+	if v, ok := r.Raw("params"); ok { m.Params = v }
 }
 
 type JSONRPCRequestList []*JSONRPCRequest
@@ -603,32 +571,30 @@ func (s *JSONRPCRequestList) IsNil() bool          { return s == nil }
 func (s *JSONRPCRequestList) EncodeFields(_ model.FieldWriter) {}
 func (s *JSONRPCRequestList) DecodeFields(_ model.FieldReader) {}
 
-func (m *JSONRPCNotification) ModelName() string {
-	return "jsonrpcnotification"
+type JSONRPCNotification struct {
+	Jsonrpc string
+	Method string
+	Params string
 }
 
-var _schemaJSONRPCNotification = []model.Field{
-		{Name: "jsonrpc", Type: model.FieldText},
-		{Name: "method", Type: model.FieldText},
-		{Name: "params", Type: model.FieldText, OmitEmpty: true},
-	}
+func (m *JSONRPCNotification) ModelName() string { return "jsonrpcnotification" }
 
-func (m *JSONRPCNotification) Schema() []model.Field { return _schemaJSONRPCNotification }
+func (m *JSONRPCNotification) Schema() []model.Field { return JSONRPCNotificationModel.Fields }
 
-func (m *JSONRPCNotification) Pointers() []any { return []any{&m.JSONRPC, &m.Method, &m.Params} }
+func (m *JSONRPCNotification) Pointers() []any { return []any{&m.Jsonrpc, &m.Method, &m.Params} }
 
 func (m *JSONRPCNotification) IsNil() bool { return m == nil }
 
 func (m *JSONRPCNotification) EncodeFields(w model.FieldWriter) {
-	w.String("jsonrpc", m.JSONRPC)
+	w.String("jsonrpc", m.Jsonrpc)
 	w.String("method", m.Method)
-	if m.Params != "" { w.String("params", m.Params) }
+	if len(m.Params) != 0 { w.Raw("params", m.Params) }
 }
 
 func (m *JSONRPCNotification) DecodeFields(r model.FieldReader) {
-	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
+	if v, ok := r.String("jsonrpc"); ok { m.Jsonrpc = v }
 	if v, ok := r.String("method"); ok { m.Method = v }
-	if v, ok := r.String("params"); ok { m.Params = v }
+	if v, ok := r.Raw("params"); ok { m.Params = v }
 }
 
 type JSONRPCNotificationList []*JSONRPCNotification
@@ -642,33 +608,31 @@ func (s *JSONRPCNotificationList) IsNil() bool          { return s == nil }
 func (s *JSONRPCNotificationList) EncodeFields(_ model.FieldWriter) {}
 func (s *JSONRPCNotificationList) DecodeFields(_ model.FieldReader) {}
 
-func (m *JSONRPCResponseStruct) ModelName() string {
-	return "jsonrpcresponse_struct"
+type JSONRPCResponseStruct struct {
+	Jsonrpc string
+	Id string
+	Result string
+	Error string
 }
 
-var _schemaJSONRPCResponseStruct = []model.Field{
-		{Name: "jsonrpc", Type: model.FieldText},
-		{Name: "id", Type: model.FieldText},
-		{Name: "result", Type: model.FieldRaw, OmitEmpty: true},
-		{Name: "error", Type: model.FieldRaw, OmitEmpty: true},
-	}
+func (m *JSONRPCResponseStruct) ModelName() string { return "jsonrpcresponse_struct" }
 
-func (m *JSONRPCResponseStruct) Schema() []model.Field { return _schemaJSONRPCResponseStruct }
+func (m *JSONRPCResponseStruct) Schema() []model.Field { return JSONRPCResponseStructModel.Fields }
 
-func (m *JSONRPCResponseStruct) Pointers() []any { return []any{&m.JSONRPC, &m.ID, &m.Result, &m.Error} }
+func (m *JSONRPCResponseStruct) Pointers() []any { return []any{&m.Jsonrpc, &m.Id, &m.Result, &m.Error} }
 
 func (m *JSONRPCResponseStruct) IsNil() bool { return m == nil }
 
 func (m *JSONRPCResponseStruct) EncodeFields(w model.FieldWriter) {
-	w.String("jsonrpc", m.JSONRPC)
-	w.String("id", m.ID)
+	w.String("jsonrpc", m.Jsonrpc)
+	w.String("id", m.Id)
 	if len(m.Result) != 0 { w.Raw("result", m.Result) }
 	if len(m.Error) != 0 { w.Raw("error", m.Error) }
 }
 
 func (m *JSONRPCResponseStruct) DecodeFields(r model.FieldReader) {
-	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
-	if v, ok := r.String("id"); ok { m.ID = v }
+	if v, ok := r.String("jsonrpc"); ok { m.Jsonrpc = v }
+	if v, ok := r.String("id"); ok { m.Id = v }
 	if v, ok := r.Raw("result"); ok { m.Result = v }
 	if v, ok := r.Raw("error"); ok { m.Error = v }
 }
@@ -684,31 +648,29 @@ func (s *JSONRPCResponseStructList) IsNil() bool          { return s == nil }
 func (s *JSONRPCResponseStructList) EncodeFields(_ model.FieldWriter) {}
 func (s *JSONRPCResponseStructList) DecodeFields(_ model.FieldReader) {}
 
-func (m *JSONRPCError) ModelName() string {
-	return "jsonrpcerror"
+type JSONRPCError struct {
+	Jsonrpc string
+	Id string
+	Error string
 }
 
-var _schemaJSONRPCError = []model.Field{
-		{Name: "jsonrpc", Type: model.FieldText},
-		{Name: "id", Type: model.FieldText},
-		{Name: "error", Type: model.FieldRaw},
-	}
+func (m *JSONRPCError) ModelName() string { return "jsonrpcerror" }
 
-func (m *JSONRPCError) Schema() []model.Field { return _schemaJSONRPCError }
+func (m *JSONRPCError) Schema() []model.Field { return JSONRPCErrorModel.Fields }
 
-func (m *JSONRPCError) Pointers() []any { return []any{&m.JSONRPC, &m.ID, &m.Error} }
+func (m *JSONRPCError) Pointers() []any { return []any{&m.Jsonrpc, &m.Id, &m.Error} }
 
 func (m *JSONRPCError) IsNil() bool { return m == nil }
 
 func (m *JSONRPCError) EncodeFields(w model.FieldWriter) {
-	w.String("jsonrpc", m.JSONRPC)
-	w.String("id", m.ID)
+	w.String("jsonrpc", m.Jsonrpc)
+	w.String("id", m.Id)
 	w.Raw("error", m.Error)
 }
 
 func (m *JSONRPCError) DecodeFields(r model.FieldReader) {
-	if v, ok := r.String("jsonrpc"); ok { m.JSONRPC = v }
-	if v, ok := r.String("id"); ok { m.ID = v }
+	if v, ok := r.String("jsonrpc"); ok { m.Jsonrpc = v }
+	if v, ok := r.String("id"); ok { m.Id = v }
 	if v, ok := r.Raw("error"); ok { m.Error = v }
 }
 
@@ -723,30 +685,28 @@ func (s *JSONRPCErrorList) IsNil() bool          { return s == nil }
 func (s *JSONRPCErrorList) EncodeFields(_ model.FieldWriter) {}
 func (s *JSONRPCErrorList) DecodeFields(_ model.FieldReader) {}
 
-func (m *JSONRPCErrorDetails) ModelName() string {
-	return "jsonrpcerror_details"
+type JSONRPCErrorDetails struct {
+	Code int64
+	Message string
+	Data string
 }
 
-var _schemaJSONRPCErrorDetails = []model.Field{
-		{Name: "code", Type: model.FieldInt},
-		{Name: "message", Type: model.FieldText},
-		{Name: "data", Type: model.FieldText, OmitEmpty: true},
-	}
+func (m *JSONRPCErrorDetails) ModelName() string { return "jsonrpcerror_details" }
 
-func (m *JSONRPCErrorDetails) Schema() []model.Field { return _schemaJSONRPCErrorDetails }
+func (m *JSONRPCErrorDetails) Schema() []model.Field { return JSONRPCErrorDetailsModel.Fields }
 
 func (m *JSONRPCErrorDetails) Pointers() []any { return []any{&m.Code, &m.Message, &m.Data} }
 
 func (m *JSONRPCErrorDetails) IsNil() bool { return m == nil }
 
 func (m *JSONRPCErrorDetails) EncodeFields(w model.FieldWriter) {
-	w.Int("code", int64(m.Code))
+	w.Int("code", m.Code)
 	w.String("message", m.Message)
 	if m.Data != "" { w.String("data", m.Data) }
 }
 
 func (m *JSONRPCErrorDetails) DecodeFields(r model.FieldReader) {
-	if v, ok := r.Int("code"); ok { m.Code = int64(v) }
+	if v, ok := r.Int("code"); ok { m.Code = v }
 	if v, ok := r.String("message"); ok { m.Message = v }
 	if v, ok := r.String("data"); ok { m.Data = v }
 }

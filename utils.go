@@ -42,8 +42,8 @@ func newResultResponse(id RequestId, result any) JSONRPCMessage {
 		json.Encode(f, &resJSON)
 	}
 	return &JSONRPCResponseStruct{
-		JSONRPC: JSONRPC_VERSION,
-		ID:      id,
+		Jsonrpc: JSONRPC_VERSION,
+		Id:      id,
 		Result:  model.RawJSON(resJSON),
 	}
 }
@@ -65,8 +65,8 @@ func newErrorResponse(id RequestId, code int, message string, data any) JSONRPCM
 	var detJSON []byte
 	json.Encode(det, &detJSON)
 	return &JSONRPCError{
-		JSONRPC: JSONRPC_VERSION,
-		ID:      id,
+		Jsonrpc: JSONRPC_VERSION,
+		Id:      id,
 		Error:   model.RawJSON(detJSON),
 	}
 }
