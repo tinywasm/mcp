@@ -2,9 +2,8 @@
 
 package mcp
 
-import "github.com/tinywasm/model"
-
 import (
+	"github.com/tinywasm/model"
 )
 
 func (m *rpcRequest) ModelName() string {
@@ -283,7 +282,7 @@ func (m *Result) ModelName() string {
 
 var _schemaResult = []model.Field{
 		{Name: "isError", Type: model.FieldBool, OmitEmpty: true},
-		{Name: "content", Type: model.FieldRaw},
+		{Name: "content", Type: model.FieldRaw, OmitEmpty: true},
 	}
 
 func (m *Result) Schema() []model.Field { return _schemaResult }
@@ -294,7 +293,7 @@ func (m *Result) IsNil() bool { return m == nil }
 
 func (m *Result) EncodeFields(w model.FieldWriter) {
 	if m.IsError { w.Bool("isError", m.IsError) }
-	w.Raw("content", m.Content)
+	if len(m.Content) != 0 { w.Raw("content", m.Content) }
 }
 
 func (m *Result) DecodeFields(r model.FieldReader) {

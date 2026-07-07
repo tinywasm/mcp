@@ -7,7 +7,7 @@ require (
 	github.com/tinywasm/fetch v0.1.24
 	github.com/tinywasm/fmt v0.25.0
 	github.com/tinywasm/json v0.5.8
-	github.com/tinywasm/model v0.0.2
+	github.com/tinywasm/model v0.0.3
 	github.com/tinywasm/router v0.1.3
 	github.com/tinywasm/unixid v0.2.23
 )
