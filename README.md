@@ -82,6 +82,34 @@ http.HandleFunc(mcp.MCPPath, func(w http.ResponseWriter, r *http.Request) {
 
 ---
 
+## Calling tools (Client)
+
+Views should depend on `router.Caller` and use `mcp.NewCaller` to invoke tools. This adapter handles the MCP JSON-RPC envelope, allowing the view to pass logical tool names and receive unwrapped result bytes.
+
+```go
+import (
+    "github.com/tinywasm/mcp"
+    "github.com/tinywasm/router"
+)
+
+// 1. Composition root: wire the client and adapter
+client := mcp.NewClient("https://api.myserver.com")
+caller := mcp.NewCaller(client)
+
+// 2. View: depend on router.Caller only
+func MyView(c router.Caller) {
+    c.Call("search", &SearchArgs{Query: "mcp"}, func(result []byte, err error) {
+        if err != nil {
+            // handles transport, protocol and tool errors
+            return
+        }
+        // result contains unwrapped tool content bytes
+    })
+}
+```
+
+---
+
 ## Authorization (RBAC)
 
 `mcp` delegates identity resolution to the host and only handles per-tool RBAC.
@@ -137,6 +165,8 @@ response := srv.HandleMessage(&ctx, message)
 | Symbol | Description |
 |--------|-------------|
 | `NewServer(config, providers)` | Create MCP server — returns `(*Server, error)` |
+| `NewClient(baseURL)` | Create MCP client |
+| `NewCaller(client)` | Adapt `*Client` to `router.Caller` (recommended for views) |
 | `Server.AddTool(tool)` | Register a single tool |
 | `Server.HandleMessage(ctx, msg)` | Process JSON-RPC message (WASM-safe) |
 | `Server.MountAPI(router)` | Mount MCP endpoint on a `router.Router` |

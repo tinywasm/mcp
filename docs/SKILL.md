@@ -49,9 +49,10 @@ mcp.GetText(result)        // extract text string
 mcp.AllowAll               // helper: always returns true (dev/tests)
 
 // Client (WASM-safe, uses tinywasm/fetch)
-c := mcp.NewClient("http://host", "apikey")
-c.Call(ctx, "tools/call", params, func(data []byte, err error){})
-c.Dispatch(ctx, "tools/call", params)  // fire-and-forget
+c := mcp.NewClient("http://host")
+caller := mcp.NewCaller(c) // recommended adapter for views (implements router.Caller)
+caller.Call("search", &args, func(data []byte, err error){})
+caller.Dispatch("search", &args)
 
 // Context keys
 mcp.CtxKeyUserID      // set before HandleMessage: identity resolved by host
@@ -111,6 +112,7 @@ go install github.com/tinywasm/orm/cmd/ormc@latest
 | `mcp_auth.go` | `Authorize` type + `AllowAll` helper |
 | `tools.go` | `Tool`, `Request`, `Request.Bind`, `Text`, `ToolProvider` |
 | `client.go` | `Client` for WASM frontend use |
+| `caller.go` | `NewCaller`: `router.Caller` adapter for views |
 | `publish_sse.go` | `SSEPublisher` interface |
 | `model.go` | JSON-RPC 2.0 type definitions (ormc annotated) |
 | `model_orm.go` | Generated: `Schema()`, `Pointers()`, `Validate()` |
