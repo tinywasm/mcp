@@ -39,6 +39,14 @@ Consumer (tinywasm/app)
               │
               ▼
           MCP Client (LLM)
+
+View (Browser/WASM)
+    │
+    └─ NewCaller(*Client) → router.Caller
+              │
+              ├─ translates logical op to "tools/call"
+              ├─ unwraps MCP Result.Content
+              └─ propagates errors (Transport/RPC/Tool)
 ```
 
 ## Auth + RBAC Flow
@@ -90,6 +98,7 @@ SSE is optional — when `Config.SSE` is nil, no streaming occurs.
 | `model.go` | ORM model definitions: `rpcRequest`, `rpcResponse`, `initializeParams`, `callToolParams`, etc. |
 | `model_orm.go` | Generated ORM code: `Schema()`, `Pointers()`, `Validate()` for all models |
 | `client.go` | `Client`: MCP client (`Call`, `Dispatch`) using `tinywasm/fetch` |
+| `caller.go` | `NewCaller`: `router.Caller` adapter for views |
 | `provider.go` | `Loggable` interface |
 | `constants.go` | HTTP header constants, content type constants |
 | `errors.go` | Error variables and `NewError` helper |
