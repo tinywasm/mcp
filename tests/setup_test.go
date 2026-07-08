@@ -56,3 +56,29 @@ func encodeResponse(resp mcp.JSONRPCMessage) string {
 	}
 	return string(b)
 }
+
+// mockArgsWithBoolAndString — simple model.Fielder for testing
+type mockArgsWithBoolAndString struct {
+	flag bool
+	text string
+}
+
+func (m *mockArgsWithBoolAndString) Schema() []model.Field {
+	return []model.Field{
+		{Name: "flag", Type: model.FieldBool},
+		{Name: "text", Type: model.FieldText, NotNull: true},
+	}
+}
+
+func (m *mockArgsWithBoolAndString) Encode(target *string) error {
+	*target = `{"flag":false,"text":""}`
+	return nil
+}
+
+func (m *mockArgsWithBoolAndString) Decode(data []byte) error {
+	return nil
+}
+
+func (m *mockArgsWithBoolAndString) Pointers() []any {
+	return []any{&m.flag, &m.text}
+}

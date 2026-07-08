@@ -84,7 +84,8 @@ SSE is optional — when `Config.SSE` is nil, no streaming occurs.
 | `mount.go` | `router.APIModule` implementation (`ModelName`, `MountAPI`) |
 | `mcp_auth.go` | `Authorize` type + `AllowAll` helper |
 | `server_sse.go` | `SSEPublisher` interface (build `!wasm`) |
-| `tools.go` | `Tool`, `Request`, `Request.Bind`, `Text`, `FilterFunc`, `ToolProvider` |
+| `tools.go` | `Tool` (Args is typed model source of inputSchema), `Request`, `Request.Bind`, `Text`, `FilterFunc`, `ToolProvider` |
+| `tool_schema.go` | `inputSchemaOf`, `jsonSchemaType`, `EmptyInputSchema` — generates valid JSON Schema from `model.Fielder` |
 | `types.go` | JSON-RPC 2.0 types: `JSONRPCMessage`, `JSONRPCRequest`, `JSONRPCNotification`, `JSONRPCResponseStruct`, `JSONRPCError`, `Result`, error codes, MCP methods |
 | `model.go` | ORM model definitions: `rpcRequest`, `rpcResponse`, `initializeParams`, `callToolParams`, etc. |
 | `model_orm.go` | Generated ORM code: `Schema()`, `Pointers()`, `Validate()` for all models |
@@ -94,6 +95,12 @@ SSE is optional — when `Config.SSE` is nil, no streaming occurs.
 | `errors.go` | Error variables and `NewError` helper |
 | `utils.go` | Result helpers: `JSON`, `GetText`, `ParseResult`, response builders |
 | `logger.go` | `Logger` interface, `DefaultLogger` (stdlib wrapper) |
+
+## Tool Arguments & Schema Generation
+
+`Tool.Args` is a typed `model.Fielder` (ormc-generated model) that serves as the **single source of truth** for tool argument schemas. At runtime, `tools/list` calls `inputSchemaOf(tool.Args)` to generate a valid JSON Schema object from the model's metadata (`Schema() []model.Field`). This centralizes schema generation in `mcp` and prevents invalid schemas from escaping to MCP clients (e.g., Claude Code).
+
+**Schema precedence:** Only `Args` is used. If `Args` is nil, schema defaults to `EmptyInputSchema` (`{"type":"object","properties":{}}`). Never a raw string or null.
 
 ## Key Interfaces
 

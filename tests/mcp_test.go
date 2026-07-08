@@ -430,13 +430,14 @@ func TestToolCall_ArgumentsAsObject(t *testing.T) {
 
 // TestListTools_InputSchemaIsObject verifies that tools/list returns inputSchema
 // as an inline JSON object, not as a quoted JSON string.
-// This test FAILS before the fix (model.go InputSchema string → model.RawJSON).
+// Schema is generated from Args model, never as a raw string.
 func TestListTools_InputSchemaIsObject(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
+	args := &mockArgsWithBoolAndString{}
 	srv.AddTool(mcp.Tool{
 		Name:        "search",
 		Description: "Search something",
-		InputSchema: `{"type":"object","properties":{"query":{"type":"string"}}}`,
+		Args:        args,
 		Resource:    "items",
 		Action:      'r',
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {

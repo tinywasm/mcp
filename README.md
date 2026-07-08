@@ -68,7 +68,7 @@ import "github.com/tinywasm/router"
 
 r := router.New()
 srv.MountAPI(r)
-r.ListenAndServe(":3030")
+r.ListenAndServe(":8080")
 
 // 2. Or manual handling if needed
 http.HandleFunc(mcp.MCPPath, func(w http.ResponseWriter, r *http.Request) {

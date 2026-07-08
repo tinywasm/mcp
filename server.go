@@ -120,11 +120,12 @@ func (s *Server) handleListTools(ctx *context.Context, id string) (*listToolsRes
 		if !first {
 			toolsJSON += ","
 		}
+		schema := inputSchemaOf(t.Args)
 		var entryJSON string
 		entry := toolEntry{
 			Name:        t.Name,
 			Description: t.Description,
-			InputSchema: t.InputSchema,
+			InputSchema: schema,
 		}
 		json.Encode(&entry, &entryJSON)
 		toolsJSON += entryJSON
