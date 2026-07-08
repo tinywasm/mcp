@@ -8,7 +8,7 @@ require (
 	github.com/tinywasm/fmt v0.25.1
 	github.com/tinywasm/json v0.5.10
 	github.com/tinywasm/model v0.0.6
-	github.com/tinywasm/router v0.1.3
+	github.com/tinywasm/router v0.1.4
 	github.com/tinywasm/unixid v0.2.23
 )
 
