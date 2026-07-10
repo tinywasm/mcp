@@ -84,9 +84,22 @@ func (c *Client) Dispatch(ctx *context.Context, method string, params any) {
 
 Key facts:
 - `github.com/tinywasm/fetch` supports request headers: `func (r *fetch.Request) Header(key, value string) *fetch.Request` (chainable).
-- The **only** caller of `NewClient` in the whole ecosystem is `devtui/sse_client.go`. There is
-  no reason to keep a backward-compatible overload — change the signature directly and update
-  that single caller. Do NOT add functional-option cruft to preserve the old form.
+- `NewClient` has exactly TWO callers in the ecosystem (verified 2026-07-09):
+  1. `devtui/sse_client.go` — will pass the daemon API key (Section 7.1).
+  2. `mjosefa-cms/config/client.go` — browser WASM client; its auth is the
+     session cookie (`user.Module.Authenticate()` on the host validates
+     Cookie or Bearer), so it passes `""` (Section 7.3).
+  There is no reason to keep a backward-compatible overload — change the
+  signature directly; both callers are updated in the follow-ups (Section 7).
+  Do NOT add functional-option cruft to preserve the old form.
+- **The token is opaque to the client** — do not validate or interpret it.
+  Today it is the daemon's static API key (`app/daemon.go` parses the header
+  manually); for application servers built on `tinywasm/server/httpd` +
+  `tinywasm/user` it will be a JWT from `user.GenerateAPIToken`
+  (`user.AuthModeBearer` targets exactly this kind of non-browser API
+  client). Server-side extraction/authorization is out of scope here: it
+  lives in the host's `Authn` middleware + `Authorize` callback
+  (`httpd.Config`), not in this client.
 
 ---
 
@@ -228,6 +241,10 @@ After this ships and `mcp` is published, `tinywasm/devtui` needs a small consume
    Fix by only capturing the `/logs` request: `if r.URL.Path != "/logs" { return }` before the
    channel send. (With this mcp change wired in, the `/mcp` request also carries the token, so
    the race is doubly resolved.)
+3. `veltylabs/mjosefa-cms` `config/client.go` `BuildClient`: the default wiring becomes
+   `mcp.NewClient(cfg.Origin, "")` — the browser client authenticates via the session
+   cookie (host `Authn` = `user.Module.Authenticate()`), NOT via Bearer. Do not thread a
+   token through `ClientConfig` unless a non-browser consumer appears.
 
 ---
 
