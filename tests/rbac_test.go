@@ -116,7 +116,7 @@ type validateFielder struct {
 
 func (v *validateFielder) SafeFields() []model.Field {
 	return []model.Field{
-		{Name: "Foo", Type: model.FieldText},
+		{Name: "Foo", Type: model.Text()},
 	}
 }
 

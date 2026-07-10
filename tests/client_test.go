@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
-	c := mcp.NewClient("http://localhost:8080")
+	c := mcp.NewClient("http://localhost:8080", "")
 	if c == nil {
 		t.Fatal("expected client")
 	}

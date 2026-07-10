@@ -19,7 +19,7 @@ type mockEncodable struct {
 }
 
 func (m *mockEncodable) Schema() []model.Field {
-	return []model.Field{{Name: "foo", Type: model.FieldText}}
+	return []model.Field{{Name: "foo", Type: model.Text()}}
 }
 
 func (m *mockEncodable) Pointers() []any {
@@ -69,7 +69,7 @@ func TestCaller_Call_Success(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := mcp.NewClient(ts.URL)
+	client := mcp.NewClient(ts.URL, "")
 	caller := mcp.NewCaller(client)
 
 	args := &mockEncodable{Foo: "bar"}
@@ -113,7 +113,7 @@ func TestCaller_Call_ToolError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := mcp.NewClient(ts.URL)
+	client := mcp.NewClient(ts.URL, "")
 	caller := mcp.NewCaller(client)
 
 	done := make(chan bool)
@@ -135,7 +135,7 @@ func TestCaller_Call_RPCError(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := mcp.NewClient(ts.URL)
+	client := mcp.NewClient(ts.URL, "")
 	caller := mcp.NewCaller(client)
 
 	done := make(chan bool)
@@ -158,7 +158,7 @@ func TestCaller_Dispatch(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	client := mcp.NewClient(ts.URL)
+	client := mcp.NewClient(ts.URL, "")
 	caller := mcp.NewCaller(client)
 
 	caller.Dispatch("any", nil)

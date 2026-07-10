@@ -1,5 +1,7 @@
 package mcp
 
+import "github.com/tinywasm/model"
+
 type MCPMethod string
 
 const (
@@ -16,16 +18,25 @@ type JSONRPCMessage interface {
 	jsonrpcMessage()
 }
 
+const (
+	ProtocolVersion20241105 = "2024-11-05"
+	ProtocolVersion20250326 = "2025-03-26"
+	ProtocolVersion20250618 = "2025-06-18"
+	ProtocolVersion20251125 = "2025-11-25"
+)
+
 var SupportedProtocolVersions = []string{
-	"2025-11-25",
-	"2024-11-05",
+	ProtocolVersion20251125,
+	ProtocolVersion20250618,
+	ProtocolVersion20250326,
+	ProtocolVersion20241105,
 }
 
-const LATEST_PROTOCOL_VERSION = "2025-11-25"
+const LATEST_PROTOCOL_VERSION = ProtocolVersion20251125
 
 const JSONRPC_VERSION = "2.0"
 
-type RequestId = string
+type RequestId = model.RawJSON
 
 const (
 	PARSE_ERROR         = -32700

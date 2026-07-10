@@ -93,7 +93,7 @@ import (
 )
 
 // 1. Composition root: wire the client and adapter
-client := mcp.NewClient("https://api.myserver.com")
+client := mcp.NewClient("https://api.myserver.com", "my-bearer-token")
 caller := mcp.NewCaller(client)
 
 // 2. View: depend on router.Caller only
@@ -165,7 +165,7 @@ response := srv.HandleMessage(&ctx, message)
 | Symbol | Description |
 |--------|-------------|
 | `NewServer(config, providers)` | Create MCP server — returns `(*Server, error)` |
-| `NewClient(baseURL)` | Create MCP client |
+| `NewClient(baseURL, authToken)` | Create MCP client |
 | `NewCaller(client)` | Adapt `*Client` to `router.Caller` (recommended for views) |
 | `Server.AddTool(tool)` | Register a single tool |
 | `Server.HandleMessage(ctx, msg)` | Process JSON-RPC message (WASM-safe) |

@@ -65,8 +65,8 @@ type mockArgsWithBoolAndString struct {
 
 func (m *mockArgsWithBoolAndString) Schema() []model.Field {
 	return []model.Field{
-		{Name: "flag", Type: model.FieldBool},
-		{Name: "text", Type: model.FieldText, NotNull: true},
+		{Name: "flag", Type: model.Bool()},
+		{Name: "text", Type: model.Text(), NotNull: true},
 	}
 }
 

@@ -49,6 +49,16 @@ View (Browser/WASM)
               └─ propagates errors (Transport/RPC/Tool)
 ```
 
+## Version Negotiation
+
+When a client sends an `initialize` request, the server negotiates the protocol version. If the requested version is supported, the server responds with that version. If the requested version is not supported, the server responds with its latest supported version (`2025-11-25`). The client then decides whether to proceed or disconnect.
+
+Supported versions:
+- `2025-11-25` (Latest)
+- `2025-06-18`
+- `2025-03-26`
+- `2024-11-05`
+
 ## Auth + RBAC Flow
 
 ![Auth + RBAC Flow](img/auth_flow.svg)

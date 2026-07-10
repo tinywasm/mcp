@@ -54,16 +54,13 @@ func NewServer(config Config, providers []ToolProvider) (*Server, error) {
 	return s, nil
 }
 
-func negotiateVersion(clientVersion string) (string, bool) {
+func negotiateVersion(clientVersion string) string {
 	for _, v := range SupportedProtocolVersions {
 		if v == clientVersion {
-			return v, true
+			return v
 		}
 	}
-	if clientVersion > LATEST_PROTOCOL_VERSION {
-		return LATEST_PROTOCOL_VERSION, true
-	}
-	return "", false
+	return LATEST_PROTOCOL_VERSION
 }
 
 func (s *Server) AddTool(tool Tool) error {
@@ -87,11 +84,8 @@ func (s *Server) AddTool(tool Tool) error {
 	return nil
 }
 
-func (s *Server) handleInitialize(ctx *context.Context, id string, params initializeParams) (*initializeResult, *requestError) {
-	agreedVersion, ok := negotiateVersion(params.ProtocolVersion)
-	if !ok {
-		return nil, &requestError{id: id, code: INVALID_PARAMS, err: fmt.Err("mcp", "unsupported protocol version: "+params.ProtocolVersion)}
-	}
+func (s *Server) handleInitialize(ctx *context.Context, id RequestId, params initializeParams) (*initializeResult, *requestError) {
+	agreedVersion := negotiateVersion(params.ProtocolVersion)
 	res := &initializeResult{
 		ProtocolVersion: agreedVersion,
 		ServerInfo: implementationInfo{
@@ -107,11 +101,11 @@ func (s *Server) handleInitialize(ctx *context.Context, id string, params initia
 	return res, nil
 }
 
-func (s *Server) handlePing(ctx *context.Context, id string) (*EmptyResult, *requestError) {
+func (s *Server) handlePing(ctx *context.Context, id RequestId) (*EmptyResult, *requestError) {
 	return &EmptyResult{}, nil
 }
 
-func (s *Server) handleListTools(ctx *context.Context, id string) (*listToolsResult, *requestError) {
+func (s *Server) handleListTools(ctx *context.Context, id RequestId) (*listToolsResult, *requestError) {
 	s.mu.RLock()
 	var toolsJSON string
 	toolsJSON = "["
@@ -136,7 +130,7 @@ func (s *Server) handleListTools(ctx *context.Context, id string) (*listToolsRes
 	return &listToolsResult{Tools: toolsJSON}, nil
 }
 
-func (s *Server) handleToolCall(ctx *context.Context, id string, params CallToolParams) (*Result, *requestError) {
+func (s *Server) handleToolCall(ctx *context.Context, id RequestId, params CallToolParams) (*Result, *requestError) {
 	s.mu.RLock()
 	tool, ok := s.tools[params.Name]
 	s.mu.RUnlock()
@@ -171,7 +165,7 @@ func (s *Server) handleNotification(ctx *context.Context, notification JSONRPCNo
 }
 
 type requestError struct {
-	id   string
+	id   RequestId
 	code int
 	err  error
 }
@@ -181,10 +175,10 @@ func (e *requestError) ToJSONRPCError() JSONRPCMessage {
 	return newErrorResponse(e.id, e.code, e.err.Error(), nil)
 }
 
-func createErrorResponse(id string, code int, message string) JSONRPCMessage {
+func createErrorResponse(id RequestId, code int, message string) JSONRPCMessage {
 	return newErrorResponse(id, code, message, nil)
 }
 
-func createResponse(id string, result model.Encodable) JSONRPCMessage {
+func createResponse(id RequestId, result model.Encodable) JSONRPCMessage {
 	return newResultResponse(id, result)
 }

@@ -25,7 +25,7 @@ func inputSchemaOf(m model.Fielder) string {
 		b.Write(`"`)
 		b.Write(f.Name)
 		b.Write(`":`)
-		b.Write(jsonSchemaType(f.Type))
+		b.Write(jsonSchemaType(f.Type.Storage()))
 		if f.NotNull {
 			required = append(required, f.Name)
 		}
