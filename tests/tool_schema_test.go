@@ -21,13 +21,13 @@ type mockAllFieldTypes struct {
 
 func (m *mockAllFieldTypes) Schema() []model.Field {
 	return []model.Field{
-		{Name: "text_field", Type: model.FieldText, NotNull: true},
-		{Name: "int_field", Type: model.FieldInt},
-		{Name: "float_field", Type: model.FieldFloat},
-		{Name: "bool_field", Type: model.FieldBool},
-		{Name: "int_slice_field", Type: model.FieldIntSlice},
-		{Name: "raw_field", Type: model.FieldRaw},
-		{Name: "blob_field", Type: model.FieldBlob},
+		{Name: "text_field", Type: model.Text(), NotNull: true},
+		{Name: "int_field", Type: model.Int()},
+		{Name: "float_field", Type: model.Float()},
+		{Name: "bool_field", Type: model.Bool()},
+		{Name: "int_slice_field", Type: model.IntSlice()},
+		{Name: "raw_field", Type: model.Raw()},
+		{Name: "blob_field", Type: model.Blob()},
 	}
 }
 

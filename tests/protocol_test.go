@@ -7,15 +7,18 @@ import (
 	"github.com/tinywasm/mcp"
 )
 
-func TestInitialize_UnsupportedVersion_Rejected(t *testing.T) {
+func TestInitialize_UnsupportedVersion_Negotiated(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	var ctx context.Context
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"1.0","clientInfo":{"name":"test","version":"1"}}}`)
 	resp := srv.HandleMessage(&ctx, req)
 
 	respStr := encodeResponse(resp)
-	if !contains(respStr, "unsupported protocol version") {
-		t.Fatalf("expected unsupported protocol version error, got %s", respStr)
+	if !contains(respStr, "2025-11-25") {
+		t.Fatalf("expected protocol version 2025-11-25 in response, got %s", respStr)
+	}
+	if contains(respStr, "error") {
+		t.Fatalf("expected no error for unsupported version, got %s", respStr)
 	}
 }
 
@@ -102,6 +105,9 @@ func TestHandleMessage_NullBytes(t *testing.T) {
 	if !contains(respStr, "PARSE_ERROR") && !contains(respStr, "-32700") {
 		t.Fatalf("expected PARSE_ERROR, got %s", respStr)
 	}
+	if !contains(respStr, `"id":null`) {
+		t.Fatalf("expected id:null in parse error, got %s", respStr)
+	}
 }
 
 func TestExtractJSONValue_MissingKey(t *testing.T) {
@@ -117,6 +123,30 @@ func TestExtractJSONValue_NonStringValue(t *testing.T) {
 	got := mcp.ExtractJSONValue(data, "id")
 	if string(got) != "42" {
 		t.Fatalf("expected '42', got %q", string(got))
+	}
+}
+
+func TestHandleMessage_NumericId_EchoedAsNumber(t *testing.T) {
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
+	var ctx context.Context
+	req := []byte(`{"jsonrpc":"2.0","id":123,"method":"ping"}`)
+	resp := srv.HandleMessage(&ctx, req)
+
+	respStr := encodeResponse(resp)
+	if !contains(respStr, `"id":123`) {
+		t.Fatalf("expected id:123 as number, got %s", respStr)
+	}
+}
+
+func TestHandleMessage_StringId_EchoedAsString(t *testing.T) {
+	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
+	var ctx context.Context
+	req := []byte(`{"jsonrpc":"2.0","id":"abc","method":"ping"}`)
+	resp := srv.HandleMessage(&ctx, req)
+
+	respStr := encodeResponse(resp)
+	if !contains(respStr, `"id":"abc"`) {
+		t.Fatalf("expected id:\"abc\" as string, got %s", respStr)
 	}
 }
 

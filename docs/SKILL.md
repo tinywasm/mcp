@@ -49,7 +49,7 @@ mcp.GetText(result)        // extract text string
 mcp.AllowAll               // helper: always returns true (dev/tests)
 
 // Client (WASM-safe, uses tinywasm/fetch)
-c := mcp.NewClient("http://host")
+c := mcp.NewClient("http://host", "")   // authToken: "" = open/unauthenticated
 caller := mcp.NewCaller(c) // recommended adapter for views (implements router.Caller)
 caller.Call("search", &args, func(data []byte, err error){})
 caller.Dispatch("search", &args)

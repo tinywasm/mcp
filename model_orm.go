@@ -8,7 +8,7 @@ import (
 
 type rpcRequest struct {
 	Jsonrpc string
-	Id string
+	Id model.RawJSON
 	Method string
 	Params string
 }
@@ -23,14 +23,14 @@ func (m *rpcRequest) IsNil() bool { return m == nil }
 
 func (m *rpcRequest) EncodeFields(w model.FieldWriter) {
 	w.String("jsonrpc", m.Jsonrpc)
-	w.String("id", m.Id)
+	w.Raw("id", m.Id)
 	w.String("method", m.Method)
 	w.Raw("params", m.Params)
 }
 
 func (m *rpcRequest) DecodeFields(r model.FieldReader) {
 	if v, ok := r.String("jsonrpc"); ok { m.Jsonrpc = v }
-	if v, ok := r.String("id"); ok { m.Id = v }
+	if v, ok := r.Raw("id"); ok { m.Id = v }
 	if v, ok := r.String("method"); ok { m.Method = v }
 	if v, ok := r.Raw("params"); ok { m.Params = v }
 }
@@ -48,7 +48,7 @@ func (s *rpcRequestList) DecodeFields(_ model.FieldReader) {}
 
 type rpcResponse struct {
 	Jsonrpc string
-	Id string
+	Id model.RawJSON
 	Result string
 	Error string
 }
@@ -63,14 +63,14 @@ func (m *rpcResponse) IsNil() bool { return m == nil }
 
 func (m *rpcResponse) EncodeFields(w model.FieldWriter) {
 	w.String("jsonrpc", m.Jsonrpc)
-	w.String("id", m.Id)
+	w.Raw("id", m.Id)
 	if len(m.Result) != 0 { w.Raw("result", m.Result) }
 	if len(m.Error) != 0 { w.Raw("error", m.Error) }
 }
 
 func (m *rpcResponse) DecodeFields(r model.FieldReader) {
 	if v, ok := r.String("jsonrpc"); ok { m.Jsonrpc = v }
-	if v, ok := r.String("id"); ok { m.Id = v }
+	if v, ok := r.Raw("id"); ok { m.Id = v }
 	if v, ok := r.Raw("result"); ok { m.Result = v }
 	if v, ok := r.Raw("error"); ok { m.Error = v }
 }
@@ -403,7 +403,7 @@ func (s *listToolsResultList) DecodeFields(_ model.FieldReader) {}
 
 type errorResponse struct {
 	Jsonrpc string
-	Id string
+	Id model.RawJSON
 	Error jsonRPCError
 }
 
@@ -417,13 +417,13 @@ func (m *errorResponse) IsNil() bool { return m == nil }
 
 func (m *errorResponse) EncodeFields(w model.FieldWriter) {
 	w.String("jsonrpc", m.Jsonrpc)
-	if m.Id != "" { w.String("id", m.Id) }
+	w.Raw("id", m.Id)
 	w.Object("error", &m.Error)
 }
 
 func (m *errorResponse) DecodeFields(r model.FieldReader) {
 	if v, ok := r.String("jsonrpc"); ok { m.Jsonrpc = v }
-	if v, ok := r.String("id"); ok { m.Id = v }
+	if v, ok := r.Raw("id"); ok { m.Id = v }
 	r.Object("error", &m.Error)
 }
 
@@ -533,7 +533,7 @@ func (s *EmptyResultList) DecodeFields(_ model.FieldReader) {}
 
 type JSONRPCRequest struct {
 	Jsonrpc string
-	Id string
+	Id model.RawJSON
 	Method string
 	Params string
 }
@@ -548,14 +548,14 @@ func (m *JSONRPCRequest) IsNil() bool { return m == nil }
 
 func (m *JSONRPCRequest) EncodeFields(w model.FieldWriter) {
 	w.String("jsonrpc", m.Jsonrpc)
-	w.String("id", m.Id)
+	w.Raw("id", m.Id)
 	w.String("method", m.Method)
 	if len(m.Params) != 0 { w.Raw("params", m.Params) }
 }
 
 func (m *JSONRPCRequest) DecodeFields(r model.FieldReader) {
 	if v, ok := r.String("jsonrpc"); ok { m.Jsonrpc = v }
-	if v, ok := r.String("id"); ok { m.Id = v }
+	if v, ok := r.Raw("id"); ok { m.Id = v }
 	if v, ok := r.String("method"); ok { m.Method = v }
 	if v, ok := r.Raw("params"); ok { m.Params = v }
 }
@@ -610,7 +610,7 @@ func (s *JSONRPCNotificationList) DecodeFields(_ model.FieldReader) {}
 
 type JSONRPCResponseStruct struct {
 	Jsonrpc string
-	Id string
+	Id model.RawJSON
 	Result string
 	Error string
 }
@@ -625,14 +625,14 @@ func (m *JSONRPCResponseStruct) IsNil() bool { return m == nil }
 
 func (m *JSONRPCResponseStruct) EncodeFields(w model.FieldWriter) {
 	w.String("jsonrpc", m.Jsonrpc)
-	w.String("id", m.Id)
+	w.Raw("id", m.Id)
 	if len(m.Result) != 0 { w.Raw("result", m.Result) }
 	if len(m.Error) != 0 { w.Raw("error", m.Error) }
 }
 
 func (m *JSONRPCResponseStruct) DecodeFields(r model.FieldReader) {
 	if v, ok := r.String("jsonrpc"); ok { m.Jsonrpc = v }
-	if v, ok := r.String("id"); ok { m.Id = v }
+	if v, ok := r.Raw("id"); ok { m.Id = v }
 	if v, ok := r.Raw("result"); ok { m.Result = v }
 	if v, ok := r.Raw("error"); ok { m.Error = v }
 }
@@ -650,7 +650,7 @@ func (s *JSONRPCResponseStructList) DecodeFields(_ model.FieldReader) {}
 
 type JSONRPCError struct {
 	Jsonrpc string
-	Id string
+	Id model.RawJSON
 	Error string
 }
 
@@ -664,13 +664,13 @@ func (m *JSONRPCError) IsNil() bool { return m == nil }
 
 func (m *JSONRPCError) EncodeFields(w model.FieldWriter) {
 	w.String("jsonrpc", m.Jsonrpc)
-	w.String("id", m.Id)
+	w.Raw("id", m.Id)
 	w.Raw("error", m.Error)
 }
 
 func (m *JSONRPCError) DecodeFields(r model.FieldReader) {
 	if v, ok := r.String("jsonrpc"); ok { m.Jsonrpc = v }
-	if v, ok := r.String("id"); ok { m.Id = v }
+	if v, ok := r.Raw("id"); ok { m.Id = v }
 	if v, ok := r.Raw("error"); ok { m.Error = v }
 }
 

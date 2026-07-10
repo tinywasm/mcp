@@ -11,12 +11,12 @@ const (
 )
 
 func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMessage {
-	id := extractJSONString(message, "id")
+	id := RequestId(ExtractJSONValue(message, "id"))
 	method := extractJSONString(message, "method")
 	jsonrpc := extractJSONString(message, "jsonrpc")
 
 	if len(message) == 0 {
-		return createErrorResponse("", PARSE_ERROR, "Empty message")
+		return createErrorResponse(RequestId("null"), PARSE_ERROR, "Empty message")
 	}
 
 	if jsonrpc == "" && method == "" {
@@ -27,7 +27,7 @@ func (s *Server) HandleMessage(ctx *context.Context, message []byte) JSONRPCMess
 		return createErrorResponse(id, INVALID_REQUEST, "Invalid JSON-RPC version: "+jsonrpc)
 	}
 
-	if id == "" {
+	if len(id) == 0 {
 		var notification JSONRPCNotification
 		notification.Jsonrpc = JSONRPC_VERSION
 		notification.Method = method

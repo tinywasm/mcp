@@ -8,14 +8,33 @@ import (
 	"github.com/tinywasm/json"
 )
 
+const (
+	headerAuthorization = "Authorization"
+	bearerPrefix        = "Bearer "
+)
+
 type Client struct {
-	endpoint string
+	endpoint  string
+	authToken string // when non-empty, sent as "Authorization: Bearer <token>"
 }
 
-func NewClient(baseURL string) *Client {
+// NewClient targets baseURL + "/mcp". authToken is sent as a Bearer token on
+// every request; pass "" for open/unauthenticated daemons.
+func NewClient(baseURL, authToken string) *Client {
 	return &Client{
-		endpoint: fmt.Convert(baseURL).TrimSuffix("/").String() + "/mcp",
+		endpoint:  fmt.Convert(baseURL).TrimSuffix("/").String() + "/mcp",
+		authToken: authToken,
 	}
+}
+
+// newPost builds the POST request for this client, attaching the Authorization
+// header when a token is configured.
+func (c *Client) newPost(body []byte) *fetch.Request {
+	r := fetch.Post(c.endpoint).ContentTypeJSON().Body(body)
+	if c.authToken != "" {
+		r = r.Header(headerAuthorization, bearerPrefix+c.authToken)
+	}
+	return r
 }
 
 func (c *Client) Call(ctx *context.Context, method string, params any, callback func([]byte, error)) {
@@ -26,7 +45,7 @@ func (c *Client) Call(ctx *context.Context, method string, params any, callback 
 		}
 		return
 	}
-	fetch.Post(c.endpoint).ContentTypeJSON().Body(body).Send(func(resp *fetch.Response, err error) {
+	c.newPost(body).Send(func(resp *fetch.Response, err error) {
 		if err != nil {
 			if callback != nil {
 				callback(nil, err)
@@ -59,7 +78,7 @@ func (c *Client) Dispatch(ctx *context.Context, method string, params any) {
 	if body == nil {
 		return
 	}
-	fetch.Post(c.endpoint).ContentTypeJSON().Body(body).Send(func(*fetch.Response, error) {})
+	c.newPost(body).Send(func(*fetch.Response, error) {})
 }
 
 func (c *Client) buildBody(method string, params any) []byte {
@@ -71,7 +90,7 @@ func (c *Client) buildBody(method string, params any) []byte {
 			}
 		}
 	}
-	req := rpcRequest{Jsonrpc: "2.0", Id: "1", Method: method, Params: paramsJSON}
+	req := rpcRequest{Jsonrpc: "2.0", Id: RequestId("\"1\""), Method: method, Params: paramsJSON}
 	var body []byte
 	if err := json.Encode(&req, &body); err != nil {
 		return nil
