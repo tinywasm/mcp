@@ -1,6 +1,7 @@
 package mcp_test
 
 import (
+	"github.com/tinywasm/model"
 	"testing"
 
 	"github.com/tinywasm/context"
@@ -19,7 +20,7 @@ func TestAddTool_WithSSE_PublishesListChanged(t *testing.T) {
 	err := srv.AddTool(mcp.Tool{
 		Name:     "new-tool",
 		Resource: "res",
-		Action:   'r',
+		Action:   model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("ok"), nil
 		},
@@ -47,7 +48,7 @@ func TestAddTool_WithoutSSE_NoPanic(t *testing.T) {
 	err := srv.AddTool(mcp.Tool{
 		Name:     "new-tool",
 		Resource: "res",
-		Action:   'r',
+		Action:   model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("ok"), nil
 		},

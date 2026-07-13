@@ -1,6 +1,7 @@
 package mcp_test
 
 import (
+	"github.com/tinywasm/model"
 	"testing"
 
 	"github.com/tinywasm/context"
@@ -17,10 +18,11 @@ func TestNewServer_NilAuthorize_ReturnsError(t *testing.T) {
 func TestHandleToolCall_PublicTool_NoAuth_Passes(t *testing.T) {
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, nil)
 	srv.AddTool(mcp.Tool{
-		Name:     "public-tool",
-		Resource: "res",
-		Action:   'r',
-		Public:   true,
+		Name: "public-tool",
+		// Un tool público NO declara recurso: un recurso que nadie comprueba parece
+		// protección y no la da. AddTool lo rechaza al arrancar.
+		Action: model.Read,
+		Access: model.AccessPublic,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("ok"), nil
 		},
@@ -41,8 +43,8 @@ func TestHandleToolCall_PrivateTool_NoAuth_Rejected(t *testing.T) {
 	srv.AddTool(mcp.Tool{
 		Name:     "private-tool",
 		Resource: "res",
-		Action:   'r',
-		Public:   false,
+		Action:   model.Read,
+		// Sin Access declarado: el zero value es AccessGuarded — identidad Y permiso.
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("ok"), nil
 		},

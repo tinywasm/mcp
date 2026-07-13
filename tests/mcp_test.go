@@ -16,7 +16,7 @@ func TestAddTool_Valid(t *testing.T) {
 		Name:        "search",
 		Description: "Search items",
 		Resource:    "items",
-		Action:      'r',
+		Action:      model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("ok"), nil
 		},
@@ -46,7 +46,7 @@ func TestAddTool_MissingRun(t *testing.T) {
 	err := srv.AddTool(mcp.Tool{
 		Name:     "search",
 		Resource: "items",
-		Action:   'r',
+		Action:   model.Read,
 	})
 	if err == nil {
 		t.Fatal("expected error for nil Run")
@@ -128,7 +128,7 @@ func TestToolCall_ContentIsArray(t *testing.T) {
 	srv.AddTool(mcp.Tool{
 		Name:     "ping",
 		Resource: "test",
-		Action:   'r',
+		Action:   model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("pong"), nil
 		},
@@ -161,7 +161,7 @@ func TestToolCall_ContentItemLowercaseKeys(t *testing.T) {
 	srv.AddTool(mcp.Tool{
 		Name:     "ping",
 		Resource: "test",
-		Action:   'r',
+		Action:   model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("pong"), nil
 		},
@@ -243,7 +243,7 @@ func TestHandleMessage_Compliance(t *testing.T) {
 	srv.AddTool(mcp.Tool{
 		Name:     "echo",
 		Resource: "test",
-		Action:   'r',
+		Action:   model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text(req.Params.Name), nil
 		},
@@ -339,12 +339,12 @@ func TestHandleMessage_Compliance(t *testing.T) {
 }
 
 func TestHandleToolCall_Can_False_Rejected(t *testing.T) {
-	auth := &rbacAuth{denyResource: "secrets", denyAction: "r"}
+	auth := &rbacAuth{denyResource: "secrets", denyAction: model.Read}
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: auth.Can}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:     "secret",
 		Resource: "secrets",
-		Action:   'r',
+		Action:   model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("secret data"), nil
 		},
@@ -402,7 +402,7 @@ func TestToolCall_ArgumentsAsObject(t *testing.T) {
 	srv.AddTool(mcp.Tool{
 		Name:     "echo",
 		Resource: "test",
-		Action:   'r',
+		Action:   model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("ok"), nil
 		},
@@ -439,7 +439,7 @@ func TestListTools_InputSchemaIsObject(t *testing.T) {
 		Description: "Search something",
 		Args:        args,
 		Resource:    "items",
-		Action:      'r',
+		Action:      model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("ok"), nil
 		},

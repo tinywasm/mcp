@@ -17,7 +17,7 @@ type Server struct {
 	instructions string
 	tools        map[string]Tool
 	providers    []ToolProvider
-	authorize    func(userID, resource, action string) bool
+	authorize    model.Authorizer
 	log          func(messages ...any)
 	SSE          SSEPublisher
 }
@@ -25,7 +25,7 @@ type Server struct {
 type Config struct {
 	Name      string
 	Version   string
-	Authorize func(userID, resource, action string) bool
+	Authorize model.Authorizer // nil = every guarded tool is denied
 	SSE       SSEPublisher
 }
 
@@ -64,8 +64,25 @@ func negotiateVersion(clientVersion string) string {
 }
 
 func (s *Server) AddTool(tool Tool) error {
-	if tool.Name == "" || tool.Resource == "" || tool.Action == 0 || tool.Execute == nil {
-		return fmt.Err("mcp", "invalid tool")
+	if tool.Name == "" || tool.Action == 0 || tool.Execute == nil {
+		return fmt.Err("mcp", "invalid tool: Name, Action and Execute are required")
+	}
+
+	// The access declaration and the resource must agree, and disagreeing is fatal at
+	// startup — never a runtime surprise.
+	switch tool.Access {
+	case model.AccessGuarded:
+		// A guarded tool with no resource used to authorize against "", which simply denied
+		// every call: the tool looked protected and was in fact unreachable, silently.
+		if tool.Resource == "" {
+			return fmt.Err("mcp", "tool", tool.Name, "is guarded but declares no Resource — it would deny every call")
+		}
+	default:
+		// A resource on a tool nobody checks reads as protection and gives none.
+		if tool.Resource != "" {
+			return fmt.Err("mcp", "tool", tool.Name, "declares Resource", string(tool.Resource),
+				"but its Access does not check it — remove one or the other")
+		}
 	}
 	s.mu.Lock()
 	s.tools[tool.Name] = tool
@@ -139,16 +156,27 @@ func (s *Server) handleToolCall(ctx *context.Context, id RequestId, params CallT
 	}
 
 	userID := ctx.Value(CtxKeyUserID)
-	if !tool.Public {
+	switch tool.Access {
+	case model.AccessPublic:
+		// no identity needed: declared on purpose
+
+	case model.AccessAuthenticated:
+		// identity is the check; the caller acts on themselves, so there is no resource
 		if userID == "" {
 			return nil, &requestError{id: id, code: -32001, err: fmt.Err("forbidden: authentication required")}
 		}
-		if !s.authorize(userID, tool.Resource, string(tool.Action)) {
+
+	default: // model.AccessGuarded — the zero value: identity AND permission
+		if userID == "" {
+			return nil, &requestError{id: id, code: -32001, err: fmt.Err("forbidden: authentication required")}
+		}
+		// model.Allowed denies when Authorize is nil: the absence of an answer is not permission.
+		if !model.Allowed(s.authorize, userID, tool.Resource, tool.Action) {
 			return nil, &requestError{id: id, code: -32001, err: fmt.Err("forbidden")}
 		}
 	}
 
-	req := Request{Params: params, Action: tool.Action}
+	req := Request{Params: params, Action: tool.actionByte()}
 	result, err := tool.Execute(ctx, req)
 	if err != nil {
 		return &Result{IsError: true, Content: Text(err.Error()).Content}, nil

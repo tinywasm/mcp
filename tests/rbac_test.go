@@ -17,7 +17,7 @@ func TestHandleToolCall_Can_ChecksResource(t *testing.T) {
 	srv.AddTool(mcp.Tool{
 		Name:     "tool1",
 		Resource: "secrets",
-		Action:   'r',
+		Action:   model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("ok"), nil
 		},
@@ -38,7 +38,7 @@ func TestHandleToolCall_Can_ChecksAction(t *testing.T) {
 	srv.AddTool(mcp.Tool{
 		Name:     "tool1",
 		Resource: "res",
-		Action:   'u',
+		Action:   model.Update,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("ok"), nil
 		},
@@ -48,19 +48,19 @@ func TestHandleToolCall_Can_ChecksAction(t *testing.T) {
 	req := []byte(`{"jsonrpc":"2.0","id":"1","method":"tools/call","params":{"name":"tool1","arguments":{}}}`)
 	srv.HandleMessage(&ctx, req)
 
-	if auth.lastAction != "u" {
-		t.Fatalf("expected lastAction 'u', got %s", auth.lastAction)
+	if auth.lastAction != model.Update {
+		t.Fatalf("expected lastAction Update, got %d", auth.lastAction)
 	}
 }
 
 func TestHandleToolCall_ExecuteNeverCalledIfCanFalse(t *testing.T) {
 	called := false
-	auth := &rbacAuth{denyResource: "secrets", denyAction: "r"}
+	auth := &rbacAuth{denyResource: "secrets", denyAction: model.Read}
 	srv, _ := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: auth.Can}, nil)
 	srv.AddTool(mcp.Tool{
 		Name:     "tool1",
 		Resource: "secrets",
-		Action:   'r',
+		Action:   model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			called = true
 			return mcp.Text("ok"), nil
@@ -93,7 +93,7 @@ func TestHandleToolCall_ExecuteReturnsError_IsErrorTrue(t *testing.T) {
 	srv.AddTool(mcp.Tool{
 		Name:     "fail",
 		Resource: "res",
-		Action:   'r',
+		Action:   model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return nil, fmt.Err("mcp", "test", "failed")
 		},
@@ -147,7 +147,7 @@ func TestHandleToolCall_Bind_UsesToolAction(t *testing.T) {
 	srv.AddTool(mcp.Tool{
 		Name:     "tool1",
 		Resource: "res",
-		Action:   'u',
+		Action:   model.Update,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			req.Bind(&target)
 			return mcp.Text("ok"), nil
@@ -168,7 +168,7 @@ func TestHandleToolCall_DuplicateToolName_Overwrites(t *testing.T) {
 	srv.AddTool(mcp.Tool{
 		Name:     "tool1",
 		Resource: "res",
-		Action:   'r',
+		Action:   model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("first"), nil
 		},
@@ -176,7 +176,7 @@ func TestHandleToolCall_DuplicateToolName_Overwrites(t *testing.T) {
 	srv.AddTool(mcp.Tool{
 		Name:     "tool1",
 		Resource: "res",
-		Action:   'r',
+		Action:   model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("second"), nil
 		},
@@ -204,7 +204,7 @@ func TestConcurrent_AddToolAndCallTool(t *testing.T) {
 			srv.AddTool(mcp.Tool{
 				Name:     "t" + string(rune('0'+n)),
 				Resource: "res",
-				Action:   'r',
+				Action:   model.Read,
 				Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 					return mcp.Text("ok"), nil
 				},
@@ -237,8 +237,8 @@ func (p *mockProvider) Tools() []mcp.Tool {
 func TestNewServer_ProviderInjectsTools(t *testing.T) {
 	p := &mockProvider{
 		tools: []mcp.Tool{
-			{Name: "t1", Resource: "r", Action: 'r', Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) { return mcp.Text("1"), nil }},
-			{Name: "t2", Resource: "r", Action: 'r', Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) { return mcp.Text("2"), nil }},
+			{Name: "t1", Resource: "r", Action: model.Read, Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) { return mcp.Text("1"), nil }},
+			{Name: "t2", Resource: "r", Action: model.Read, Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) { return mcp.Text("2"), nil }},
 		},
 	}
 	srv, err := mcp.NewServer(mcp.Config{Name: "test", Version: "1.0.0", Authorize: mcp.AllowAll}, []mcp.ToolProvider{p})

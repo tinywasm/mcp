@@ -8,17 +8,29 @@ import (
 
 type Request struct {
 	Params CallToolParams
+	// Action is the CRUD letter ('c','r','u','d'). It stays a byte because it is handed to
+	// Validate(action byte) on the ormc-generated models — that is the boundary, and this
+	// package does not drag the refactor across it.
 	Action byte
 }
 
 type Tool struct {
 	Name        string
 	Description string
-	Args        model.Fielder // model of tool arguments (ormc-generated); nil = no args
-	Resource    string        // required — RBAC resource identifier
-	Action      byte          // required — 'c','r','u','d'
-	Public      bool          // explicit: accessible without identity. Absence = private.
+	Args        model.Fielder  // model of tool arguments (ormc-generated); nil = no args
+	Resource    model.Resource // required with AccessGuarded; must be empty otherwise
+	Action      model.Action   // required — model.Create/Read/Update/Delete
+	Access      model.Access   // zero = model.AccessGuarded: identity AND permission
 	Execute     func(ctx *context.Context, req Request) (*Result, error)
+}
+
+// actionByte is the CRUD letter of a single action, for the ormc Validate boundary.
+func (t Tool) actionByte() byte {
+	s := t.Action.String()
+	if len(s) == 0 {
+		return 0
+	}
+	return s[0]
 }
 
 // DecodableFields combines Decodable (codec) with Validate (validation).

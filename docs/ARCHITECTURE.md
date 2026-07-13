@@ -143,3 +143,30 @@ type ToolProvider interface {
 - WASM build excludes `server_sse.go` via build tag
 - All tools require `Resource` and `Action` fields (RBAC mandatory)
 - `NewServer` rejects nil `Authorize`
+
+## Access: one declaration, guarded by default
+
+A tool declares `Access` (`model.Access`), and the **zero value is `AccessGuarded`**.
+
+| State | Requires | Use it for |
+|---|---|---|
+| `AccessGuarded` (zero) | identity **and** `Authorize(userID, Resource, Action)` | everything that touches data. A tool that declares nothing lands here. |
+| `AccessAuthenticated` | identity only, **no resource check** | operations on the CALLER themselves (`me`): authentication already *is* the check. |
+| `AccessPublic` | nothing | the rare tool reachable with no identity. Write it on purpose. |
+
+`AddTool` **fails at startup**, never silently at runtime, when the declaration contradicts
+itself:
+
+- **guarded with no `Resource`** — it would authorize against `""` and deny every call: a
+  tool that looks protected and is in fact unreachable.
+- **non-guarded with a `Resource`** — a resource nobody checks reads as protection and gives
+  none.
+
+`AccessAuthenticated` exists because without it a `me` tool had to invent a resource
+(`"profile"`) that the app never declared: a hole in this contract turning into policy
+inside a library.
+
+`Resource` and `Action` are `model.Resource` / `model.Action` — this package **types** the
+vocabulary and never declares it. Actions are a closed CRUD set; `Request.Action` stays a
+`byte` only because it is handed to the `Validate(action byte)` of the ormc-generated
+models. That is the boundary, and the refactor does not cross it.

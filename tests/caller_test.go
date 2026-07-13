@@ -45,7 +45,7 @@ func TestCaller_Call_Success(t *testing.T) {
 	srv.AddTool(mcp.Tool{
 		Name:     "echo",
 		Resource: "test",
-		Action:   'r',
+		Action:   model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			// req.Params.Arguments is already unwrapped from the envelope
 			return mcp.Text("echo: " + req.Params.Arguments), nil
@@ -92,7 +92,7 @@ func TestCaller_Call_ToolError(t *testing.T) {
 	srv.AddTool(mcp.Tool{
 		Name:     "fail",
 		Resource: "test",
-		Action:   'r',
+		Action:   model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return &mcp.Result{IsError: true, Content: `[{"type":"text","text":"something went wrong"}]`}, nil
 		},

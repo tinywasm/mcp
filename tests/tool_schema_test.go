@@ -52,7 +52,7 @@ func TestToolSchema_AllFieldTypes_GeneratesCorrectSchemas(t *testing.T) {
 		Description: "Tool with all field types",
 		Args:        args,
 		Resource:    "res",
-		Action:      'r',
+		Action:      model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("ok"), nil
 		},
@@ -95,7 +95,7 @@ func TestToolSchema_WithArgs_ContainsProperties(t *testing.T) {
 		Description: "A tool with args",
 		Args:        args,
 		Resource:    "res",
-		Action:      'r',
+		Action:      model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("ok"), nil
 		},
@@ -130,7 +130,7 @@ func TestToolSchema_WithoutArgs_EmptyObject(t *testing.T) {
 		Description: "A tool without args",
 		Args:        nil,
 		Resource:    "res",
-		Action:      'r',
+		Action:      model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("ok"), nil
 		},
@@ -153,7 +153,7 @@ func TestToolSchema_NeverNull(t *testing.T) {
 		Description: "Tool without args",
 		Args:        nil,
 		Resource:    "res",
-		Action:      'r',
+		Action:      model.Read,
 		Execute: func(ctx *context.Context, req mcp.Request) (*mcp.Result, error) {
 			return mcp.Text("ok"), nil
 		},

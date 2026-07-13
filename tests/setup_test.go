@@ -10,13 +10,13 @@ import (
 
 // rbacAuth — records Authorize args and allows control per resource/action
 type rbacAuth struct {
-	lastResource string
-	lastAction   string
-	denyResource string
-	denyAction   string
+	lastResource model.Resource
+	lastAction   model.Action
+	denyResource model.Resource
+	denyAction   model.Action
 }
 
-func (m *rbacAuth) Can(userID, resource, action string) bool {
+func (m *rbacAuth) Can(userID string, resource model.Resource, action model.Action) bool {
 	m.lastResource = resource
 	m.lastAction = action
 	if resource == m.denyResource && action == m.denyAction {
@@ -24,6 +24,8 @@ func (m *rbacAuth) Can(userID, resource, action string) bool {
 	}
 	return true
 }
+
+var _ model.Authorizer = (*rbacAuth)(nil).Can
 
 // mockSSE — records Publish calls
 type mockSSE struct {
