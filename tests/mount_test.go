@@ -5,22 +5,11 @@ import (
 
 	"github.com/tinywasm/mcp"
 	"github.com/tinywasm/router"
+	"github.com/tinywasm/router/mock"
 )
 
 func TestServerImplementsAPIModule(t *testing.T) {
 	var _ router.APIModule = (*mcp.Server)(nil)
-}
-
-type mockRouter struct {
-	router.Router
-	path    string
-	handler router.HandlerFunc
-}
-
-func (m *mockRouter) Post(path string, h router.HandlerFunc) router.Route {
-	m.path = path
-	m.handler = h
-	return nil
 }
 
 type mockContext struct {
@@ -59,15 +48,15 @@ func TestMountAPI(t *testing.T) {
 		Authorize: mcp.AllowAll,
 	}, nil)
 
-	mr := &mockRouter{}
+	// The canonical mock, not a hand-rolled one: the local mockRouter used to return a
+	// nil Route from Post — a lie no real router tells, and it hid the fact that MountAPI
+	// never declared its access level.
+	mr := &mock.Router{}
 	server.MountAPI(mr)
 
-	if mr.path != mcp.MCPPath {
-		t.Errorf("expected path %s, got %s", mcp.MCPPath, mr.path)
-	}
-
-	if mr.handler == nil {
-		t.Fatal("handler not registered")
+	routes := mr.Routes()
+	if len(routes) != 1 || routes[0].Path != mcp.MCPPath {
+		t.Fatalf("expected POST %s to be registered, got %+v", mcp.MCPPath, routes)
 	}
 
 	// Test a simple initialize request
@@ -75,7 +64,7 @@ func TestMountAPI(t *testing.T) {
 		body: []byte(`{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test-client","version":"1.0.0"}}}`),
 	}
 
-	mr.handler(ctx)
+	mr.Invoke("POST", mcp.MCPPath, ctx)
 
 	if ctx.headers["Content-Type"] != "application/json" {
 		t.Errorf("expected Content-Type application/json, got %s", ctx.headers["Content-Type"])
