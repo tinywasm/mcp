@@ -1,8 +1,9 @@
 package mcp
 
 import (
-	"github.com/tinywasm/model"
 	"sync"
+
+	"github.com/tinywasm/model"
 
 	"github.com/tinywasm/context"
 	"github.com/tinywasm/fmt"
@@ -113,7 +114,7 @@ func (s *Server) handleInitialize(ctx *context.Context, id RequestId, params ini
 	res.Capabilities = `{"tools":{"listChanged":true}}`
 	if ctx.Value(CtxKeySessionID) == "" {
 		uid, _ := unixid.NewUnixID()
-		ctx.Set(CtxKeySessionID, uid.GetNewID())
+		ctx.Set(CtxKeySessionID, uid.NewID())
 	}
 	return res, nil
 }
