@@ -12,7 +12,6 @@ import (
 	"github.com/tinywasm/time"
 )
 
-
 // mockEncodable is a simple model.Encodable for testing
 type mockEncodable struct {
 	Foo string
@@ -74,13 +73,17 @@ func TestCaller_Call_Success(t *testing.T) {
 
 	args := &mockEncodable{Foo: "bar"}
 	done := make(chan bool)
-	caller.Call("echo", args, func(result []byte, err error) {
+	var result mcp.TextContentList
+	caller.Call("echo", args, &result, func(err error) {
 		if err != nil {
 			t.Errorf("expected no error, got %v", err)
 		}
-		expected := `[{"type":"text","text":"echo: {\"foo\":\"bar\"}"}]`
-		if string(result) != expected {
-			t.Errorf("got %s, expected %s", string(result), expected)
+		if len(result) != 1 {
+			t.Fatalf("expected 1 item, got %d", len(result))
+		}
+		expected := `echo: {"foo":"bar"}`
+		if result[0].Text != expected {
+			t.Errorf("got %s, expected %s", result[0].Text, expected)
 		}
 		done <- true
 	})
@@ -117,7 +120,7 @@ func TestCaller_Call_ToolError(t *testing.T) {
 	caller := mcp.NewCaller(client)
 
 	done := make(chan bool)
-	caller.Call("fail", nil, func(result []byte, err error) {
+	caller.Call("fail", nil, nil, func(err error) {
 		if err == nil {
 			t.Error("expected error, got nil")
 		} else if !contains(err.Error(), "something went wrong") {
@@ -139,7 +142,7 @@ func TestCaller_Call_RPCError(t *testing.T) {
 	caller := mcp.NewCaller(client)
 
 	done := make(chan bool)
-	caller.Call("any", nil, func(result []byte, err error) {
+	caller.Call("any", nil, nil, func(err error) {
 		if err == nil {
 			t.Error("expected error, got nil")
 		} else if !contains(err.Error(), "Method not found") {
