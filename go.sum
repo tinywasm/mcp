@@ -12,5 +12,5 @@ github.com/tinywasm/router v0.1.12 h1:lf39WDAfAMVfTRg5HlgoLpyaC2R5oOxDPqFBsmBrTD
 github.com/tinywasm/router v0.1.12/go.mod h1:JYL/YiErI7bbkg1suosA1Et8Fv1jxrFY/dLqvjq/flc=
 github.com/tinywasm/time v0.5.0 h1:M17DNgKrMYfkCK42V6miL9AcwfN/FHghbKOSTXJrkMo=
 github.com/tinywasm/time v0.5.0/go.mod h1:vxGAkKA40im4ObiTS6hcsJYiIsVVLSz/A63JC/+TwvA=
-github.com/tinywasm/unixid v0.2.23 h1:Lp/TER0RwbaT7EcHbQNzXj9LOGA2VD8rC8XLYmxJBc0=
-github.com/tinywasm/unixid v0.2.23/go.mod h1:5KPbI26CrW8S7rgMS46gqlLKTYPno3QH49GSB5NSLMU=
+github.com/tinywasm/unixid v0.2.24 h1:D5ufep5H8Ji/G6M2Y+Gf/z2ZcnlrPpn50RoDER7b4eo=
+github.com/tinywasm/unixid v0.2.24/go.mod h1:ewc484oiQQYOgFqW2RLlCHJVngY5NoP+maZ6pzbF+K0=

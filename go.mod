@@ -9,7 +9,7 @@ require (
 	github.com/tinywasm/json v0.5.11
 	github.com/tinywasm/model v0.0.15
 	github.com/tinywasm/router v0.1.12
-	github.com/tinywasm/unixid v0.2.23
+	github.com/tinywasm/unixid v0.2.24
 )
 
 require github.com/tinywasm/time v0.5.0
