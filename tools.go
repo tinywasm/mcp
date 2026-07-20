@@ -48,10 +48,11 @@ func (r *Request) Bind(target DecodableFields) error {
 }
 
 func Text(text string) *Result {
-	list := TextContentList{&TextContent{Type: "text", Text: text}}
-	var s string
-	_ = json.Encode(&list, &s)
-	return &Result{Content: s}
+	return NewResult(TextBlock(text))
+}
+
+func Image(data []byte, mimeType string) *Result {
+	return NewResult(ImageBlock(data, mimeType))
 }
 
 type ToolProvider interface {

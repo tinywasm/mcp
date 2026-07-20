@@ -86,6 +86,15 @@ var TextContentModel = model.Definition{
 	},
 }
 
+var ImageContentModel = model.Definition{
+	Name: "image_content",
+	Fields: model.Fields{
+		{Name: "type", Type: model.Text()},
+		{Name: "data", Type: model.Text()},
+		{Name: "mimeType", Type: model.Text()},
+	},
+}
+
 var toolEntryModel = model.Definition{
 	Name: "tool_entry",
 	Fields: model.Fields{
