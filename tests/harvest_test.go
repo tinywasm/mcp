@@ -27,11 +27,11 @@ func (fakeModule) ModelName() string { return "fake" }
 func (fakeModule) MountOps(r router.OpRegistry) {
 	r.Op("do_thing", func(ctx router.Context) {
 		var in fakeArgs
-		if err := ctx.Decode(&in); err != nil {
+		if err := router.Decode(ctx, &in); err != nil {
 			ctx.WriteStatus(500)
 			return
 		}
-		_ = ctx.Encode(&fakeArgs{Value: "echo:" + in.Value})
+		_ = router.Encode(ctx, &fakeArgs{Value: "echo:" + in.Value})
 	}).Requires("fake_resource", model.Read).Accepts(&fakeArgs{})
 }
 
