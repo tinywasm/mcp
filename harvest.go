@@ -85,8 +85,8 @@ func (c *opContext) GetHeader(string) string                  { return "" }
 func (c *opContext) SetHeader(string, string)                 {}
 func (c *opContext) WriteStatus(code int)                     { c.status = code }
 func (c *opContext) Write(b []byte) (int, error)              { c.body = append([]byte{}, b...); return len(b), nil }
-func (c *opContext) SetValue(string, any)                     {}
-func (c *opContext) Value(string) any                         { return nil }
+func (c *opContext) SetValue(string, string)                  {}
+func (c *opContext) Value(string) string                      { return "" }
 func (c *opContext) SetCookie(router.Cookie)                  {}
 func (c *opContext) Cookie(string) (router.Cookie, bool)      { return router.Cookie{}, false }
 func (c *opContext) SetUserID(id string)                      { c.userID = id }
