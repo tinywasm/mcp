@@ -13,7 +13,7 @@ require (
 	github.com/tinywasm/unixid v0.2.24
 )
 
-require github.com/tinywasm/time v0.5.0
+require github.com/tinywasm/time v0.5.4
 
 // Local dev: Encode/Decode (standard, padded base64) were just added and
 // aren't in the v0.0.3 tag yet.
