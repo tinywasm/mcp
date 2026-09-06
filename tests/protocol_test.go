@@ -3,8 +3,8 @@ package mcp_test
 import (
 	"testing"
 
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/mcp"
+	"webtyp.com/context"
+	"webtyp.com/mcp"
 )
 
 func TestInitialize_UnsupportedVersion_Negotiated(t *testing.T) {

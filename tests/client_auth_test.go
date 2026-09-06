@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"github.com/tinywasm/mcp"
-	"github.com/tinywasm/time"
+	"webtyp.com/mcp"
+	"webtyp.com/time"
 )
 
 func TestClient_AuthHeader_Sent(t *testing.T) {

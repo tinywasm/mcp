@@ -1,9 +1,9 @@
 package mcp
 
 import (
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/json"
-	"github.com/tinywasm/router"
+	"webtyp.com/context"
+	"webtyp.com/json"
+	"webtyp.com/router"
 )
 
 // MCPPath is the canonical route for the JSON-RPC endpoint.

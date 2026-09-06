@@ -2,7 +2,7 @@
 
 ```mermaid
 flowchart TD
-    A[Consumer tinywasm/app] --> B[NewServer Config providers]
+    A[Consumer webtyp/app] --> B[NewServer Config providers]
     B --> C{Auth nil?}
     C -->|yes| D[error: Auth required]
     C -->|no| E[Server]

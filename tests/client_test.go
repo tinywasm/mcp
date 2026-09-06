@@ -3,7 +3,7 @@ package mcp_test
 import (
 	"testing"
 
-	"github.com/tinywasm/mcp"
+	"webtyp.com/mcp"
 )
 
 func TestNewClient(t *testing.T) {

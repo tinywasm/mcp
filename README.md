@@ -1,4 +1,4 @@
-# tinywasm/mcp
+# webtyp/mcp
 <img src="docs/img/badges.svg">
 
 Lean Go implementation of the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) over JSON-RPC 2.0. Protocol-only, WASM-safe, minimal public API.
@@ -6,7 +6,7 @@ Lean Go implementation of the [Model Context Protocol](https://modelcontextproto
 ## Installation
 
 ```bash
-go get github.com/tinywasm/mcp
+go get webtyp.com/mcp
 ```
 
 ### ormc (code generation)
@@ -14,7 +14,7 @@ go get github.com/tinywasm/mcp
 Tools use `ormc` for automatic `Schema()`, `Pointers()`, and `Validate()` generation:
 
 ```bash
-go install github.com/tinywasm/orm/cmd/ormc@latest
+go install webtyp.com/orm/cmd/ormc@latest
 ```
 
 ## Quickstart
@@ -64,7 +64,7 @@ srv.AddTool(mcp.Tool{
 })
 
 // 1. Mount on a router (recommended)
-import "github.com/tinywasm/router"
+import "webtyp.com/router"
 
 r := router.New()
 srv.MountAPI(r)
@@ -88,8 +88,8 @@ Views should depend on `router.Caller` and use `mcp.NewCaller` to invoke tools. 
 
 ```go
 import (
-    "github.com/tinywasm/mcp"
-    "github.com/tinywasm/router"
+    "webtyp.com/mcp"
+    "webtyp.com/router"
 )
 
 // 1. Composition root: wire the client and adapter
@@ -118,7 +118,7 @@ func MyView(c router.Caller) {
 // The Authorize function signature expected by mcp
 type Authorize func(userID, resource, action string) bool
 
-// Example implementation (e.g. using tinywasm/user)
+// Example implementation (e.g. using webtyp/user)
 srv, _ := mcp.NewServer(mcp.Config{
     Authorize: user.Can,
 }, providers)
@@ -133,7 +133,7 @@ Authorization is required — `NewServer` returns error if `Config.Authorize` is
 Optional streaming via `SSEPublisher` interface. The consumer creates the SSE server and injects it:
 
 ```go
-import "github.com/tinywasm/sse"
+import "webtyp.com/sse"
 
 sseServer := sse.New()
 

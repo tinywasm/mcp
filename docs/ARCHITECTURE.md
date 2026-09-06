@@ -1,4 +1,4 @@
-# Architecture: tinywasm/mcp
+# Architecture: webtyp/mcp
 
 ## Purpose
 
@@ -15,7 +15,7 @@ Lean Go implementation of MCP (Model Context Protocol) over JSON-RPC 2.0. Protoc
 ## Architecture
 
 ```
-Consumer (tinywasm/app)
+Consumer (webtyp/app)
     │
     ├─ owns HTTP routing
     ├─ handles authentication (middleware)
@@ -107,7 +107,7 @@ SSE is optional — when `Config.SSE` is nil, no streaming occurs.
 | `types.go` | JSON-RPC 2.0 types: `JSONRPCMessage`, `JSONRPCRequest`, `JSONRPCNotification`, `JSONRPCResponseStruct`, `JSONRPCError`, `Result`, error codes, MCP methods |
 | `model.go` | ORM model definitions: `rpcRequest`, `rpcResponse`, `initializeParams`, `callToolParams`, etc. |
 | `model_orm.go` | Generated ORM code: `Schema()`, `Pointers()`, `Validate()` for all models |
-| `client.go` | `Client`: MCP client (`Call`, `Dispatch`) using `tinywasm/fetch` |
+| `client.go` | `Client`: MCP client (`Call`, `Dispatch`) using `webtyp/fetch` |
 | `caller.go` | `NewCaller`: `router.Caller` adapter for views |
 | `provider.go` | `Loggable` interface |
 | `constants.go` | HTTP header constants, content type constants |
@@ -124,7 +124,7 @@ SSE is optional — when `Config.SSE` is nil, no streaming occurs.
 ## Key Interfaces
 
 ```go
-// From github.com/tinywasm/router (matches mcp.Authorize)
+// From webtyp.com/router (matches mcp.Authorize)
 type Authorize func(userID, resource, action string) bool
 
 type SSEPublisher interface {  // build !wasm

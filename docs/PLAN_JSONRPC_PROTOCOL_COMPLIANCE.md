@@ -1,14 +1,14 @@
 # PLAN — mcp: cumplimiento JSON-RPC 2.0 (eco del `id`) y negociación de versión de protocolo MCP
 
 > This plan is dispatched via the CodeJob workflow. See skill: agents-workflow.
-> Parte de `tinywasm/docs/MCP_DAEMON_HARDENING_MASTER_PLAN.md`.
+> Parte de `webtyp/docs/MCP_DAEMON_HARDENING_MASTER_PLAN.md`.
 > Independiente de `PLAN_KIND_UNIFICATION_INPUTSCHEMA.md` (otra ola — no mezclar).
 > Idioma: español (decisión del mantenedor). Autocontenido: el agente no tiene contexto previo.
 
 ## Prerequisito (correr primero)
 
 ```bash
-go install github.com/tinywasm/devflow/cmd/gotest@latest
+go install webtyp.com/devflow/cmd/gotest@latest
 ```
 
 Todos los tests con `gotest` (nunca `go test` a secas).
@@ -56,7 +56,7 @@ respuesta, no solo la feliz.
 ## 1. Reglas de código (obligatorias)
 
 - Este paquete puede compilar a WASM en consumidores: **no stdlib nueva** —
-  usar `tinywasm/fmt` / `tinywasm/json` como ya hace el paquete. Verificar con
+  usar `webtyp/fmt` / `webtyp/json` como ya hace el paquete. Verificar con
   los imports existentes antes de agregar cualquiera.
 - Cero strings de JSON schema a mano; el inputSchema se deriva de
   `Args.Schema()` (no tocar ese mecanismo).

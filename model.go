@@ -1,6 +1,6 @@
 package mcp
 
-import "github.com/tinywasm/model"
+import "webtyp.com/model"
 
 var rpcRequestModel = model.Definition{
 	Name: "rpc_request",

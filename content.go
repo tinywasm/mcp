@@ -1,9 +1,9 @@
 package mcp
 
 import (
-	"github.com/tinywasm/base64"
-	"github.com/tinywasm/json"
-	"github.com/tinywasm/model"
+	"webtyp.com/base64"
+	"webtyp.com/json"
+	"webtyp.com/model"
 )
 
 // ContentBlock is one item of an MCP result's content array. TextContent and

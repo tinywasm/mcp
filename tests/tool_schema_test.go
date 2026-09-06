@@ -3,9 +3,9 @@ package mcp_test
 import (
 	"testing"
 
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/mcp"
-	"github.com/tinywasm/model"
+	"webtyp.com/context"
+	"webtyp.com/mcp"
+	"webtyp.com/model"
 )
 
 // mockAllFieldTypes covers FieldInt, FieldFloat, FieldBool, FieldIntSlice, FieldStruct, FieldStructSlice, FieldText, FieldRaw, FieldBlob

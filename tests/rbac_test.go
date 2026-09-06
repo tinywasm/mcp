@@ -1,14 +1,14 @@
 package mcp_test
 
-import "github.com/tinywasm/model"
+import "webtyp.com/model"
 
 import (
 	"testing"
 	"sync"
 
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/mcp"
+	"webtyp.com/context"
+	"webtyp.com/fmt"
+	"webtyp.com/mcp"
 )
 
 func TestHandleToolCall_Can_ChecksResource(t *testing.T) {

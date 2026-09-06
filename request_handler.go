@@ -1,8 +1,8 @@
 package mcp
 
 import (
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/json"
+	"webtyp.com/context"
+	"webtyp.com/json"
 )
 
 const (

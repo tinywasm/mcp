@@ -1,9 +1,9 @@
 package mcp
 
 import (
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/json"
+	"webtyp.com/model"
+	"webtyp.com/fmt"
+	"webtyp.com/json"
 )
 
 func JSON(data model.Encodable) (*Result, error) {

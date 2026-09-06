@@ -3,12 +3,12 @@ package mcp
 import (
 	"sync"
 
-	"github.com/tinywasm/model"
+	"webtyp.com/model"
 
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/json"
-	"github.com/tinywasm/unixid"
+	"webtyp.com/context"
+	"webtyp.com/fmt"
+	"webtyp.com/json"
+	"webtyp.com/unixid"
 )
 
 type Server struct {

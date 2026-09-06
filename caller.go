@@ -1,11 +1,11 @@
 package mcp
 
 import (
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/json"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/router"
+	"webtyp.com/context"
+	"webtyp.com/fmt"
+	"webtyp.com/json"
+	"webtyp.com/model"
+	"webtyp.com/router"
 )
 
 type mcpCaller struct {

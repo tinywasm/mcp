@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/json"
-	"github.com/tinywasm/mcp"
-	"github.com/tinywasm/model"
+	"webtyp.com/context"
+	"webtyp.com/fmt"
+	"webtyp.com/json"
+	"webtyp.com/mcp"
+	"webtyp.com/model"
 )
 
 // callTool invoca un tool y devuelve error si la verja lo rechazó.

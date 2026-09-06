@@ -9,8 +9,8 @@ is in this file. Read it fully before writing code.
 
 ## 1. Problem
 
-The daemon's `/mcp` JSON-RPC endpoint **requires authentication** for the `tinywasm/state` and
-`tinywasm/action` methods when the daemon runs in secured mode (an API key is configured). The
+The daemon's `/mcp` JSON-RPC endpoint **requires authentication** for the `webtyp/state` and
+`webtyp/action` methods when the daemon runs in secured mode (an API key is configured). The
 server extracts the token from the `Authorization: Bearer <token>` request header and rejects
 unauthenticated calls with a JSON-RPC `Unauthorized` error:
 
@@ -29,12 +29,12 @@ if _, err := auth.Authorize(token); err != nil {
 ```
 
 But **`mcp.Client` cannot send an `Authorization` header** — it has no auth support at all
-(`client.go`). Its only consumer, `tinywasm/devtui`, therefore calls `tinywasm/state` and
-`tinywasm/action` **without credentials**, so on a secured daemon:
+(`client.go`). Its only consumer, `webtyp/devtui`, therefore calls `webtyp/state` and
+`webtyp/action` **without credentials**, so on a secured daemon:
 
 - `fetchAndReconstructState()` (GET-like `state` call) → `Unauthorized` → client-mode state
   reconstruction silently fails.
-- `Dispatch("tinywasm/action", …)` (e.g. the Ctrl+C "stop" action, remote field actions) →
+- `Dispatch("webtyp/action", …)` (e.g. the Ctrl+C "stop" action, remote field actions) →
   `Unauthorized` → the action never runs.
 
 This plan adds **optional Bearer-token authentication** to `mcp.Client`, backward compatible.
@@ -51,10 +51,10 @@ This plan adds **optional Bearer-token authentication** to `mcp.Client`, backwar
 package mcp
 
 import (
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/fetch"
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/json"
+	"webtyp.com/context"
+	"webtyp.com/fetch"
+	"webtyp.com/fmt"
+	"webtyp.com/json"
 )
 
 type Client struct {
@@ -83,7 +83,7 @@ func (c *Client) Dispatch(ctx *context.Context, method string, params any) {
 ```
 
 Key facts:
-- `github.com/tinywasm/fetch` supports request headers: `func (r *fetch.Request) Header(key, value string) *fetch.Request` (chainable).
+- `webtyp.com/fetch` supports request headers: `func (r *fetch.Request) Header(key, value string) *fetch.Request` (chainable).
 - `NewClient` has exactly TWO callers in the ecosystem (verified 2026-07-09):
   1. `devtui/sse_client.go` — will pass the daemon API key (Section 7.1).
   2. `mjosefa-cms/config/client.go` — browser WASM client; its auth is the
@@ -94,8 +94,8 @@ Key facts:
   Do NOT add functional-option cruft to preserve the old form.
 - **The token is opaque to the client** — do not validate or interpret it.
   Today it is the daemon's static API key (`app/daemon.go` parses the header
-  manually); for application servers built on `tinywasm/server/httpd` +
-  `tinywasm/user` it will be a JWT from `user.GenerateAPIToken`
+  manually); for application servers built on `webtyp/server/httpd` +
+  `webtyp/user` it will be a JWT from `user.GenerateAPIToken`
   (`user.AuthModeBearer` targets exactly this kind of non-browser API
   client). Server-side extraction/authorization is out of scope here: it
   lives in the host's `Authn` middleware + `Authorize` callback
@@ -205,9 +205,9 @@ Run `go test ./...` — all existing tests MUST still pass.
 
 - **No hardcoded strings in logic**: use the `headerAuthorization` / `bearerPrefix` constants
   (Section 3.1). No `"Authorization"` / `"Bearer "` literals in `Call`/`Dispatch`/helpers.
-- **No standard library** where a tinywasm package is the convention: this package already uses
-  `github.com/tinywasm/fmt`, `github.com/tinywasm/json`, `github.com/tinywasm/fetch`,
-  `github.com/tinywasm/context`. Test files may use stdlib `net/http`, `net/http/httptest`,
+- **No standard library** where a webtyp package is the convention: this package already uses
+  `webtyp.com/fmt`, `webtyp.com/json`, `webtyp.com/fetch`,
+  `webtyp.com/context`. Test files may use stdlib `net/http`, `net/http/httptest`,
   `testing`, `time` (consistent with typical `_test.go` in the ecosystem).
 - **Clean break, no cruft**: change `NewClient`'s signature directly to `NewClient(baseURL,
   authToken string)`. Do NOT keep an old overload or add functional options to preserve the
@@ -229,7 +229,7 @@ Run `go test ./...` — all existing tests MUST still pass.
 
 ## 7. Downstream follow-up (NOT part of this repo/dispatch — for the maintainer)
 
-After this ships and `mcp` is published, `tinywasm/devtui` needs a small consumer change
+After this ships and `mcp` is published, `webtyp/devtui` needs a small consumer change
 (separate `docs/PLAN.md` in the devtui repo):
 
 1. `sse_client.go` `mcpClient()`: build with the key — `mcp.NewClient(baseURL, h.apiKey)`

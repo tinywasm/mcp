@@ -1,10 +1,10 @@
 package mcp
 
 import (
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/json"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/router"
+	"webtyp.com/context"
+	"webtyp.com/json"
+	"webtyp.com/model"
+	"webtyp.com/router"
 )
 
 // HarvestOps builds a ToolProvider from one or more router.OpModule implementations. It runs

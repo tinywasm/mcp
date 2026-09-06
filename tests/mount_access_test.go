@@ -3,10 +3,10 @@ package mcp_test
 import (
 	"testing"
 
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/mcp"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/router/mock"
+	"webtyp.com/context"
+	"webtyp.com/mcp"
+	"webtyp.com/model"
+	"webtyp.com/router/mock"
 )
 
 // The /mcp route must declare its access EXPLICITLY. Left unannotated it falls into the

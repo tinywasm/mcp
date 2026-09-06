@@ -1,6 +1,6 @@
 package mcp
 
-import "github.com/tinywasm/model"
+import "webtyp.com/model"
 
 // AllowAll grants any permission. Development and tests ONLY.
 //

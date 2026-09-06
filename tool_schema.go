@@ -1,8 +1,8 @@
 package mcp
 
 import (
-	"github.com/tinywasm/fmt"
-	"github.com/tinywasm/model"
+	"webtyp.com/fmt"
+	"webtyp.com/model"
 )
 
 const EmptyInputSchema = `{"type":"object","properties":{}}`

@@ -38,10 +38,10 @@
 | No `encoding/json` | stdlib json uses reflection — incompatible with TinyGo |
 | No `map[string]any` | Not type-safe, not WASM-safe, hides bugs |
 | `ormc` generates Schema/Validate | No hand-written boilerplate, single source of truth |
-| `tinywasm/context` instead of stdlib | stdlib context uses `any` values and `Done()` channel — neither works in TinyGo |
-| Auth is interface only | mcp is protocol, not identity management — `tinywasm/user` implements |
-| Session ID only in context | mcp doesn't own sessions — `tinywasm/user` does |
+| `webtyp/context` instead of stdlib | stdlib context uses `any` values and `Done()` channel — neither works in TinyGo |
+| Auth is interface only | mcp is protocol, not identity management — `webtyp/user` implements |
+| Session ID only in context | mcp doesn't own sessions — `webtyp/user` does |
 | `//go:build !wasm` for HTTP | HTTP is server-only; browser uses `HandleMessage` directly |
 | Tool.Run is the API | Single registration path: `AddTool` or `ToolProvider.Tools()` returns Tool with Run handler |
 | Mandatory Resource/Action | Every tool declares RBAC intent, prevents "open by default" bugs |
-| Result.Content is string | Avoids nested slice types that `tinywasm/json` doesn't support as top-level |
+| Result.Content is string | Avoids nested slice types that `webtyp/json` doesn't support as top-level |

@@ -5,11 +5,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/json"
-	"github.com/tinywasm/mcp"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/time"
+	"webtyp.com/context"
+	"webtyp.com/json"
+	"webtyp.com/mcp"
+	"webtyp.com/model"
+	"webtyp.com/time"
 )
 
 // mockEncodable is a simple model.Encodable for testing

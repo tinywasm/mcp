@@ -1,15 +1,15 @@
 # PLAN — Kind unification (phase B): tool `inputSchema` derivation reads `Field.Type.Storage()`
 
 > This plan is dispatched via the CodeJob workflow. See skill: agents-workflow.
-> Phase B of `tinywasm/docs/KIND_UNIFICATION_MASTER_PLAN.md` (Kind unification wave). Requires
-> the published phase-A `tinywasm/model`. Runs parallel to orm/form/sqlt/postgres.
+> Phase B of `webtyp/docs/KIND_UNIFICATION_MASTER_PLAN.md` (Kind unification wave). Requires
+> the published phase-A `webtyp/model`. Runs parallel to orm/form/sqlt/postgres.
 >
 > NOTE: `docs/PLAN_bearer_auth_pending.md` is a separate, unrelated pending
 > plan from a previous wave — do NOT touch, merge, or delete it.
 
 ## Context (zero-context summary)
 
-Phase A changed `tinywasm/model`: `Field.Type` is no longer the `FieldType`
+Phase A changed `webtyp/model`: `Field.Type` is no longer the `FieldType`
 enum but the interface
 
 ```go
@@ -28,7 +28,7 @@ signature is **correct and stays**; every call site now feeds it
 
 ## Stage 1 — mechanical migration
 
-- Bump `tinywasm/model` to the phase-A version.
+- Bump `webtyp/model` to the phase-A version.
 - `jsonSchemaType` keeps its `model.FieldType` parameter; call sites in
   `tool_schema.go` (and anywhere else the compiler flags) pass
   `f.Type.Storage()`.
@@ -54,7 +54,7 @@ signature is **correct and stays**; every call site now feeds it
 
 - No behavior change: call-site migration only. If the `Kind` contract is
   insufficient here, **STOP and report** to the master plan.
-- Only `tinywasm/json` for JSON — stdlib `encoding/json` forbidden.
+- Only `webtyp/json` for JSON — stdlib `encoding/json` forbidden.
 - No unrelated refactors; `gotest` only.
 - Breaking dependency bump: next minor version.
 

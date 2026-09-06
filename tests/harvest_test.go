@@ -3,9 +3,9 @@ package mcp_test
 import (
 	"testing"
 
-	"github.com/tinywasm/mcp"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/router"
+	"webtyp.com/mcp"
+	"webtyp.com/model"
+	"webtyp.com/router"
 )
 
 type fakeArgs struct{ Value string }

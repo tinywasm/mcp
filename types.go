@@ -1,6 +1,6 @@
 package mcp
 
-import "github.com/tinywasm/model"
+import "webtyp.com/model"
 
 type MCPMethod string
 

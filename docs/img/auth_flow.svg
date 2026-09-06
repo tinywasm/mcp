@@ -29,7 +29,7 @@
   </style>
 
   <!-- Title -->
-  <text x="360" y="30" text-anchor="middle" class="title">Auth + RBAC Flow — tinywasm/mcp</text>
+  <text x="360" y="30" text-anchor="middle" class="title">Auth + RBAC Flow — webtyp/mcp</text>
   <text x="360" y="48" text-anchor="middle" class="subtitle">HandleMessage → Authorize → Can → Execute</text>
 
   <!-- Step 1: HandleMessage receives request -->

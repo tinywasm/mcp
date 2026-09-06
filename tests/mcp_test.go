@@ -3,10 +3,10 @@ package mcp_test
 import (
 	"testing"
 
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/json"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/mcp"
+	"webtyp.com/context"
+	"webtyp.com/json"
+	"webtyp.com/model"
+	"webtyp.com/mcp"
 )
 
 // TestAddTool_Valid verifies tool registration succeeds with valid Tool

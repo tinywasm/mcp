@@ -1,11 +1,11 @@
 package mcp_test
 
 import (
-	"github.com/tinywasm/model"
+	"webtyp.com/model"
 	"testing"
 
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/mcp"
+	"webtyp.com/context"
+	"webtyp.com/mcp"
 )
 
 func TestNewServer_NilAuthorize_ReturnsError(t *testing.T) {

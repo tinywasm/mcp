@@ -3,9 +3,9 @@ package mcp_test
 import (
 	"testing"
 
-	"github.com/tinywasm/mcp"
-	"github.com/tinywasm/router"
-	"github.com/tinywasm/router/mock"
+	"webtyp.com/mcp"
+	"webtyp.com/router"
+	"webtyp.com/router/mock"
 )
 
 func TestServerImplementsAPIModule(t *testing.T) {

@@ -1,9 +1,9 @@
 package mcp
 
 import (
-	"github.com/tinywasm/context"
-	"github.com/tinywasm/json"
-	"github.com/tinywasm/model"
+	"webtyp.com/context"
+	"webtyp.com/json"
+	"webtyp.com/model"
 )
 
 type Request struct {

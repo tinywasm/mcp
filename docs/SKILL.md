@@ -1,10 +1,10 @@
 ---
-module: github.com/tinywasm/mcp
+module: webtyp.com/mcp
 version: see go.mod
 protocol: MCP (Model Context Protocol) over JSON-RPC 2.0
 ---
 
-# SKILL: tinywasm/mcp
+# SKILL: webtyp/mcp
 
 Lean Go MCP server + client library. Protocol-only, WASM-safe, no HTTP ownership.
 
@@ -13,7 +13,7 @@ Lean Go MCP server + client library. Protocol-only, WASM-safe, no HTTP ownership
 - Handles JSON-RPC 2.0 MCP messages: `initialize`, `ping`, `tools/list`, `tools/call`
 - Mandatory RBAC on every tool call via `Authorize` function
 - Optional SSE streaming via injected `SSEPublisher`
-- Dual-use: server (backend) + client (WASM frontend via `tinywasm/fetch`)
+- Dual-use: server (backend) + client (WASM frontend via `webtyp/fetch`)
 
 ## Core types
 
@@ -48,7 +48,7 @@ mcp.GetText(result)        // extract text string
 // Auth
 mcp.AllowAll               // helper: always returns true (dev/tests)
 
-// Client (WASM-safe, uses tinywasm/fetch)
+// Client (WASM-safe, uses webtyp/fetch)
 c := mcp.NewClient("http://host", "")   // authToken: "" = open/unauthenticated
 caller := mcp.NewCaller(c) // recommended adapter for views (implements router.Caller)
 caller.Call("search", &args, func(data []byte, err error){})
@@ -90,7 +90,7 @@ http.HandleFunc("/mcp", func(w http.ResponseWriter, r *http.Request) {
 ## Code generation (ormc)
 
 ```bash
-go install github.com/tinywasm/orm/cmd/ormc@latest
+go install webtyp.com/orm/cmd/ormc@latest
 # annotate struct with // ormc:formonly
 # run: go generate ./...
 ```
@@ -99,7 +99,7 @@ go install github.com/tinywasm/orm/cmd/ormc@latest
 
 - `Config.Authorize` must not be nil — use `mcp.AllowAll` for open access
 - Every `Tool` must have `Resource` and `Action` set
-- No stdlib `encoding/json` — uses `tinywasm/json` (TinyGo compatible)
+- No stdlib `encoding/json` — uses `webtyp/json` (TinyGo compatible)
 - SSE is optional; when nil no streaming occurs
 - WASM build excludes server-only files via `//go:build !wasm`
 

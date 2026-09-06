@@ -1,9 +1,9 @@
 package mcp_test
 
 import (
-	"github.com/tinywasm/json"
-	"github.com/tinywasm/model"
-	"github.com/tinywasm/mcp"
+	"webtyp.com/json"
+	"webtyp.com/model"
+	"webtyp.com/mcp"
 )
 
 // --- Mocks ---
