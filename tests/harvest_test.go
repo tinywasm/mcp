@@ -20,12 +20,12 @@ func (a *fakeArgs) DecodeFields(r model.FieldReader) {
 	}
 }
 
-// fakeModule mimics a domain module: implements router.OpModule, imports ONLY router+model.
+// fakeModule mimics a domain module: implements router.OperationModule, imports ONLY router+model.
 type fakeModule struct{}
 
 func (fakeModule) ModelName() string { return "fake" }
-func (fakeModule) MountOps(r router.OpRegistry) {
-	r.Op("do_thing", func(ctx router.Context) {
+func (fakeModule) MountOperations(r router.OperationRegistry) {
+	r.Operation("do_thing", func(ctx router.Context) {
 		var in fakeArgs
 		if err := ctx.Decode(&in); err != nil {
 			ctx.WriteStatus(500)
@@ -35,7 +35,7 @@ func (fakeModule) MountOps(r router.OpRegistry) {
 	}).Requires("fake_resource", model.Read).Accepts(&fakeArgs{})
 }
 
-var _ router.OpModule = fakeModule{}
+var _ router.OperationModule = fakeModule{}
 
 func TestHarvestOps_ModuleReachesMCP(t *testing.T) {
 	provider := mcp.HarvestOps(fakeModule{})

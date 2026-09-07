@@ -7,18 +7,19 @@ import (
 	"webtyp.com/router"
 )
 
-// HarvestOps builds a ToolProvider from one or more router.OpModule implementations. It runs
-// each module's MountOps against an internal router.OpRegistry — the transport-neutral surface a
-// domain module registers against without importing mcp — and converts every harvested Op into a
-// Tool. This is the ONLY supported way for a domain module to reach the MCP transport; NewServer
-// keeps accepting []ToolProvider for MCP-native providers (mcp's own tools, or a raw ToolProvider
-// a repo still hand-writes). A composition root passes both:
+// HarvestOps builds a ToolProvider from one or more router.OperationModule implementations. It
+// runs each module's MountOperations against an internal router.OperationRegistry — the
+// transport-neutral surface a domain module registers against without importing mcp — and
+// converts every harvested operation into a Tool. This is the ONLY supported way for a domain
+// module to reach the MCP transport; NewServer keeps accepting []ToolProvider for MCP-native
+// providers (mcp's own tools, or a raw ToolProvider a repo still hand-writes). A composition
+// root passes both:
 //
 //	providers := []mcp.ToolProvider{mcp.HarvestOps(catalogModule, userModule), rawProvider}
-func HarvestOps(modules ...router.OpModule) ToolProvider {
+func HarvestOps(modules ...router.OperationModule) ToolProvider {
 	reg := &opRegistry{}
 	for _, m := range modules {
-		m.MountOps(reg)
+		m.MountOperations(reg)
 	}
 	return staticProvider(reg.tools)
 }
@@ -27,20 +28,21 @@ type staticProvider []Tool
 
 func (s staticProvider) Tools() []Tool { return []Tool(s) }
 
-// opRegistry implements router.OpRegistry — a ONE-method surface. It does NOT implement (nor
-// pretend to be) router.Router: an op-only transport must never carry Get/Post/… it can neither
-// honour nor need. There is nothing to panic on, because there is nothing to leave unimplemented.
+// opRegistry implements router.OperationRegistry — a ONE-method surface. It does NOT implement
+// (nor pretend to be) router.Router: an op-only transport must never carry Get/Post/… it can
+// neither honour nor need. There is nothing to panic on, because there is nothing to leave
+// unimplemented.
 type opRegistry struct {
 	tools []Tool
 }
 
-func (r *opRegistry) Op(name string, h router.HandlerFunc) router.Route {
+func (r *opRegistry) Operation(name string, h router.HandlerFunc) router.Route {
 	idx := len(r.tools)
 	r.tools = append(r.tools, Tool{Name: name, Execute: harvestExecute(name, h)})
 	return &opRoute{owner: r, idx: idx}
 }
 
-var _ router.OpRegistry = (*opRegistry)(nil)
+var _ router.OperationRegistry = (*opRegistry)(nil)
 
 // opRoute implements router.Route, writing straight into the Tool opRegistry already appended —
 // no copy-then-writeback: Requires/Accepts/etc mutate the SAME Tool by index.
@@ -70,8 +72,8 @@ func (rt *opRoute) Accepts(args model.Fielder) router.Route {
 var _ router.Route = (*opRoute)(nil)
 
 // opContext adapts one mcp.Request into router.Context so a router.HandlerFunc (registered via
-// Op) can run unmodified against the MCP transport — the same handler would run verbatim under any
-// future op transport that harvests the SAME module's MountOps.
+// Operation) can run unmodified against the MCP transport — the same handler would run verbatim
+// under any future op transport that harvests the SAME module's MountOperations.
 type opContext struct {
 	userID string
 	body   []byte // request: raw Arguments; after the handler runs: what it wrote via Encode/Write
